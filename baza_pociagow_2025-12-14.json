@@ -1,0 +1,27 @@
+{
+  "meta": {
+    "generator": "Admin Panel Trains",
+    "date": "2025-12-14T17:51:36.894Z"
+  },
+  "trains": [
+    {
+      "id": "1765734674028",
+      "nr": "IC 1814 POBRZEŻE",
+      "rj": "2025/2026 ZRJ1",
+      "uwagi": "",
+      "autor": "Piotr M",
+      "data_wprowadzenia": "2025-12-14",
+      "trasa_ids": [
+        1,
+        13,
+        18,
+        24,
+        36,
+        37,
+        38,
+        39
+      ],
+      "trasa_opis": "Łódź Fabryczna-Łódź Widzew, Koluszki-Grodzisk Maz., Grodzisk Maz.-W-wa Zachodnia, W-wa Zachodnia-W-wa Wschodnia, W-wa Wschodnia-Działdowo, Działdowo-Iława Główna, Iława Główna-Tczew, Tczew-Gdynia Główna"
+    }
+  ]
+}
