@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edytor Bazy Szlaków Kolejowych</title>
+    
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-W05T4L1HFD"></script> 
+    <script> window.dataLayer = window.dataLayer || []; function gtag(){dataLayer.push(arguments);} gtag('js', new Date()); gtag('config', 'G-W05T4L1HFD'); </script>
+
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" />
+
+    <style>
+        body, html { margin: 0; padding: 0; height: 100%; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; overflow: hidden; }
+        #app { display: flex; height: 100vh; }
+        
+        /* PANEL BOCZNY */
+        #sidebar {
+            width: 420px;
+            background: #fff;
+            border-right: 1px solid #ccc;
+            display: flex;
+            flex-direction: column;
+            z-index: 1000;
+            box-shadow: 2px 0 15px rgba(0,0,0,0.1);
+        }
+
+        .header {
+            background: #2c3e50; color: white; padding: 15px;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .header h2 { margin: 0; font-size: 1.1rem; }
+        .stats { font-size: 0.8rem; background: rgba(255,255,255,0.2); padding: 3px 8px; border-radius: 10px; }
+
+        /* LISTA */
+        .list-controls { padding: 10px; background: #f8f9fa; border-bottom: 1px solid #ddd; }
+        #search-box { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        
+        #list-container { flex-grow: 1; overflow-y: auto; background: #f1f1f1; }
+        
+        .segment-item {
+            background: white; border-bottom: 1px solid #e0e0e0; padding: 10px; cursor: pointer;
+            display: flex; align-items: center; transition: background 0.2s;
+        }
+        .segment-item:hover { background: #e9ecef; }
+        .segment-item.active { background: #d1ecf1; border-left: 5px solid #17a2b8; }
+        
+        .status-dot {
+            width: 12px; height: 12px; border-radius: 50%; margin-right: 10px; flex-shrink: 0;
+            background: #ccc; /* szary - brak */
+        }
+        .status-dot.done { background: #28a745; /* zielony - gotowe */ }
+        
+        .seg-details { flex-grow: 1; }
+        .seg-title { font-weight: bold; font-size: 0.9rem; display: block; }
+        .seg-via { font-size: 0.75rem; color: #666; }
+
+        /* PANEL EDYCJI (na dole sidebaru) */
+        #edit-panel {
+            padding: 15px; background: white; border-top: 2px solid #ddd;
+            display: none; /* Ukryte domyślnie */
+        }
+        .panel-title { font-weight: bold; margin-bottom: 10px; border-bottom: 1px solid #eee; padding-bottom: 5px; }
+        
+        .btn {
+            border: none; padding: 10px; border-radius: 4px; cursor: pointer; font-weight: bold; width: 100%; margin-top: 5px;
+            font-size: 0.9rem; transition: 0.2s;
+        }
+        .btn-green { background: #28a745; color: white; } .btn-green:hover { background: #218838; }
+        .btn-blue { background: #007bff; color: white; } .btn-blue:hover { background: #0056b3; }
+        .btn-orange { background: #fd7e14; color: white; } .btn-orange:hover { background: #e36d0a; }
+        .btn-red { background: #dc3545; color: white; width: auto; font-size: 0.8rem; padding: 5px 10px; float: right;}
+
+        /* MAPA */
+        #map { flex-grow: 1; height: 100%; position: relative; }
+
+        /* LEGENDA NA MAPIE */
+        .map-legend {
+            position: absolute; bottom: 30px; left: 10px; z-index: 1000;
+            background: rgba(255,255,255,0.9); padding: 10px; border-radius: 4px; font-size: 0.8rem;
+            box-shadow: 0 0 5px rgba(0,0,0,0.2);
+        }
+
+        .footer {
+            text-align: center; padding: 5px; font-size: 0.7rem; color: #aaa; background: #2c3e50; border-top: 1px solid #444;
+        }
+        
+        /* Inputy do edycji nazwy */
+        .edit-input { width: 100%; padding: 5px; margin-bottom: 5px; border: 1px solid #ccc; border-radius: 3px; font-size: 0.85rem;}
+    </style>
+</head>
+<body>
+
+<div id="app">
+    <div id="sidebar">
+        <div class="header">
+            <h2>Baza Szlaków (Geometria)</h2>
+            <div class="stats"><span id="done-count">0</span> / <span id="total-count">0</span></div>
+        </div>
+
+        <div class="list-controls">
+            <button class="btn btn-blue" onclick="addNewSegment()" style="margin-bottom:10px;">+ Dodaj nowy szlak</button>
+            <input type="text" id="search-box" placeholder="Szukaj (np. Koluszki)..." onkeyup="renderList()">
+        </div>
+
+        <div id="list-container">
+            </div>
+
+        <div id="edit-panel">
+            <div class="panel-title">
+                Edycja ID: <span id="current-id"></span>
+                <button class="btn-red" onclick="deleteSegment()">Usuń</button>
+            </div>
+            
+            <label style="font-size:0.8rem;">Skąd:</label>
+            <input type="text" id="edit-start" class="edit-input" onchange="updateMeta()">
+            <label style="font-size:0.8rem;">Dokąd:</label>
+            <input type="text" id="edit-end" class="edit-input" onchange="updateMeta()">
+            <label style="font-size:0.8rem;">Przez (opcjonalnie):</label>
+            <input type="text" id="edit-via" class="edit-input" onchange="updateMeta()">
+
+            <hr style="margin: 10px 0; border:0; border-top:1px solid #eee;">
+            
+            <div style="font-size:0.8rem; color:#666; margin-bottom:5px;">Operacje na mapie:</div>
+            <button class="btn btn-orange" onclick="autoLocate()">📍 Auto-Start (Znajdź stacje)</button>
+            <button class="btn btn-green" onclick="saveGeometry()">💾 ZAPISZ GEOMETRIĘ</button>
+            <div style="margin-top:5px; font-size:0.75rem; text-align:center; color:#888;">
+                Użyj ikony ołówka na mapie by poprawić tory.
+            </div>
+        </div>
+
+        <div style="padding:10px; background:#f8f9fa; border-top:1px solid #ccc;">
+            <button class="btn btn-blue" onclick="exportJSON()">📤 Eksportuj BAZĘ do JSON</button>
+        </div>
+
+        <div class="footer">
+            Admin Panel | Współautorzy: Gemini & Piotr M 🚂
+        </div>
+    </div>
+
+    <div id="map">
+        <div class="map-legend">
+            <strong>Legenda:</strong><br>
+            ➖ Czarne linie: Tory kolejowe<br>
+            🔵 Niebieska linia: Twój szlak<br>
+            Użyj narzędzi edycji (lewy górny róg)<br>aby dopasować niebieskie do czarnego.
+        </div>
+    </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
+
+<script>
+    // --- 1. DANE POCZĄTKOWE (99 pozycji + miejsce na kolejne) ---
+    const initialData = [
+        {id: 1, start: "Łódź Fabryczna", end: "Łódź Widzew", via: "-"},
+        {id: 2, start: "Łódź Widzew", end: "Łódź Chojny", via: "Łódź Dąbrowa"},
+        {id: 3, start: "Łódź Widzew", end: "Łódź Chojny", via: "Łódź Olechów"},
+        {id: 4, start: "Łódź Chojny", end: "Łódź Lublinek", via: "-"},
+        {id: 5, start: "Łódź Chojny", end: "Łódź Kaliska", via: "-"},
+        {id: 6, start: "Łódź Kaliska", end: "Łódź Lublinek", via: "-"},
+        {id: 7, start: "Łódź Kaliska", end: "Zgierz", via: "Łódź Żabieniec"},
+        {id: 8, start: "Łódź Widzew", end: "Zgierz", via: "Łódź Arturówek"},
+        {id: 9, start: "Zgierz", end: "Kutno", via: "Łęczyca"},
+        {id: 10, start: "Zgierz", end: "Łowicz Główny", via: "Stryków"},
+        {id: 11, start: "Łowicz Główny", end: "Kutno", via: "-"},
+        {id: 12, start: "Łódź Widzew", end: "Koluszki", via: "-"},
+        {id: 13, start: "Koluszki", end: "Grodzisk Maz.", via: "Skierniewice"},
+        {id: 14, start: "Koluszki", end: "Łowicz Główny", via: "Skierniewice Park, Bełchów"},
+        {id: 15, start: "Łowicz Główny", end: "W-wa Zachodnia", via: "Sochaczew, W-wa Włochy"},
+        {id: 16, start: "Łowicz Główny", end: "Grodzisk Maz.", via: "Bełchów, Żyrardów"},
+        {id: 17, start: "Łowicz Główny", end: "W-wa Główna Towarowa", via: "Sochaczew"},
+        {id: 18, start: "Grodzisk Maz.", end: "W-wa Zachodnia", via: "W-wa Włochy"},
+        {id: 19, start: "Grodzisk Maz.", end: "W-wa Gdańska", via: "W-wa Młynów"},
+        {id: 20, start: "Grodzisk Maz.", end: "W-wa Główna Towarowa", via: "-"},
+        {id: 21, start: "Grodzisk Maz.", end: "Idzikowice", via: "Szeligi"},
+        {id: 22, start: "W-wa Główna Towarowa", end: "W-wa Gdańska", via: "W-wa Jelonki"},
+        {id: 23, start: "W-wa Główna Towarowa", end: "W-wa Zachodnia", via: "W-wa Odolany"},
+        {id: 24, start: "W-wa Zachodnia", end: "W-wa Wschodnia", via: "W-wa Centralna"},
+        {id: 25, start: "W-wa Zachodnia", end: "W-wa Wschodnia", via: "W-wa Śródmieście"},
+        {id: 26, start: "W-wa Zachodnia", end: "W-wa Główna.", via: "-"},
+        {id: 27, start: "W-wa Wschodnia", end: "W-wa Grochów", via: "-"},
+        {id: 28, start: "W-wa Gdańska", end: "W-wa Wschodnia", via: "W-wa ZOO"},
+        {id: 29, start: "W-wa Gdańska", end: "W-wa Grochów", via: "W-wa ZOO"},
+        {id: 30, start: "W-wa Wschodnia", end: "Pilawa", via: "W-wa Olszynka Grochowska, Otwock"},
+        {id: 31, start: "W-wa Wschodnia", end: "Pilawa", via: "W-wa Wsch Towarowa, Otwock"},
+        {id: 32, start: "W-wa Wschodnia", end: "Pilawa", via: "W-wa Rembertów, Grzebowilk"},
+        {id: 33, start: "Pilawa", end: "Lublin Główny", via: "Dęblin, Nałęczów"},
+        {id: 34, start: "W-wa Wschodnia", end: "Tłuszcz", via: "W-wa Rembertów"},
+        {id: 35, start: "Tłuszcz", end: "Białystok", via: "Małkinia"},
+        {id: 36, start: "W-wa Wschodnia", end: "Działdowo", via: "Ciechanów"},
+        {id: 37, start: "Działdowo", end: "Iława Główna", via: "-"},
+        {id: 38, start: "Iława Główna", end: "Tczew", via: "Prabuty, Malbork"},
+        {id: 39, start: "Tczew", end: "Gdynia Główna", via: "Gdańsk Główny"},
+        {id: 40, start: "Łódź Lublinek", end: "Gajewniki", via: "Pabianice"},
+        {id: 41, start: "Gajewniki", end: "Kalisz", via: "Sieradz"},
+        {id: 42, start: "Gajewniki", end: "Koło", via: "Poddębice, Barłogi"},
+        {id: 43, start: "Gajewniki", end: "Inowrocław Rąbinek", via: "Poddębice, Piotrków Kujawski"},
+        {id: 44, start: "Kalisz", end: "Ostrów Wielkopolski", via: "-"},
+        {id: 45, start: "Kalisz", end: "Jarocin", via: "Pleszew"},
+        {id: 46, start: "Ostrów Wielkopolski", end: "Jarocin", via: "Pleszew"},
+        {id: 47, start: "Jarocin", end: "Poznań Główny", via: "Środa Wielkopolska"},
+        {id: 48, start: "Jarocin", end: "Poznań Główny", via: "Września"},
+        {id: 49, start: "Kutno", end: "Bydgoszcz Główna", via: "Toruń Główny"},
+        {id: 50, start: "Bydgoszcz Główna", end: "Tczew", via: "Laskowice Pomorskie"},
+        {id: 51, start: "Kutno", end: "Płock Trzepowo", via: "Gostynin"},
+        {id: 52, start: "Kutno", end: "Swarzędz", via: "-"},
+        {id: 53, start: "Kutno", end: "Swarzędz", via: "Września"},
+        {id: 54, start: "Swarzędz", end: "Poznań Główny", via: "Poznań Wschód"},
+        {id: 55, start: "Swarzędz", end: "Poznań Główny", via: "Poznań Franowo"},
+        {id: 56, start: "Poznań Główny", end: "Piła Główna", via: "Oborniki Wielkopolskie, Chodzież"},
+        {id: 57, start: "Poznań Główny", end: "Krzyż", via: "Poznań Wola, Szamotuły"},
+        {id: 58, start: "Krzyż", end: "Szczecin Dąbie", via: "Choszczno"},
+        {id: 59, start: "Szczecin Dąbie", end: "Szczecin Główny", via: "Dziewoklicz"},
+        {id: 60, start: "Szczecin Dąbie", end: "Szczecin Główny", via: "Szczecin Port Centr."},
+        {id: 61, start: "Poznań Główny", end: "Zbąszynek", via: "Opalenica, Nowy Tomyśl"},
+        {id: 62, start: "Zbąszynek", end: "Zielona Góra Główna", via: "-"},
+        {id: 63, start: "Zbąszynek", end: "Rzepin", via: "Świebodzin"},
+        {id: 64, start: "Zbąszynek", end: "Gorzów Wielkopolski", via: "Międzyrzecz, Skwierzyna"},
+        {id: 65, start: "Kutno", end: "Inowrocław Rąbinek", via: "Zamków, Piotrków Kujawski"},
+        {id: 66, start: "Inowrocław Rąbinek", end: "Poznań Główny", via: "Gniezno, Kobylnica"},
+        {id: 67, start: "Inowrocław Rąbinek", end: "Poznań Główny", via: "Gniezno, Września"},
+        {id: 68, start: "Inowrocław Rąbinek", end: "Bydgoszcz Główna", via: "Złotniki Kujawskie, Brzoza Bydgoska"},
+        {id: 69, start: "Inowrocław Rąbinek", end: "Bydgoszcz Główna", via: "Złotniki Kujawskie, Bydgoszcz Leśna"},
+        {id: 70, start: "Ostrów Wielkopolski", end: "Wrocław Główny", via: "Twardogóra"},
+        {id: 71, start: "Ostrów Wielkopolski", end: "Wrocław Główny", via: "Krotoszyn, Milicz"},
+        {id: 72, start: "Łódź Widzew", end: "Piotrków Trybunalski", via: "Bęzelin"},
+        {id: 73, start: "Koluszki", end: "Piotrków Trybunalski", via: "-"},
+        {id: 74, start: "Piotrków Trybunalski", end: "Częstochowa", via: "Radomsko, Wyczerpy"},
+        {id: 75, start: "Częstochowa", end: "Lubliniec", via: "Herby Stare"},
+        {id: 76, start: "Lubliniec", end: "Wrocław Główny", via: "Opole, Brzeg"},
+        {id: 77, start: "Częstochowa", end: "Zawiercie", via: "Poraj"},
+        {id: 78, start: "Zawiercie", end: "Dorota", via: "Dąbrowa Górnicza Huta Katowice"},
+        {id: 79, start: "Zawiercie", end: "Dorota", via: "Przemiarki, Kozioł"},
+        {id: 80, start: "Dorota", end: "Jaworzno Szczakowa", via: "Sosnowiec Maczki"},
+        {id: 81, start: "Dorota", end: "Katowice", via: "Sosnowiec Dańdówka, Sosnowiec Południowy"},
+        {id: 82, start: "Dorota", end: "Katowice", via: "Sosnowiec Maczki, Mysłowice"},
+        {id: 83, start: "Zawiercie", end: "Katowice", via: "Dąbrowa Górnicza, Sosnowiec Główny"},
+        {id: 84, start: "Katowice", end: "Jaworzno Szczakowa", via: "Mysłowice"},
+        {id: 85, start: "Jaworzno Szczakowa", end: "Kraków Główny", via: "Trzebinia, Kraków Mydlniki"},
+        {id: 86, start: "Częstochowa", end: "Koniecpol", via: "Julianka"},
+        {id: 87, start: "Koniecpol", end: "Kozłów", via: "Starzyny"},
+        {id: 88, start: "Kozłów", end: "Kraków Główny", via: "Miechów, Zastów"},
+        {id: 89, start: "Kraków Główny", end: "Kraków Płaszów", via: "-"},
+        {id: 90, start: "Koniecpol", end: "Włoszczowa Północ", via: "Żelisławice"},
+        {id: 91, start: "Łódź Widzew", end: "Tomaszów Mazowiecki", via: "-"},
+        {id: 92, start: "Koluszki", end: "Tomaszów Mazowiecki", via: "Słotwiny"},
+        {id: 93, start: "Tomaszów Mazowiecki", end: "Idzikowice", via: "-"},
+        {id: 94, start: "Tomaszów Mazowiecki", end: "Idzikowice", via: "Radzice"},
+        {id: 95, start: "Idzikowice", end: "Włoszczowa Północ", via: "Opoczno Południe"},
+        {id: 96, start: "Włoszczowa Północ", end: "Kozłów", via: "Starzyny"},
+        {id: 97, start: "Włoszczowa Północ", end: "Zawiercie", via: "Góra Włodowska"},
+        {id: 98, start: "Tomaszów Mazowiecki", end: "Radom Główny", via: "Drzewica, Przysucha"},
+        {id: 99, start: "Radom Główny", end: "Lublin Główny", via: "Pionki, Nałęczów"}
+    ];
+
+    // --- ZARZĄDZANIE DANYMI ---
+    // Pobieramy z localStorage albo ładujemy domyślne 99
+    let db = JSON.parse(localStorage.getItem('szlakiDB')) || JSON.parse(JSON.stringify(initialData));
+    let selectedId = null;
+
+    // --- MAPA ---
+    var map = L.map('map').setView([52.0, 19.2], 6); // Centrum Polski
+
+    // 1. Podkład OpenStreetMap (blady)
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+        attribution: '&copy; OpenStreetMap &copy; CARTO',
+        opacity: 0.6
+    }).addTo(map);
+
+    // 2. Podkład OpenRailwayMap (Tory) - KLUCZOWE
+    L.tileLayer('https://{s}.tiles.openrailwaymap.org/standard/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: 'Map data: &copy; OSM | Style: &copy; OpenRailwayMap'
+    }).addTo(map);
+
+    // Warstwa edytowalna
+    var drawnItems = new L.FeatureGroup().addTo(map);
+
+    // Narzędzia rysowania
+    var drawControl = new L.Control.Draw({
+        edit: { featureGroup: drawnItems, remove: true },
+        draw: {
+            polygon: false, rectangle: false, circle: false, circlemarker: false, marker: false,
+            polyline: {
+                shapeOptions: { color: '#007bff', weight: 4 }, // Niebieski dla edycji
+                metric: true
+            }
+        }
+    });
+    map.addControl(drawControl);
+
+    // Obsługa zdarzeń rysowania
+    map.on(L.Draw.Event.CREATED, function (e) {
+        // Pozwól tylko na jedną linię na raz
+        drawnItems.clearLayers(); 
+        drawnItems.addLayer(e.layer);
+    });
+
+    // --- LOGIKA UI ---
+
+    function renderList() {
+        const list = document.getElementById('list-container');
+        const filter = document.getElementById('search-box').value.toLowerCase();
+        list.innerHTML = '';
+        
+        let done = 0;
+
+        db.forEach(item => {
+            const hasGeo = item.geometry && item.geometry.coordinates && item.geometry.coordinates.length > 0;
+            if(hasGeo) done++;
+
+            const txt = `${item.id} ${item.start} ${item.end} ${item.via || ''}`.toLowerCase();
+            
+            if (txt.includes(filter)) {
+                const div = document.createElement('div');
+                div.className = `segment-item ${selectedId === item.id ? 'active' : ''}`;
+                div.onclick = () => selectSegment(item.id);
+
+                div.innerHTML = `
+                    <div class="status-dot ${hasGeo ? 'done' : ''}"></div>
+                    <div class="seg-details">
+                        <span class="seg-title">${item.id}. ${item.start} - ${item.end}</span>
+                        <span class="seg-via">${item.via !== '-' ? item.via : ''}</span>
+                    </div>
+                `;
+                list.appendChild(div);
+            }
+        });
+
+        document.getElementById('done-count').innerText = done;
+        document.getElementById('total-count').innerText = db.length;
+    }
+
+    function selectSegment(id) {
+        selectedId = id;
+        renderList(); // odśwież style
+        
+        const item = db.find(x => x.id === id);
+        
+        // Pokaż panel edycji
+        document.getElementById('edit-panel').style.display = 'block';
+        document.getElementById('current-id').innerText = item.id;
+        document.getElementById('edit-start').value = item.start;
+        document.getElementById('edit-end').value = item.end;
+        document.getElementById('edit-via').value = item.via;
+
+        // Wyczyść mapę i załaduj geometrię jeśli istnieje
+        drawnItems.clearLayers();
+        
+        if (item.geometry) {
+            const layer = L.geoJSON(item.geometry).getLayers()[0];
+            // Musimy dodać to jako warstwę edytowalną, nie statyczny GeoJSON
+            // Hack: tworzymy Polyline z punktów geojsona
+            if(layer instanceof L.Polyline) {
+                const latlngs = layer.getLatLngs();
+                const polyline = L.polyline(latlngs, {color: '#007bff', weight: 4});
+                drawnItems.addLayer(polyline);
+                map.fitBounds(polyline.getBounds(), {padding: [50,50]});
+            }
+        }
+    }
+
+    function updateMeta() {
+        if(!selectedId) return;
+        const item = db.find(x => x.id === selectedId);
+        item.start = document.getElementById('edit-start').value;
+        item.end = document.getElementById('edit-end').value;
+        item.via = document.getElementById('edit-via').value;
+        saveToLocalStorage();
+        renderList();
+    }
+
+    function addNewSegment() {
+        // Znajdź najwyższe ID i dodaj 1
+        const maxId = db.reduce((max, item) => (item.id > max ? item.id : max), 0);
+        const newId = maxId + 1;
+        
+        const newItem = {
+            id: newId,
+            start: "Nowa Stacja A",
+            end: "Nowa Stacja B",
+            via: "-",
+            geometry: null
+        };
+        
+        db.push(newItem);
+        saveToLocalStorage();
+        renderList();
+        
+        // Automatycznie wybierz nowy i zescrolluj
+        selectSegment(newId);
+        // Scrollowanie do elementu (proste podejście)
+        setTimeout(() => {
+            const list = document.getElementById('list-container');
+            list.scrollTop = list.scrollHeight;
+        }, 100);
+    }
+
+    function deleteSegment() {
+        if(!selectedId || !confirm("Czy na pewno usunąć ten szlak?")) return;
+        db = db.filter(x => x.id !== selectedId);
+        selectedId = null;
+        document.getElementById('edit-panel').style.display = 'none';
+        drawnItems.clearLayers();
+        saveToLocalStorage();
+        renderList();
+    }
+
+    function saveGeometry() {
+        if(!selectedId) return;
+        const layers = drawnItems.getLayers();
+        
+        if(layers.length === 0) {
+            // Jeśli puste, to znaczy że usuwamy geometrię
+            const item = db.find(x => x.id === selectedId);
+            item.geometry = null;
+        } else {
+            // Zapisujemy pierwszą warstwę
+            const geoJSON = layers[0].toGeoJSON();
+            const item = db.find(x => x.id === selectedId);
+            item.geometry = geoJSON.geometry;
+        }
+        
+        saveToLocalStorage();
+        renderList();
+        alert("Zapisano geometrię szlaku!");
+    }
+
+    function saveToLocalStorage() {
+        localStorage.setItem('szlakiDB', JSON.stringify(db));
+    }
+
+    function exportJSON() {
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(db, null, 2));
+        const a = document.createElement('a');
+        a.href = dataStr;
+        a.download = "szlaki_master.json";
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+    }
+
+    // --- AUTOMATYCZNE WYSZUKIWANIE (Nominatim) ---
+    async function autoLocate() {
+        if(!selectedId) return;
+        const item = db.find(x => x.id === selectedId);
+        
+        const qStart = `${item.start} station`;
+        const qEnd = `${item.end} station`;
+        
+        if(confirm(`Spróbuję znaleźć współrzędne dla:\n1. ${qStart}\n2. ${qEnd}\n\nTo utworzy linię prostą, którą musisz dopasować do torów.`)) {
+            try {
+                const [startLoc, endLoc] = await Promise.all([
+                    fetchCoords(qStart),
+                    fetchCoords(qEnd)
+                ]);
+                
+                if(startLoc && endLoc) {
+                    drawnItems.clearLayers();
+                    const line = L.polyline([startLoc, endLoc], {color: '#007bff', weight: 4});
+                    drawnItems.addLayer(line);
+                    map.fitBounds(line.getBounds(), {padding: [50,50]});
+                    alert("Znaleziono! Teraz użyj edycji (ikona ołówka i kwadratu), aby przesunąć punkty na tory.");
+                } else {
+                    alert("Nie udało się znaleźć jednej ze stacji. Narysuj linię ręcznie.");
+                }
+            } catch(e) {
+                alert("Błąd połączenia z mapą.");
+            }
+        }
+    }
+
+    async function fetchCoords(query) {
+        const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`;
+        const res = await fetch(url);
+        const data = await res.json();
+        return data.length > 0 ? [parseFloat(data[0].lat), parseFloat(data[0].lon)] : null;
+    }
+
+    // Fix na brakujące ikonki w Leaflet Draw
+    let style = document.createElement('style');
+    style.innerHTML = `
+        .leaflet-draw-toolbar a { background-image: url('https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/images/spritesheet.png'); }
+        .leaflet-retina .leaflet-draw-toolbar a { background-image: url('https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/images/spritesheet-2x.png'); }
+    `;
+    document.head.appendChild(style);
+
+    // Start
+    renderList();
+
+</script>
+
+</body>
+</html>
