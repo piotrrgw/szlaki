@@ -95,8 +95,16 @@
             white-space: pre-wrap; word-wrap: break-word; font-size: 0.8rem;
             flex-grow: 1; overflow: auto; margin-top: 10px;
         }
-        #json-modal-content button {
+        
+        /* Zmiana stylu przycisków w modalu na flex */
+        #json-modal-content .button-group {
+            display: flex; 
+            gap: 10px; 
             margin-top: 10px;
+        }
+        #json-modal-content .button-group .btn {
+            width: 50%;
+            margin-top: 0; /* Usuwamy domyślny margin-top z .btn */
         }
     </style>
 </head>
@@ -143,6 +151,7 @@
             <button class="btn btn-green" onclick="exportJSON()">📤 Pobierz szlaki_master.json</button>
             <small style="display:block; text-align:center; color:#666; margin-top:5px;">Zapisz plik na dysku i nadpisz na serwerze.</small>
         </div>
+
         <div class="footer">
             Admin Panel | Współautorzy: Gemini & Piotr M 🚂
         </div>
@@ -155,7 +164,10 @@
     <div id="json-modal-content" onclick="event.stopPropagation()">
         <h3>Podgląd szlaki_master.json</h3>
         <pre id="json-output"></pre>
-        <button class="btn btn-blue" onclick="document.getElementById('json-modal').style.display='none'">Zamknij</button>
+        <div class="button-group">
+            <button class="btn btn-green" onclick="copyJSON()">📋 Kopiuj cały kod</button>
+            <button class="btn btn-blue" onclick="document.getElementById('json-modal').style.display='none'">Zamknij</button>
+        </div>
     </div>
 </div>
 <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
@@ -426,7 +438,7 @@
     }
 
     /**
-     * Nowa funkcja do podglądu sformatowanego JSON-a
+     * Funkcja do podglądu sformatowanego JSON-a
      */
     function viewJSON() {
         const jsonOutput = document.getElementById('json-output');
@@ -435,6 +447,38 @@
         // Format JSON z wcięciem na 2 spacje dla czytelności
         jsonOutput.textContent = JSON.stringify(db, null, 2);
         modal.style.display = 'flex';
+    }
+    
+    /**
+     * NOWA FUNKCJA: Kopiowanie całego kodu JSON do schowka
+     */
+    function copyJSON() {
+        const jsonOutput = document.getElementById('json-output');
+        
+        if (navigator.clipboard) {
+            // Nowoczesna metoda
+            navigator.clipboard.writeText(jsonOutput.textContent)
+                .then(() => {
+                    alert("Kod JSON został skopiowany do schowka!");
+                })
+                .catch(err => {
+                    console.error('Błąd podczas kopiowania:', err);
+                    alert("Błąd podczas kopiowania kodu. Spróbuj zaznaczyć ręcznie.");
+                });
+        } else {
+            // Awaryjna metoda (mniej niezawodna, ale zapewnia skopiowanie)
+            const range = document.createRange();
+            range.selectNode(jsonOutput);
+            window.getSelection().removeAllRanges();
+            window.getSelection().addRange(range);
+            try {
+                document.execCommand('copy');
+                alert("Kod JSON został skopiowany do schowka! (Metoda awaryjna)");
+            } catch (err) {
+                alert("Błąd podczas kopiowania kodu. Schowek niedostępny.");
+            }
+            window.getSelection().removeAllRanges();
+        }
     }
 
     /**
@@ -459,7 +503,7 @@
         a.remove();
     }
 
-    // Nowa funkcja pomocnicza: opóźnienie
+    // Funkcja pomocnicza: opóźnienie
     function delay(ms) {
         return new Promise(resolve => setTimeout(resolve, ms));
     }
@@ -489,7 +533,6 @@
 
         if(confirm(`Szukam ${stations.length} stacji (z opóźnieniem 1s na zapytanie):\n${queryList}`)) {
             try {
-                // ZMIANA: Zamiast Promise.all, iterujemy sekwencyjnie
                 const locations = [];
                 const MIN_DELAY_MS = 1000; // Minimalne opóźnienie 1 sekunda, aby uniknąć blokady przez Nominatim
                 let totalStationsFound = 0;
