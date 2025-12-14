@@ -407,25 +407,63 @@
         a.remove();
     }
 
+    // ZMIENIONA FUNKCJA autoLocate
     async function autoLocate() {
         if(!selectedId) return;
         const item = db.find(x => x.id === selectedId);
-        const qStart = `${item.start} station`;
-        const qEnd = `${item.end} station`;
+        
+        // 1. Zbierz wszystkie punkty (start, via, end)
+        const startStation = item.start;
+        const endStation = item.end;
+        
+        let stations = [startStation];
+        
+        if (item.via && item.via !== '-') {
+            // Czyści tekst i dzieli po przecinku, uwzględniając różne separatory i usuwając puste ciągi
+            const viaStations = item.via.split(/,\s*/).map(s => s.trim()).filter(s => s.length > 0);
+            stations = stations.concat(viaStations);
+        }
+        
+        stations.push(endStation);
 
-        if(confirm(`Szukam stacji:\n1. ${qStart}\n2. ${qEnd}`)) {
+        // Tworzy zapytania dla każdej stacji
+        const stationQueries = stations.map(s => `${s} station`);
+        const queryList = stationQueries.map((q, i) => `${i + 1}. ${q.replace(' station', '')}`).join('\n');
+
+        if(confirm(`Szukam ${stations.length} stacji:\n${queryList}`)) {
             try {
-                const [s, e] = await Promise.all([fetchLoc(qStart), fetchLoc(qEnd)]);
-                if(s && e) {
+                // 2. Szukam wszystkich lokalizacji równolegle
+                const locationPromises = stationQueries.map(q => fetchLoc(q));
+                const locations = await Promise.all(locationPromises);
+                
+                // 3. Filtruj nieznalezione i twórz listę współrzędnych
+                // Zbieramy tylko te, które mają współrzędne (loc !== null)
+                const foundLocations = locations.filter(loc => loc !== null);
+                
+                if(foundLocations.length >= 2) {
                     drawnItems.clearLayers();
-                    const line = L.polyline([s, e], {color: '#007bff', weight: 4});
+                    
+                    // Rysuj Polyline z wszystkich znalezionych punktów w kolejności
+                    const line = L.polyline(foundLocations, {color: '#007bff', weight: 4});
                     drawnItems.addLayer(line);
+                    
+                    // Dodaj markery dla znalezionych stacji
+                    stations.forEach((stationName, index) => {
+                        if (locations[index]) {
+                            L.marker(locations[index]).addTo(drawnItems).bindPopup(stationName);
+                        }
+                    });
+
                     map.fitBounds(line.getBounds(), {padding:[50,50]});
-                    alert("Znalazłem! Dopasuj linię do torów.");
+                    
+                    alert(`Znalazłem ${foundLocations.length} z ${stations.length} stacji! Dopasuj linię do torów.`);
                 } else {
-                    alert("Nie udało się znaleźć jednej ze stacji.");
+                    alert(`Znaleziono zbyt mało stacji (${foundLocations.length}/${stations.length}). Sprawdź nazwy stacji.`);
                 }
-            } catch(err) { alert("Błąd API."); }
+            } catch(err) { 
+                console.error("Błąd API Nominatim:", err);
+                alert("Błąd API podczas lokalizowania stacji."); 
+            }
         }
     }
 
