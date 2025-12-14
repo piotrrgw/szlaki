@@ -407,6 +407,13 @@
         a.remove();
     }
 
+    /**
+     * Nowa funkcja pomocnicza: opóźnienie
+     */
+    function delay(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
     // ZMIENIONA FUNKCJA autoLocate
     async function autoLocate() {
         if(!selectedId) return;
@@ -430,14 +437,34 @@
         const stationQueries = stations.map(s => `${s} station`);
         const queryList = stationQueries.map((q, i) => `${i + 1}. ${q.replace(' station', '')}`).join('\n');
 
-        if(confirm(`Szukam ${stations.length} stacji:\n${queryList}`)) {
+        if(confirm(`Szukam ${stations.length} stacji (z opóźnieniem 1s na zapytanie):\n${queryList}`)) {
             try {
-                // 2. Szukam wszystkich lokalizacji równolegle
-                const locationPromises = stationQueries.map(q => fetchLoc(q));
-                const locations = await Promise.all(locationPromises);
+                // ZMIANA: Zamiast Promise.all, iterujemy sekwencyjnie
+                const locations = [];
+                const MIN_DELAY_MS = 1000; // Minimalne opóźnienie 1 sekunda, aby uniknąć blokady przez Nominatim
+                let totalStationsFound = 0;
+
+                for (let i = 0; i < stationQueries.length; i++) {
+                    const q = stationQueries[i];
+                    
+                    // Wyszukaj i poczekaj
+                    const loc = await fetchLoc(q);
+                    locations.push(loc);
+
+                    if (loc) {
+                        totalStationsFound++;
+                        console.log(`Znalazłem stację ${i + 1}/${stations.length}: ${stations[i]}`);
+                    } else {
+                        console.log(`Nie znaleziono stacji ${i + 1}/${stations.length}: ${stations[i]}`);
+                    }
+                    
+                    // Opóźnienie po każdym zapytaniu
+                    if (i < stationQueries.length - 1) {
+                         await delay(MIN_DELAY_MS);
+                    }
+                }
                 
                 // 3. Filtruj nieznalezione i twórz listę współrzędnych
-                // Zbieramy tylko te, które mają współrzędne (loc !== null)
                 const foundLocations = locations.filter(loc => loc !== null);
                 
                 if(foundLocations.length >= 2) {
@@ -450,19 +477,23 @@
                     // Dodaj markery dla znalezionych stacji
                     stations.forEach((stationName, index) => {
                         if (locations[index]) {
-                            L.marker(locations[index]).addTo(drawnItems).bindPopup(stationName);
+                            // Czerwone dla pierwszej/ostatniej, niebieskie dla pośredniej
+                            const color = (index === 0 || index === stations.length - 1) ? 'red' : 'blue';
+                            
+                            // Używamy domyślnej ikony (można zmienić, ale to wymaga dodatkowego kodu)
+                            L.marker(locations[index]).addTo(drawnItems).bindPopup(`${stationName} (${index+1}/${stations.length})`);
                         }
                     });
 
                     map.fitBounds(line.getBounds(), {padding:[50,50]});
                     
-                    alert(`Znalazłem ${foundLocations.length} z ${stations.length} stacji! Dopasuj linię do torów.`);
+                    alert(`Znalazłem ${totalStationsFound} z ${stations.length} stacji! Dopasuj linię do torów.`);
                 } else {
-                    alert(`Znaleziono zbyt mało stacji (${foundLocations.length}/${stations.length}). Sprawdź nazwy stacji.`);
+                    alert(`Znaleziono zbyt mało stacji (${totalStationsFound}/${stations.length}). Sprawdź nazwy stacji.`);
                 }
             } catch(err) { 
                 console.error("Błąd API Nominatim:", err);
-                alert("Błąd API podczas lokalizowania stacji."); 
+                alert("Błąd API podczas lokalizowania stacji. (Prawdopodobnie nadal zbyt szybkie zapytania)"); 
             }
         }
     }
