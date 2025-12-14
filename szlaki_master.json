@@ -1,0 +1,872 @@
+[
+  {
+    "id": 1,
+    "start": "Łódź Fabryczna",
+    "end": "Łódź Widzew",
+    "via": "-",
+    "geometry": {
+      "type": "LineString",
+      "coordinates": [
+        [
+          19.469611,
+          51.769554
+        ],
+        [
+          19.507426,
+          51.766762
+        ],
+        [
+          19.525219,
+          51.765587
+        ],
+        [
+          19.534592,
+          51.764502
+        ],
+        [
+          19.543808,
+          51.763104
+        ]
+      ]
+    }
+  },
+  {
+    "id": 2,
+    "start": "Łódź Widzew",
+    "end": "Łódź Chojny",
+    "via": "Łódź Dąbrowa",
+    "geometry": {
+      "type": "LineString",
+      "coordinates": [
+        [
+          19.543808,
+          51.763104
+        ],
+        [
+          19.531604,
+          51.764927
+        ],
+        [
+          19.523933,
+          51.765067
+        ],
+        [
+          19.517843,
+          51.762819
+        ],
+        [
+          19.515241,
+          51.76051
+        ],
+        [
+          19.513958,
+          51.757857
+        ],
+        [
+          19.513226,
+          51.751494
+        ],
+        [
+          19.511779,
+          51.739488
+        ],
+        [
+          19.509845,
+          51.732885
+        ],
+        [
+          19.508258,
+          51.72838
+        ],
+        [
+          19.504457,
+          51.725542
+        ],
+        [
+          19.499756,
+          51.724834
+        ],
+        [
+          19.493967,
+          51.725544
+        ],
+        [
+          19.484195,
+          51.726409
+        ]
+      ]
+    }
+  },
+  {
+    "id": 3,
+    "start": "Łódź Widzew",
+    "end": "Łódź Chojny",
+    "via": "Łódź Olechów Wschód",
+    "geometry": {
+      "type": "LineString",
+      "coordinates": [
+        [
+          19.543808,
+          51.763104
+        ],
+        [
+          19.566706,
+          51.7595
+        ],
+        [
+          19.588215,
+          51.754735
+        ],
+        [
+          19.591942,
+          51.752968
+        ],
+        [
+          19.604639,
+          51.746757
+        ],
+        [
+          19.609974,
+          51.74418
+        ],
+        [
+          19.612818,
+          51.742079
+        ],
+        [
+          19.613297,
+          51.739595
+        ],
+        [
+          19.613247,
+          51.735893
+        ],
+        [
+          19.610505,
+          51.732481
+        ],
+        [
+          19.605851,
+          51.731229
+        ],
+        [
+          19.594854,
+          51.729719
+        ],
+        [
+          19.554431,
+          51.724392
+        ],
+        [
+          19.542027,
+          51.723491
+        ],
+        [
+          19.523745,
+          51.721481
+        ],
+        [
+          19.504034,
+          51.724215
+        ],
+        [
+          19.484195,
+          51.726409
+        ]
+      ]
+    }
+  },
+  {
+    "id": 4,
+    "start": "Łódź Chojny",
+    "end": "Łódź Lublinek",
+    "via": "-",
+    "geometry": {
+      "type": "LineString",
+      "coordinates": [
+        [
+          19.484195,
+          51.726409
+        ],
+        [
+          19.477912,
+          51.727101
+        ],
+        [
+          19.473857,
+          51.726737
+        ],
+        [
+          19.471193,
+          51.725792
+        ],
+        [
+          19.466979,
+          51.72332
+        ],
+        [
+          19.46353,
+          51.721712
+        ],
+        [
+          19.45998,
+          51.721295
+        ],
+        [
+          19.45706,
+          51.721528
+        ],
+        [
+          19.453717,
+          51.722331
+        ],
+        [
+          19.448013,
+          51.724142
+        ],
+        [
+          19.443753,
+          51.727439
+        ],
+        [
+          19.4408,
+          51.730678
+        ],
+        [
+          19.438024,
+          51.736231
+        ],
+        [
+          19.437238,
+          51.739167
+        ],
+        [
+          19.436818,
+          51.742152
+        ],
+        [
+          19.435757,
+          51.744818
+        ],
+        [
+          19.434059,
+          51.745951
+        ],
+        [
+          19.431746,
+          51.746639
+        ],
+        [
+          19.429325,
+          51.746792
+        ],
+        [
+          19.426226,
+          51.746116
+        ],
+        [
+          19.421126,
+          51.744506
+        ],
+        [
+          19.407176,
+          51.740559
+        ],
+        [
+          19.378122,
+          51.732122
+        ],
+        [
+          19.370627,
+          51.729539
+        ],
+        [
+          19.359277,
+          51.720914
+        ]
+      ]
+    }
+  },
+  {
+    "id": 5,
+    "start": "Łódź Chojny",
+    "end": "Łódź Kaliska",
+    "via": "-"
+  },
+  {
+    "id": 6,
+    "start": "Łódź Kaliska",
+    "end": "Łódź Lublinek",
+    "via": "-"
+  },
+  {
+    "id": 7,
+    "start": "Łódź Kaliska",
+    "end": "Zgierz",
+    "via": "Łódź Żabieniec"
+  },
+  {
+    "id": 8,
+    "start": "Łódź Widzew",
+    "end": "Zgierz",
+    "via": "Łódź Arturówek"
+  },
+  {
+    "id": 9,
+    "start": "Zgierz",
+    "end": "Kutno",
+    "via": "Łęczyca"
+  },
+  {
+    "id": 10,
+    "start": "Zgierz",
+    "end": "Łowicz Główny",
+    "via": "Stryków"
+  },
+  {
+    "id": 11,
+    "start": "Łowicz Główny",
+    "end": "Kutno",
+    "via": "-"
+  },
+  {
+    "id": 12,
+    "start": "Łódź Widzew",
+    "end": "Koluszki",
+    "via": "-"
+  },
+  {
+    "id": 13,
+    "start": "Koluszki",
+    "end": "Grodzisk Maz.",
+    "via": "Skierniewice"
+  },
+  {
+    "id": 14,
+    "start": "Koluszki",
+    "end": "Łowicz Główny",
+    "via": "Skierniewice Park, Bełchów"
+  },
+  {
+    "id": 15,
+    "start": "Łowicz Główny",
+    "end": "W-wa Zachodnia",
+    "via": "Sochaczew, W-wa Włochy"
+  },
+  {
+    "id": 16,
+    "start": "Łowicz Główny",
+    "end": "Grodzisk Maz.",
+    "via": "Bełchów, Żyrardów"
+  },
+  {
+    "id": 17,
+    "start": "Łowicz Główny",
+    "end": "W-wa Główna Towarowa",
+    "via": "Sochaczew"
+  },
+  {
+    "id": 18,
+    "start": "Grodzisk Maz.",
+    "end": "W-wa Zachodnia",
+    "via": "W-wa Włochy"
+  },
+  {
+    "id": 19,
+    "start": "Grodzisk Maz.",
+    "end": "W-wa Gdańska",
+    "via": "W-wa Młynów"
+  },
+  {
+    "id": 20,
+    "start": "Grodzisk Maz.",
+    "end": "W-wa Główna Towarowa",
+    "via": "-"
+  },
+  {
+    "id": 21,
+    "start": "Grodzisk Maz.",
+    "end": "Idzikowice",
+    "via": "Szeligi"
+  },
+  {
+    "id": 22,
+    "start": "W-wa Główna Towarowa",
+    "end": "W-wa Gdańska",
+    "via": "W-wa Jelonki"
+  },
+  {
+    "id": 23,
+    "start": "W-wa Główna Towarowa",
+    "end": "W-wa Zachodnia",
+    "via": "W-wa Odolany"
+  },
+  {
+    "id": 24,
+    "start": "W-wa Zachodnia",
+    "end": "W-wa Wschodnia",
+    "via": "W-wa Centralna"
+  },
+  {
+    "id": 25,
+    "start": "W-wa Zachodnia",
+    "end": "W-wa Wschodnia",
+    "via": "W-wa Śródmieście"
+  },
+  {
+    "id": 26,
+    "start": "W-wa Zachodnia",
+    "end": "W-wa Główna.",
+    "via": "-"
+  },
+  {
+    "id": 27,
+    "start": "W-wa Wschodnia",
+    "end": "W-wa Grochów",
+    "via": "-"
+  },
+  {
+    "id": 28,
+    "start": "W-wa Gdańska",
+    "end": "W-wa Wschodnia",
+    "via": "W-wa ZOO"
+  },
+  {
+    "id": 29,
+    "start": "W-wa Gdańska",
+    "end": "W-wa Grochów",
+    "via": "W-wa ZOO"
+  },
+  {
+    "id": 30,
+    "start": "W-wa Wschodnia",
+    "end": "Pilawa",
+    "via": "W-wa Olszynka Grochowska, Otwock"
+  },
+  {
+    "id": 31,
+    "start": "W-wa Wschodnia",
+    "end": "Pilawa",
+    "via": "W-wa Wsch Towarowa, Otwock"
+  },
+  {
+    "id": 32,
+    "start": "W-wa Wschodnia",
+    "end": "Pilawa",
+    "via": "W-wa Rembertów, Grzebowilk"
+  },
+  {
+    "id": 33,
+    "start": "Pilawa",
+    "end": "Lublin Główny",
+    "via": "Dęblin, Nałęczów"
+  },
+  {
+    "id": 34,
+    "start": "W-wa Wschodnia",
+    "end": "Tłuszcz",
+    "via": "W-wa Rembertów"
+  },
+  {
+    "id": 35,
+    "start": "Tłuszcz",
+    "end": "Białystok",
+    "via": "Małkinia"
+  },
+  {
+    "id": 36,
+    "start": "W-wa Wschodnia",
+    "end": "Działdowo",
+    "via": "Ciechanów"
+  },
+  {
+    "id": 37,
+    "start": "Działdowo",
+    "end": "Iława Główna",
+    "via": "-"
+  },
+  {
+    "id": 38,
+    "start": "Iława Główna",
+    "end": "Tczew",
+    "via": "Prabuty, Malbork"
+  },
+  {
+    "id": 39,
+    "start": "Tczew",
+    "end": "Gdynia Główna",
+    "via": "Gdańsk Główny"
+  },
+  {
+    "id": 40,
+    "start": "Działdowo",
+    "end": "Olsztyn Główny",
+    "via": "Nidzica"
+  },
+  {
+    "id": 41,
+    "start": "Iława Główna",
+    "end": "Olsztyn Główny",
+    "via": "Ostróda"
+  },
+  {
+    "id": 42,
+    "start": "Łódź Lublinek",
+    "end": "Gajewniki",
+    "via": "Pabianice"
+  },
+  {
+    "id": 43,
+    "start": "Gajewniki",
+    "end": "Kalisz",
+    "via": "Sieradz"
+  },
+  {
+    "id": 44,
+    "start": "Gajewniki",
+    "end": "Koło",
+    "via": "Poddębice, Barłogi"
+  },
+  {
+    "id": 45,
+    "start": "Gajewniki",
+    "end": "Inowrocław Rąbinek",
+    "via": "Poddębice, Piotrków Kujawski"
+  },
+  {
+    "id": 46,
+    "start": "Kalisz",
+    "end": "Ostrów Wielkopolski",
+    "via": "-"
+  },
+  {
+    "id": 47,
+    "start": "Kalisz",
+    "end": "Jarocin",
+    "via": "Pleszew"
+  },
+  {
+    "id": 48,
+    "start": "Ostrów Wielkopolski",
+    "end": "Jarocin",
+    "via": "Pleszew"
+  },
+  {
+    "id": 49,
+    "start": "Jarocin",
+    "end": "Poznań Główny",
+    "via": "Środa Wielkopolska"
+  },
+  {
+    "id": 50,
+    "start": "Jarocin",
+    "end": "Poznań Główny",
+    "via": "Września"
+  },
+  {
+    "id": 51,
+    "start": "Kutno",
+    "end": "Bydgoszcz Główna",
+    "via": "Toruń Główny"
+  },
+  {
+    "id": 52,
+    "start": "Bydgoszcz Główna",
+    "end": "Tczew",
+    "via": "Laskowice Pomorskie"
+  },
+  {
+    "id": 53,
+    "start": "Kutno",
+    "end": "Płock Trzepowo",
+    "via": "Gostynin"
+  },
+  {
+    "id": 54,
+    "start": "Kutno",
+    "end": "Swarzędz",
+    "via": "-"
+  },
+  {
+    "id": 55,
+    "start": "Kutno",
+    "end": "Swarzędz",
+    "via": "Września"
+  },
+  {
+    "id": 56,
+    "start": "Swarzędz",
+    "end": "Poznań Główny",
+    "via": "Poznań Wschód"
+  },
+  {
+    "id": 57,
+    "start": "Swarzędz",
+    "end": "Poznań Główny",
+    "via": "Poznań Franowo"
+  },
+  {
+    "id": 58,
+    "start": "Poznań Główny",
+    "end": "Piła Główna",
+    "via": "Oborniki Wielkopolskie, Chodzież"
+  },
+  {
+    "id": 59,
+    "start": "Poznań Główny",
+    "end": "Krzyż",
+    "via": "Poznań Wola, Szamotuły"
+  },
+  {
+    "id": 60,
+    "start": "Krzyż",
+    "end": "Szczecin Dąbie",
+    "via": "Choszczno"
+  },
+  {
+    "id": 61,
+    "start": "Szczecin Dąbie",
+    "end": "Szczecin Główny",
+    "via": "Dziewoklicz"
+  },
+  {
+    "id": 62,
+    "start": "Szczecin Dąbie",
+    "end": "Szczecin Główny",
+    "via": "Szczecin Port Centr."
+  },
+  {
+    "id": 63,
+    "start": "Poznań Główny",
+    "end": "Zbąszynek",
+    "via": "Opalenica, Nowy Tomyśl"
+  },
+  {
+    "id": 64,
+    "start": "Zbąszynek",
+    "end": "Zielona Góra Główna",
+    "via": "-"
+  },
+  {
+    "id": 65,
+    "start": "Zbąszynek",
+    "end": "Rzepin",
+    "via": "Świebodzin"
+  },
+  {
+    "id": 66,
+    "start": "Zbąszynek",
+    "end": "Gorzów Wielkopolski",
+    "via": "Międzyrzecz, Skwierzyna"
+  },
+  {
+    "id": 67,
+    "start": "Kutno",
+    "end": "Inowrocław Rąbinek",
+    "via": "Zamków, Piotrków Kujawski"
+  },
+  {
+    "id": 68,
+    "start": "Inowrocław Rąbinek",
+    "end": "Poznań Główny",
+    "via": "Gniezno, Kobylnica"
+  },
+  {
+    "id": 69,
+    "start": "Inowrocław Rąbinek",
+    "end": "Poznań Główny",
+    "via": "Gniezno, Września"
+  },
+  {
+    "id": 70,
+    "start": "Inowrocław Rąbinek",
+    "end": "Bydgoszcz Główna",
+    "via": "Złotniki Kujawskie, Brzoza Bydgoska"
+  },
+  {
+    "id": 71,
+    "start": "Inowrocław Rąbinek",
+    "end": "Bydgoszcz Główna",
+    "via": "Złotniki Kujawskie, Bydgoszcz Leśna"
+  },
+  {
+    "id": 72,
+    "start": "Ostrów Wielkopolski",
+    "end": "Wrocław Główny",
+    "via": "Twardogóra"
+  },
+  {
+    "id": 73,
+    "start": "Ostrów Wielkopolski",
+    "end": "Wrocław Główny",
+    "via": "Krotoszyn, Milicz"
+  },
+  {
+    "id": 74,
+    "start": "Łódź Widzew",
+    "end": "Piotrków Trybunalski",
+    "via": "Bęzelin"
+  },
+  {
+    "id": 75,
+    "start": "Koluszki",
+    "end": "Piotrków Trybunalski",
+    "via": "-"
+  },
+  {
+    "id": 76,
+    "start": "Piotrków Trybunalski",
+    "end": "Częstochowa",
+    "via": "Radomsko, Wyczerpy"
+  },
+  {
+    "id": 77,
+    "start": "Częstochowa",
+    "end": "Lubliniec",
+    "via": "Herby Stare"
+  },
+  {
+    "id": 78,
+    "start": "Lubliniec",
+    "end": "Wrocław Główny",
+    "via": "Opole, Brzeg"
+  },
+  {
+    "id": 79,
+    "start": "Częstochowa",
+    "end": "Zawiercie",
+    "via": "Poraj"
+  },
+  {
+    "id": 80,
+    "start": "Zawiercie",
+    "end": "Dorota",
+    "via": "Dąbrowa Górnicza Huta Katowice"
+  },
+  {
+    "id": 81,
+    "start": "Zawiercie",
+    "end": "Dorota",
+    "via": "Przemiarki, Kozioł"
+  },
+  {
+    "id": 82,
+    "start": "Dorota",
+    "end": "Jaworzno Szczakowa",
+    "via": "Sosnowiec Maczki"
+  },
+  {
+    "id": 83,
+    "start": "Dorota",
+    "end": "Katowice",
+    "via": "Sosnowiec Dańdówka, Sosnowiec Południowy"
+  },
+  {
+    "id": 84,
+    "start": "Dorota",
+    "end": "Katowice",
+    "via": "Sosnowiec Maczki, Mysłowice"
+  },
+  {
+    "id": 85,
+    "start": "Zawiercie",
+    "end": "Katowice",
+    "via": "Dąbrowa Górnicza, Sosnowiec Główny"
+  },
+  {
+    "id": 86,
+    "start": "Katowice",
+    "end": "Jaworzno Szczakowa",
+    "via": "Mysłowice"
+  },
+  {
+    "id": 87,
+    "start": "Jaworzno Szczakowa",
+    "end": "Kraków Główny",
+    "via": "Trzebinia, Kraków Mydlniki"
+  },
+  {
+    "id": 88,
+    "start": "Częstochowa",
+    "end": "Koniecpol",
+    "via": "Julianka"
+  },
+  {
+    "id": 89,
+    "start": "Koniecpol",
+    "end": "Kozłów",
+    "via": "Starzyny"
+  },
+  {
+    "id": 90,
+    "start": "Kozłów",
+    "end": "Kraków Główny",
+    "via": "Miechów, Zastów"
+  },
+  {
+    "id": 91,
+    "start": "Kraków Główny",
+    "end": "Kraków Płaszów",
+    "via": "-"
+  },
+  {
+    "id": 92,
+    "start": "Koniecpol",
+    "end": "Włoszczowa Północ",
+    "via": "Żelisławice"
+  },
+  {
+    "id": 93,
+    "start": "Łódź Widzew",
+    "end": "Tomaszów Mazowiecki",
+    "via": "-"
+  },
+  {
+    "id": 94,
+    "start": "Koluszki",
+    "end": "Tomaszów Mazowiecki",
+    "via": "Słotwiny"
+  },
+  {
+    "id": 95,
+    "start": "Tomaszów Mazowiecki",
+    "end": "Idzikowice",
+    "via": "-"
+  },
+  {
+    "id": 96,
+    "start": "Tomaszów Mazowiecki",
+    "end": "Idzikowice",
+    "via": "Radzice"
+  },
+  {
+    "id": 97,
+    "start": "Idzikowice",
+    "end": "Włoszczowa Północ",
+    "via": "Opoczno Południe"
+  },
+  {
+    "id": 98,
+    "start": "Włoszczowa Północ",
+    "end": "Kozłów",
+    "via": "Starzyny"
+  },
+  {
+    "id": 99,
+    "start": "Włoszczowa Północ",
+    "end": "Zawiercie",
+    "via": "Góra Włodowska"
+  },
+  {
+    "id": 100,
+    "start": "Tomaszów Mazowiecki",
+    "end": "Radom Główny",
+    "via": "Drzewica, Przysucha"
+  },
+  {
+    "id": 101,
+    "start": "Radom Główny",
+    "end": "Lublin Główny",
+    "via": "Pionki, Nałęczów"
+  }
+]
