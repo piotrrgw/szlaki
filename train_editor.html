@@ -3,364 +3,371 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Train Manager v5.0 - AutoFix</title>
+    <title>System Trasowania Kolejowego v6.0</title>
+    
     <script src="https://cdn.tailwindcss.com"></script>
+    
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
     
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
     <style>
-        body { font-family: 'Inter', system-ui, sans-serif; }
+        body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; color: #1f2937; }
+        
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+        /* Calendar Styles */
         .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
-        .calendar-day { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; cursor: pointer; border-radius: 4px; transition: all 0.1s; }
-        .cal-header { font-weight: bold; text-align: center; font-size: 0.7rem; color: #94a3b8; padding-bottom: 4px; }
-        .day-empty { background: transparent; }
-        .day-inactive { background: #1e293b; color: #64748b; }
-        .day-inactive:hover { background: #334155; }
-        .day-active { background: #2563eb; color: white; }
-        .day-active:hover { background: #1d4ed8; }
-        .day-added { background: #16a34a; color: white; border: 2px solid #22c55e; }
-        .day-cancelled { background: #1e293b; color: #ef4444; text-decoration: line-through; border: 1px solid #ef4444; }
-        ::-webkit-scrollbar { width: 8px; height: 8px; }
-        ::-webkit-scrollbar-track { background: #0f172a; }
-        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: #475569; }
-        #map-container { z-index: 1; background: #0f172a; }
+        .calendar-day { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; cursor: pointer; border-radius: 4px; transition: all 0.1s; border: 1px solid #e2e8f0; background: white; }
+        
+        .day-active { background: #3b82f6; color: white; border-color: #2563eb; } /* Standard kurs */
+        .day-inactive { background: #f1f5f9; color: #94a3b8; } /* Nie kursuje */
+        .day-added { background: #22c55e; color: white; border-color: #16a34a; font-weight: bold; } /* Dodatkowy */
+        .day-cancelled { background: #ef4444; color: white; border-color: #dc2626; text-decoration: line-through; } /* Odwołany */
+        
+        /* Map Adjustments */
+        .leaflet-container { font-family: 'Inter', sans-serif; }
     </style>
     
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 </head>
-<body class="bg-slate-950 text-slate-200 h-screen flex flex-col overflow-hidden">
+<body class="h-screen flex flex-col overflow-hidden">
 
-    <header class="bg-slate-900 border-b border-slate-800 h-16 flex items-center px-6 justify-between shrink-0 z-50 relative">
+    <header class="bg-white border-b border-gray-200 h-16 flex items-center justify-between px-6 shrink-0 z-30 shadow-sm">
         <div class="flex items-center gap-4">
-            <div class="bg-blue-600 w-10 h-10 rounded-lg flex items-center justify-center shadow-lg shadow-blue-900/20">
-                <i class="fa-solid fa-train-subway text-white text-xl"></i>
+            <div class="bg-blue-600 text-white w-9 h-9 rounded flex items-center justify-center shadow-sm">
+                <i class="fa-solid fa-train-track"></i>
             </div>
             <div>
-                <h1 class="font-bold text-lg text-white tracking-tight">Train Manager <span class="text-xs font-normal text-green-400 border border-green-900 bg-green-900/30 px-2 py-0.5 rounded ml-2">v5.0 Stable</span></h1>
-                <div class="flex gap-3 text-xs text-slate-400 font-mono">
-                    <span id="db-indicator"><i class="fa-solid fa-database mr-1"></i>Szlaki: <span id="db-count" class="text-slate-200">...</span></span>
-                    <span><i class="fa-solid fa-memory mr-1"></i>Pamięć: <span id="memory-usage" class="text-slate-200">0 KB</span></span>
+                <h1 class="font-bold text-gray-800 text-lg leading-tight">Planista Rozkładu</h1>
+                <div class="flex gap-4 text-xs text-gray-500 font-medium">
+                    <span id="status-szlaki" class="flex items-center gap-1 text-red-500"><i class="fa-solid fa-circle text-[8px]"></i> Szlaki: Brak</span>
+                    <span id="status-pociagi" class="flex items-center gap-1 text-red-500"><i class="fa-solid fa-circle text-[8px]"></i> Pociągi: Brak</span>
                 </div>
             </div>
         </div>
 
-        <div class="flex items-center gap-4">
-            <button onclick="hardReset()" class="text-red-400 hover:text-red-300 text-xs uppercase font-bold px-3 py-2 border border-red-900/50 rounded hover:bg-red-900/20 transition" title="Wyczyść wszystkie dane (Factory Reset)">
-                <i class="fa-solid fa-trash-can mr-1"></i> Reset Danych
+        <div class="flex items-center gap-3">
+            <button onclick="toggleJsonPreview()" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm font-medium transition flex items-center gap-2">
+                <i class="fa-solid fa-code"></i> Podgląd JSON
             </button>
-            <div class="h-6 w-px bg-slate-700 mx-2 hidden md:block"></div>
-            <div class="text-right hidden md:block">
-                <div class="text-xs text-slate-500 uppercase font-bold">Czas sesji</div>
-                <div class="font-mono text-blue-400 font-bold" id="session-timer">00:00:00</div>
-            </div>
-            <button onclick="downloadJSON()" class="bg-green-600 hover:bg-green-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition shadow-lg shadow-green-900/20 flex items-center gap-2">
-                <i class="fa-solid fa-download"></i> <span class="hidden sm:inline">Pobierz JSON</span>
+            <button onclick="downloadPociagi()" class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium transition flex items-center gap-2 shadow-sm shadow-green-200">
+                <i class="fa-solid fa-download"></i> Pobierz Plik
+            </button>
+            <button onclick="hardReset()" class="w-9 h-9 flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition" title="Resetuj aplikację">
+                <i class="fa-solid fa-trash-can"></i>
             </button>
         </div>
     </header>
 
     <div class="flex flex-1 overflow-hidden">
         
-        <aside class="w-72 bg-slate-900 border-r border-slate-800 flex flex-col shrink-0 z-40">
-            <div class="p-4 grid grid-cols-2 gap-2 border-b border-slate-800">
-                <button onclick="addNewTrain()" class="col-span-2 bg-blue-600 hover:bg-blue-500 text-white py-2.5 rounded-lg text-sm font-semibold transition flex items-center justify-center gap-2">
-                    <i class="fa-solid fa-plus"></i> Dodaj Pociąg
+        <aside class="w-80 bg-white border-r border-gray-200 flex flex-col shrink-0 z-20">
+            
+            <div class="p-4 border-b border-gray-200 bg-gray-50/50">
+                <button onclick="addNewTrain()" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-lg text-sm font-semibold shadow-sm shadow-blue-200 transition mb-4">
+                    <i class="fa-solid fa-plus mr-2"></i>Nowy Pociąg
                 </button>
-                <button onclick="switchView('instructions')" class="bg-slate-800 hover:bg-slate-700 text-slate-300 py-2 rounded-lg text-xs font-medium transition">
-                    <i class="fa-solid fa-book-open mr-1"></i> Instrukcja
-                </button>
-                <label class="cursor-pointer bg-slate-800 hover:bg-slate-700 text-slate-300 py-2 rounded-lg text-xs font-medium transition text-center flex items-center justify-center" title="Użyj jeśli automatyczne ładowanie zawiedzie">
-                    <input type="file" class="hidden" onchange="loadSzlakiManual(this)" accept=".json">
-                    <i class="fa-solid fa-upload mr-1"></i> Wgraj Ręcznie
-                </label>
+                
+                <div class="space-y-2">
+                    <p class="text-[10px] uppercase font-bold text-gray-400 tracking-wider">Baza Danych</p>
+                    <label class="flex items-center justify-between px-3 py-2 bg-white border border-gray-200 rounded text-xs cursor-pointer hover:border-blue-400 transition">
+                        <span class="text-gray-600">Wgraj szlaki.json</span>
+                        <input type="file" class="hidden" onchange="loadSzlakiManual(this)" accept=".json">
+                        <i class="fa-solid fa-upload text-blue-500"></i>
+                    </label>
+                    <label class="flex items-center justify-between px-3 py-2 bg-white border border-gray-200 rounded text-xs cursor-pointer hover:border-blue-400 transition">
+                        <span class="text-gray-600">Wgraj pociagi.json</span>
+                        <input type="file" class="hidden" onchange="loadTrainsManual(this)" accept=".json">
+                        <i class="fa-solid fa-upload text-blue-500"></i>
+                    </label>
+                </div>
             </div>
 
-            <div class="flex-1 overflow-y-auto p-3 space-y-2" id="train-list">
+            <div class="flex-1 overflow-y-auto p-2 space-y-1" id="train-list">
                 </div>
             
-            <div class="p-3 text-center border-t border-slate-800 text-xs text-slate-600">
-                Auto-Loader & GeoFix &bull; v5.0
+            <div class="p-3 border-t border-gray-200 text-center text-[10px] text-gray-400 bg-gray-50">
+                OpenRailwayMap Integration
             </div>
         </aside>
 
-        <main class="flex-1 bg-slate-950 relative overflow-hidden flex flex-col">
+        <main class="flex-1 bg-gray-50 flex flex-col relative overflow-hidden">
             
-            <div id="view-instructions" class="absolute inset-0 p-10 overflow-y-auto bg-slate-950 z-30 hidden">
-                <div class="max-w-4xl mx-auto space-y-8">
-                    <div class="border-b border-slate-800 pb-4 flex justify-between items-center">
-                        <h2 class="text-3xl font-bold text-white">Instrukcja Obsługi</h2>
-                        <button onclick="if(trains.length>0) selectTrain(currentTrainIndex >=0 ? currentTrainIndex : 0)" class="text-blue-500 hover:underline">Zamknij</button>
-                    </div>
-                    
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div class="bg-slate-900 p-6 rounded-xl border border-slate-800">
-                            <div class="w-10 h-10 bg-blue-500/10 text-blue-500 rounded-lg flex items-center justify-center mb-4 text-xl"><i class="fa-solid fa-bolt"></i></div>
-                            <h3 class="font-bold text-white mb-2">Automatyczne Ładowanie</h3>
-                            <p class="text-slate-400 text-sm leading-relaxed">System teraz automatycznie szuka pliku <code>szlaki_master.json</code> w folderze strony. Jeśli go znajdzie, ikona bazy danych w nagłówku zmieni kolor na zielony.</p>
-                        </div>
-                         <div class="bg-slate-900 p-6 rounded-xl border border-slate-800">
-                            <div class="w-10 h-10 bg-purple-500/10 text-purple-500 rounded-lg flex items-center justify-center mb-4 text-xl"><i class="fa-solid fa-map"></i></div>
-                            <h3 class="font-bold text-white mb-2">Poprawiona Mapa</h3>
-                            <p class="text-slate-400 text-sm leading-relaxed">Geometria szlaków jest teraz poprawnie interpretowana (zamiana współrzędnych). Trasy powinny rysować się dokładnie wzdłuż linii kolejowych.</p>
-                        </div>
-                    </div>
-                </div>
+            <div id="editor-empty" class="absolute inset-0 flex flex-col items-center justify-center text-gray-300 pointer-events-none">
+                <i class="fa-solid fa-train-subway text-7xl mb-4 opacity-50"></i>
+                <p class="text-gray-400 font-medium">Wybierz pociąg z listy</p>
             </div>
 
-            <div id="view-editor" class="flex flex-col h-full hidden">
-                <div class="h-14 border-b border-slate-800 bg-slate-900/90 flex items-center px-6 justify-between shrink-0 backdrop-blur-sm z-20">
-                    <div class="flex gap-1 bg-slate-800 p-1 rounded-lg">
-                        <button onclick="setTab('basic')" id="btn-tab-basic" class="px-4 py-1.5 text-sm font-medium rounded-md transition text-white bg-slate-700 shadow-sm">Dane & Kalendarz</button>
-                        <button onclick="setTab('route')" id="btn-tab-route" class="px-4 py-1.5 text-sm font-medium rounded-md transition text-slate-400 hover:text-white"><i class="fa-solid fa-map mr-2"></i>Trasa & Mapa</button>
+            <div id="editor-panel" class="flex flex-col h-full hidden">
+                
+                <div class="bg-white border-b border-gray-200 px-6 flex items-center justify-between shrink-0 h-14">
+                    <div class="flex gap-6 h-full">
+                        <button onclick="switchTab('info')" id="tab-btn-info" class="h-full border-b-2 border-blue-600 text-blue-600 font-medium text-sm px-1 transition">Dane & Kalendarz</button>
+                        <button onclick="switchTab('route')" id="tab-btn-route" class="h-full border-b-2 border-transparent text-gray-500 hover:text-gray-800 font-medium text-sm px-1 transition">Trasa & Mapa</button>
                     </div>
-                    <button onclick="deleteTrain()" class="text-red-400 hover:text-red-300 text-sm font-medium px-3 py-1.5 rounded hover:bg-red-900/20 transition">
-                        <i class="fa-regular fa-trash-can mr-2"></i> Usuń
+                    <button onclick="deleteCurrentTrain()" class="text-red-500 hover:text-red-700 text-xs font-bold uppercase tracking-wide">
+                        Usuń Pociąg
                     </button>
                 </div>
 
                 <div class="flex-1 relative overflow-hidden">
-                    <div id="tab-basic" class="absolute inset-0 overflow-y-auto p-6 lg:p-10 fade-in bg-slate-950">
-                        <div class="max-w-5xl mx-auto space-y-8 pb-20">
-                            <div class="grid grid-cols-12 gap-6">
-                                <div class="col-span-12 lg:col-span-4 space-y-4">
-                                    <h3 class="text-slate-500 font-bold text-xs uppercase tracking-wider mb-4">Identyfikacja</h3>
-                                    <div class="bg-slate-900 p-5 rounded-xl border border-slate-800 space-y-4">
-                                        <div>
-                                            <label class="block text-xs text-slate-400 mb-1.5">Numer Pociągu</label>
-                                            <input type="text" id="inp-no" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:border-blue-500 outline-none font-mono" placeholder="EIC 105">
-                                        </div>
-                                        <div>
-                                            <label class="block text-xs text-slate-400 mb-1.5">Nazwa Handlowa</label>
-                                            <input type="text" id="inp-name" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:border-blue-500 outline-none" placeholder="POLONIA">
-                                        </div>
-                                        <div>
-                                            <label class="block text-xs text-slate-400 mb-1.5">Tabor</label>
-                                            <select id="inp-stock" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:border-blue-500 outline-none">
-                                                <option value="">Wybierz tabor...</option>
-                                                <option value="SKŁAD WAGONOWY">SKŁAD WAGONOWY</option>
-                                                <option value="ED250">ED250 (Pendolino)</option>
-                                                <option value="ED160">ED160 (Flirt)</option>
-                                                <option value="ED161">ED161 (Dart)</option>
-                                                <option value="ED74">ED74</option>
-                                                <option value="SN84">SN84</option>
-                                                <option value="SD85">SD85</option>
-                                            </select>
-                                        </div>
+                    
+                    <div id="tab-info" class="absolute inset-0 overflow-y-auto p-8 fade-in">
+                        <div class="max-w-4xl mx-auto space-y-8 pb-20">
+                            
+                            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                                <h3 class="text-sm font-bold text-gray-900 uppercase tracking-wide mb-4 border-b pb-2">Informacje Podstawowe</h3>
+                                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                    <div>
+                                        <label class="block text-xs font-medium text-gray-500 mb-1">Numer</label>
+                                        <input type="text" id="inp-no" class="w-full bg-gray-50 border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none font-mono" placeholder="EIC 100">
                                     </div>
-                                </div>
-                                <div class="col-span-12 lg:col-span-8 space-y-4">
-                                    <h3 class="text-slate-500 font-bold text-xs uppercase tracking-wider mb-4">Relacja Handlowa</h3>
-                                    <div class="bg-slate-900 p-5 rounded-xl border border-slate-800 flex items-center gap-4">
-                                        <div class="flex-1">
-                                            <label class="block text-xs text-slate-400 mb-1.5">Stacja Początkowa</label>
-                                            <input type="text" id="inp-rel-from" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm outline-none">
-                                        </div>
-                                        <i class="fa-solid fa-arrow-right text-slate-600 mt-5"></i>
-                                        <div class="flex-1">
-                                            <label class="block text-xs text-slate-400 mb-1.5">Stacja Końcowa</label>
-                                            <input type="text" id="inp-rel-to" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm outline-none">
-                                        </div>
+                                    <div class="md:col-span-2">
+                                        <label class="block text-xs font-medium text-gray-500 mb-1">Nazwa</label>
+                                        <input type="text" id="inp-name" class="w-full bg-gray-50 border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none" placeholder="BERLIN-WARSZAWA EXPRESS">
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-medium text-gray-500 mb-1">Tabor</label>
+                                        <select id="inp-stock" class="w-full bg-gray-50 border border-gray-300 rounded-md px-3 py-2 text-sm outline-none">
+                                            <option value="">-- Wybierz --</option>
+                                            <option value="SKŁAD WAGONOWY">SKŁAD WAGONOWY</option>
+                                            <option value="ED250">ED250 (Pendolino)</option>
+                                            <option value="ED160">ED160 (Flirt)</option>
+                                            <option value="ED161">ED161 (Dart)</option>
+                                            <option value="ED74">ED74</option>
+                                            <option value="SN84">SN84</option>
+                                            <option value="SD85">SD85</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-medium text-gray-500 mb-1">Relacja Od</label>
+                                        <input type="text" id="inp-rel-from" class="w-full bg-gray-50 border border-gray-300 rounded-md px-3 py-2 text-sm outline-none">
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-medium text-gray-500 mb-1">Relacja Do</label>
+                                        <input type="text" id="inp-rel-to" class="w-full bg-gray-50 border border-gray-300 rounded-md px-3 py-2 text-sm outline-none">
                                     </div>
                                 </div>
                             </div>
-                            <div>
-                                <div class="flex justify-between items-end mb-4">
-                                    <h3 class="text-slate-500 font-bold text-xs uppercase tracking-wider">Kalendarz</h3>
-                                    <div class="flex gap-4 text-xs">
-                                        <div class="flex items-center gap-2"><div class="w-3 h-3 bg-blue-600 rounded-sm"></div> Kursuje</div>
-                                        <div class="flex items-center gap-2"><div class="w-3 h-3 bg-slate-800 border border-slate-600 rounded-sm"></div> Nie kursuje</div>
+
+                            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                                <div class="flex justify-between items-center mb-4 border-b pb-2">
+                                    <h3 class="text-sm font-bold text-gray-900 uppercase tracking-wide">Kalendarz</h3>
+                                    <div class="flex gap-3 text-[10px] font-bold uppercase">
+                                        <span class="flex items-center gap-1"><div class="w-3 h-3 bg-blue-500 rounded-sm"></div> Kursuje</span>
+                                        <span class="flex items-center gap-1"><div class="w-3 h-3 bg-gray-100 border border-gray-300 rounded-sm"></div> Nie kursuje</span>
                                     </div>
                                 </div>
-                                <div class="bg-slate-900 p-6 rounded-xl border border-slate-800 shadow-xl">
-                                    <div class="flex flex-wrap gap-6 border-b border-slate-800 pb-6 mb-6">
-                                        <div class="flex gap-4">
-                                            <div>
-                                                <label class="block text-xs text-slate-400 mb-1">Od</label>
-                                                <input type="date" id="cal-from" class="bg-slate-950 border border-slate-700 rounded p-2 text-sm text-white outline-none">
-                                            </div>
-                                            <div>
-                                                <label class="block text-xs text-slate-400 mb-1">Do</label>
-                                                <input type="date" id="cal-to" class="bg-slate-950 border border-slate-700 rounded p-2 text-sm text-white outline-none">
-                                            </div>
-                                        </div>
-                                        <div class="flex-1">
-                                            <label class="block text-xs text-slate-400 mb-1">Dni tygodnia</label>
-                                            <div class="flex gap-2">
-                                                <button class="day-toggle w-8 h-8 rounded border border-slate-700 bg-slate-800 text-xs hover:bg-slate-700 transition" data-day="1">Pn</button>
-                                                <button class="day-toggle w-8 h-8 rounded border border-slate-700 bg-slate-800 text-xs hover:bg-slate-700 transition" data-day="2">Wt</button>
-                                                <button class="day-toggle w-8 h-8 rounded border border-slate-700 bg-slate-800 text-xs hover:bg-slate-700 transition" data-day="3">Śr</button>
-                                                <button class="day-toggle w-8 h-8 rounded border border-slate-700 bg-slate-800 text-xs hover:bg-slate-700 transition" data-day="4">Cz</button>
-                                                <button class="day-toggle w-8 h-8 rounded border border-slate-700 bg-slate-800 text-xs hover:bg-slate-700 transition" data-day="5">Pt</button>
-                                                <button class="day-toggle w-8 h-8 rounded border border-slate-700 bg-slate-800 text-xs hover:bg-slate-700 transition" data-day="6">Sb</button>
-                                                <button class="day-toggle w-8 h-8 rounded border border-slate-700 bg-slate-800 text-xs hover:bg-slate-700 transition text-red-400 border-red-900/30" data-day="0">Nd</button>
-                                            </div>
-                                        </div>
+
+                                <div class="flex flex-wrap gap-4 mb-6 items-end">
+                                    <div>
+                                        <label class="block text-[10px] text-gray-500 mb-1">Ważny od</label>
+                                        <input type="date" id="cal-from" class="bg-gray-50 border border-gray-300 rounded px-2 py-1 text-sm outline-none">
                                     </div>
-                                    <div id="calendar-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"></div>
+                                    <div>
+                                        <label class="block text-[10px] text-gray-500 mb-1">Ważny do</label>
+                                        <input type="date" id="cal-to" class="bg-gray-50 border border-gray-300 rounded px-2 py-1 text-sm outline-none">
+                                    </div>
+                                    <div class="flex-1 flex gap-1 justify-end">
+                                        <button class="day-btn w-8 h-8 rounded border text-xs font-bold transition" data-day="1">Pn</button>
+                                        <button class="day-btn w-8 h-8 rounded border text-xs font-bold transition" data-day="2">Wt</button>
+                                        <button class="day-btn w-8 h-8 rounded border text-xs font-bold transition" data-day="3">Śr</button>
+                                        <button class="day-btn w-8 h-8 rounded border text-xs font-bold transition" data-day="4">Cz</button>
+                                        <button class="day-btn w-8 h-8 rounded border text-xs font-bold transition" data-day="5">Pt</button>
+                                        <button class="day-btn w-8 h-8 rounded border text-xs font-bold transition" data-day="6">Sb</button>
+                                        <button class="day-btn w-8 h-8 rounded border text-xs font-bold transition text-red-500" data-day="0">Nd</button>
+                                    </div>
                                 </div>
+
+                                <div id="calendar-grid-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                    </div>
                             </div>
                         </div>
                     </div>
 
-                    <div id="tab-route" class="absolute inset-0 flex flex-col md:flex-row hidden bg-slate-950">
-                        <div class="w-full md:w-1/3 border-r border-slate-800 flex flex-col h-full bg-slate-900 z-10 shadow-xl">
-                            <div class="p-4 border-b border-slate-800 bg-slate-900 z-10">
-                                <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Edytor Odcinków</h4>
-                                <div id="route-empty-state" class="text-center py-2">
-                                    <div class="flex gap-2">
-                                        <select id="route-start-select" class="flex-1 bg-slate-950 border border-slate-700 rounded px-2 text-sm h-9">
-                                            <option value="">Ładowanie bazy...</option>
-                                        </select>
-                                        <button onclick="initRoute()" class="bg-blue-600 hover:bg-blue-500 text-white px-3 rounded h-9 text-xs font-bold">START</button>
-                                    </div>
+                    <div id="tab-route" class="absolute inset-0 flex flex-col md:flex-row hidden bg-white">
+                        
+                        <div class="w-full md:w-80 border-r border-gray-200 flex flex-col h-full bg-white z-10 shadow-lg">
+                            <div class="p-4 border-b border-gray-200 bg-gray-50">
+                                <h4 class="text-xs font-bold text-gray-500 uppercase mb-2">Edytor Trasy</h4>
+                                
+                                <div id="route-start-ui" class="flex gap-2">
+                                    <select id="route-start-select" class="flex-1 bg-white border border-gray-300 rounded text-xs h-8 px-2 outline-none focus:border-blue-500">
+                                        <option value="">Wybierz start...</option>
+                                    </select>
+                                    <button onclick="setRouteStart()" class="bg-blue-600 text-white px-3 rounded text-xs font-bold h-8">OK</button>
                                 </div>
-                                <div id="route-active-controls" class="hidden space-y-3">
-                                    <div class="flex justify-between items-center bg-slate-800 p-2 rounded border border-slate-700">
-                                        <div class="flex items-center gap-2 overflow-hidden">
-                                            <i class="fa-solid fa-location-dot text-blue-500"></i>
-                                            <span id="current-station-name" class="font-bold text-white truncate text-sm">---</span>
-                                        </div>
-                                        <button onclick="resetRoute()" class="text-xs text-red-400 hover:underline shrink-0">Reset</button>
+
+                                <div id="route-next-ui" class="hidden flex flex-col gap-2">
+                                    <div class="flex justify-between items-center text-xs">
+                                        <span class="text-gray-400">Aktualnie:</span>
+                                        <button onclick="resetRoute()" class="text-red-500 hover:underline">Reset</button>
                                     </div>
-                                    <div class="flex gap-2">
-                                        <select id="next-segment-select" class="flex-1 bg-slate-950 border border-slate-700 rounded px-2 h-9 text-sm">
+                                    <div class="font-bold text-gray-800 flex items-center gap-1 truncate">
+                                        <i class="fa-solid fa-location-dot text-blue-500"></i>
+                                        <span id="curr-station">---</span>
+                                    </div>
+                                    <div class="flex gap-2 mt-1">
+                                        <select id="next-segment-select" class="flex-1 bg-white border border-gray-300 rounded text-xs h-8 px-2 outline-none">
                                             <option>...</option>
                                         </select>
-                                        <button onclick="addSegment()" class="bg-blue-600 hover:bg-blue-500 text-white w-10 rounded h-9 flex items-center justify-center">
+                                        <button onclick="addSegment()" class="bg-blue-600 text-white w-8 h-8 rounded flex items-center justify-center">
                                             <i class="fa-solid fa-plus"></i>
                                         </button>
                                     </div>
                                 </div>
                             </div>
-                            <div id="route-timeline" class="flex-1 overflow-y-auto p-4 space-y-0"></div>
+
+                            <div id="route-list" class="flex-1 overflow-y-auto p-3 space-y-0">
+                                </div>
                         </div>
-                        <div class="w-full md:w-2/3 h-1/2 md:h-full relative bg-slate-800">
-                            <div id="map-container" class="w-full h-full"></div>
+
+                        <div class="flex-1 relative bg-gray-100">
+                            <div id="map" class="absolute inset-0"></div>
+                            <div class="absolute bottom-2 left-2 z-[400] bg-white/90 backdrop-blur px-2 py-1 text-[10px] rounded shadow border border-gray-200 text-gray-600">
+                                OpenRailwayMap Layer Active
+                            </div>
                         </div>
                     </div>
+
                 </div>
-            </div>
-            
-            <div id="editor-empty" class="absolute inset-0 flex flex-col items-center justify-center text-slate-600 pointer-events-none">
-                <i class="fa-solid fa-train text-6xl mb-4 opacity-20"></i>
-                <p>Wybierz pociąg z menu, aby rozpocząć edycję.</p>
             </div>
         </main>
     </div>
 
+    <div id="json-modal" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center backdrop-blur-sm">
+        <div class="bg-white w-3/4 h-3/4 rounded-xl shadow-2xl flex flex-col overflow-hidden">
+            <div class="p-4 border-b border-gray-200 flex justify-between items-center bg-gray-50">
+                <h3 class="font-bold text-gray-700">pociagi.json</h3>
+                <button onclick="toggleJsonPreview()" class="text-gray-400 hover:text-gray-700"><i class="fa-solid fa-xmark text-xl"></i></button>
+            </div>
+            <textarea id="json-output" class="flex-1 p-4 font-mono text-xs text-gray-600 bg-white resize-none outline-none" readonly></textarea>
+        </div>
+    </div>
+
     <script>
-        // --- LOGIC ---
+        // --- DATA STORE ---
         let trains = [];
+        let szlakiDB = []; // Array of track objects
         let currentTrainIndex = -1;
-        let szlakiDB = [];
-        let sessionStart = Date.now();
-        let mapInstance = null;
-        let routeLayerGroup = null;
+        let map = null;
+        let routeLayer = null;
 
-        window.onload = () => {
-            // Restore Session
-            if(localStorage.getItem('trains_v5')) trains = JSON.parse(localStorage.getItem('trains_v5'));
-            if(localStorage.getItem('sessionStart')) sessionStart = parseInt(localStorage.getItem('sessionStart'));
-            else localStorage.setItem('sessionStart', sessionStart);
-
-            if(trains.length === 0) switchView('instructions');
-            else renderTrainList();
-            
-            startClocks();
+        // --- INIT ---
+        window.onload = async () => {
+            // Init Map
             initMap();
+
+            // 1. Try Load Szlaki
+            try {
+                const r = await fetch('szlaki_master.json');
+                if(r.ok) {
+                    szlakiDB = await r.json();
+                    updateStatus('szlaki', true, szlakiDB.length);
+                } else { throw new Error('404'); }
+            } catch(e) { updateStatus('szlaki', false); }
+
+            // 2. Try Load Pociagi (Server or LocalStorage priority?)
+            // Priority: LocalStorage (work in progress) > Server (baseline)
+            // But user said "does not load filled trains from server".
+            // Strategy: Load server, then merge LS? Or just load server if LS empty.
+            // Let's load server first.
+            let serverTrains = [];
+            try {
+                const r2 = await fetch('pociagi.json');
+                if(r2.ok) serverTrains = await r2.json();
+            } catch(e) { console.log("No pociagi.json on server"); }
+
+            // Load LS
+            const localTrains = JSON.parse(localStorage.getItem('trains_v6') || '[]');
             
-            // --- AUTO FETCH FIX ---
-            // Try to fetch 'szlaki_master.json' automatically from current dir
-            fetch('szlaki_master.json')
-                .then(r => {
-                    if(!r.ok) throw new Error("Not found");
-                    return r.json();
-                })
-                .then(data => {
-                    szlakiDB = data;
-                    updateDBStatus(true);
-                    if(currentTrainIndex >= 0) { refreshRouteUI(); drawRouteOnMap(); }
-                    console.log("Auto-loaded szlaki_master.json");
-                })
-                .catch(err => {
-                    console.log("Auto-load failed. Manual upload required.");
-                    document.getElementById('db-count').innerText = "Brak";
-                });
+            if (localTrains.length > 0) {
+                trains = localTrains; // User has unsaved work, prioritize it
+                console.log("Loaded from LocalStorage");
+            } else if (serverTrains.length > 0) {
+                trains = serverTrains;
+                console.log("Loaded from Server");
+            }
+
+            if(trains.length > 0) updateStatus('pociagi', true, trains.length);
+            
+            renderTrainList();
         };
 
-        function updateDBStatus(ok) {
-            const countEl = document.getElementById('db-count');
-            const indEl = document.getElementById('db-indicator');
+        function updateStatus(type, ok, count=0) {
+            const el = document.getElementById(`status-${type}`);
             if(ok) {
-                countEl.innerText = szlakiDB.length;
-                indEl.className = "text-green-400 font-bold";
+                el.className = "flex items-center gap-1 text-green-600 font-bold";
+                el.innerHTML = `<i class="fa-solid fa-check-circle"></i> ${type === 'szlaki' ? 'Szlaki' : 'Pociągi'}: ${count}`;
             } else {
-                countEl.innerText = "Błąd";
+                el.className = "flex items-center gap-1 text-red-500";
+                el.innerHTML = `<i class="fa-solid fa-times-circle"></i> ${type === 'szlaki' ? 'Szlaki' : 'Pociągi'}: Brak`;
             }
         }
 
-        function hardReset() {
-            if(confirm("UWAGA: To usunie WSZYSTKIE Twoje pociągi i zresetuje licznik. Kontynuować?")) {
-                localStorage.clear();
-                location.reload();
-            }
-        }
-
-        // --- MAP FUNCTIONS ---
+        // --- MAP ENGINE (OpenRailwayMap) ---
         function initMap() {
-            mapInstance = L.map('map-container').setView([52.069, 19.480], 6);
-            L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-                attribution: '&copy; OSM &copy; CARTO',
-                subdomains: 'abcd',
-                maxZoom: 19
-            }).addTo(mapInstance);
-            routeLayerGroup = L.layerGroup().addTo(mapInstance);
+            map = L.map('map').setView([52.0, 19.0], 6);
+            
+            // 1. Base Layer (OSM Standard for context)
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 19,
+                attribution: '© OpenStreetMap'
+            }).addTo(map);
+
+            // 2. Overlay (OpenRailwayMap)
+            L.tileLayer('https://{s}.tiles.openrailwaymap.org/standard/{z}/{x}/{y}.png', {
+                maxZoom: 19,
+                attribution: '© OpenRailwayMap'
+            }).addTo(map);
+
+            routeLayer = L.layerGroup().addTo(map);
         }
 
-        function drawRouteOnMap() {
-            if(!mapInstance || currentTrainIndex < 0) return;
-            routeLayerGroup.clearLayers();
+        function drawRoute() {
+            if(!map || currentTrainIndex < 0) return;
+            routeLayer.clearLayers();
             const t = trains[currentTrainIndex];
             const bounds = [];
 
-            const addStationMarker = (name, latlng, isStart) => {
-                L.circleMarker(latlng, {
-                    radius: isStart ? 6 : 4,
-                    color: isStart ? '#22c55e' : '#3b82f6',
-                    fillColor: isStart ? '#22c55e' : '#0f172a',
-                    fillOpacity: 1,
-                    weight: 2
-                }).bindPopup(`<b>${name}</b>`).addTo(routeLayerGroup);
-            };
-
-            t.trasa.forEach((seg, idx) => {
-                const master = szlakiDB[seg.master_id];
-                // Support both lowercase 'geometry' and Polish 'geometria'
-                let geo = null;
-                if(master) geo = master.geometry || master.geometria;
-
-                if (geo && geo.coordinates && geo.coordinates.length > 0) {
-                    // FIX: GeoJSON is [Lon, Lat], Leaflet needs [Lat, Lon].
-                    // We map the array to swap them.
-                    const leafletCoords = geo.coordinates.map(c => [c[1], c[0]]);
+            // Draw Segments
+            t.trasa.forEach((seg, i) => {
+                // Find master track
+                // Assumption: seg.master_id is index or we search. 
+                // Previous logic used index.
+                const track = szlakiDB[seg.master_id];
+                
+                if(track) {
+                    // Try get geometry: 'geometry' or 'geometria'
+                    let geo = track.geometry || track.geometria;
                     
-                    L.polyline(leafletCoords, {
-                        color: '#3b82f6', weight: 4, opacity: 0.8
-                    }).bindTooltip(`Odcinek: ${seg.od} - ${seg.do}`).addTo(routeLayerGroup);
-                    
-                    leafletCoords.forEach(c => bounds.push(c));
-                    if(idx === 0) addStationMarker(seg.od, leafletCoords[0], true);
-                    addStationMarker(seg.do, leafletCoords[leafletCoords.length-1], false);
+                    if(geo && geo.coordinates) {
+                        // GeoJSON is [Lon, Lat], Leaflet needs [Lat, Lon]
+                        const path = geo.coordinates.map(c => [c[1], c[0]]);
+                        
+                        L.polyline(path, { color: '#ef4444', weight: 5, opacity: 0.8 }).addTo(routeLayer);
+                        path.forEach(p => bounds.push(p));
+
+                        // Station Markers
+                        if(i===0) L.circleMarker(path[0], {radius:6, color:'green', fillColor:'lime', fillOpacity:1}).addTo(routeLayer).bindTooltip(seg.od);
+                        L.circleMarker(path[path.length-1], {radius:4, color:'blue', fillColor:'white', fillOpacity:1}).addTo(routeLayer).bindTooltip(seg.do);
+                    }
                 }
             });
 
-            if (bounds.length > 0) mapInstance.fitBounds(bounds, { padding: [50, 50] });
+            if(bounds.length > 0) map.fitBounds(bounds, {padding:[50,50]});
         }
 
-        // --- TRAIN CRUD ---
+        // --- LOGIC ---
         function addNewTrain() {
-            const t = {
+            trains.push({
                 id: Date.now().toString(36),
                 numer: "NOWY",
                 nazwa: "",
@@ -369,240 +376,232 @@
                 relacja_do: "",
                 valid_from: new Date().toISOString().split('T')[0],
                 valid_to: new Date(new Date().getFullYear(), 11, 31).toISOString().split('T')[0],
-                days: [1,2,3,4,5], 
-                exceptions: [], 
-                trasa: [], 
-                temp_start: null 
-            };
-            trains.push(t);
-            selectTrain(trains.length - 1);
+                days: [1,2,3,4,5], // Mon-Fri
+                exceptions: [],
+                trasa: [],
+                temp_start: null
+            });
             save();
+            renderTrainList();
+            selectTrain(trains.length-1);
         }
 
         function selectTrain(idx) {
             currentTrainIndex = idx;
             const t = trains[idx];
-            document.getElementById('view-instructions').classList.add('hidden');
-            document.getElementById('view-editor').classList.remove('hidden');
+            
             document.getElementById('editor-empty').classList.add('hidden');
+            document.getElementById('editor-panel').classList.remove('hidden');
             
-            document.getElementById('inp-no').value = t.numer;
-            document.getElementById('inp-name').value = t.nazwa;
-            document.getElementById('inp-stock').value = t.tabor;
-            document.getElementById('inp-rel-from').value = t.relacja_od;
-            document.getElementById('inp-rel-to').value = t.relacja_do;
-            document.getElementById('cal-from').value = t.valid_from;
-            document.getElementById('cal-to').value = t.valid_to;
-            
-            document.querySelectorAll('.day-toggle').forEach(btn => {
-                const day = parseInt(btn.dataset.day);
-                styleDayToggle(btn, t.days.includes(day));
+            // Map Inputs
+            document.getElementById('inp-no').value = t.numer || "";
+            document.getElementById('inp-name').value = t.nazwa || "";
+            document.getElementById('inp-stock').value = t.tabor || "";
+            document.getElementById('inp-rel-from').value = t.relacja_od || "";
+            document.getElementById('inp-rel-to').value = t.relacja_do || "";
+            document.getElementById('cal-from').value = t.valid_from || "";
+            document.getElementById('cal-to').value = t.valid_to || "";
+
+            // Days buttons
+            document.querySelectorAll('.day-btn').forEach(btn => {
+                const d = parseInt(btn.dataset.day);
+                styleDayBtn(btn, t.days.includes(d));
             });
 
+            // UI Refresh
             renderTrainList();
-            refreshCalendar();
-            refreshRouteUI();
+            renderCalendar();
+            renderRouteUI();
             
-            if(!document.getElementById('tab-route').classList.contains('hidden')) {
-                setTimeout(() => { mapInstance.invalidateSize(); drawRouteOnMap(); }, 100);
+            // Auto switch to info tab
+            if(document.getElementById('tab-info').classList.contains('hidden') && document.getElementById('tab-route').classList.contains('hidden')) {
+                switchTab('info');
             }
-        }
-
-        function deleteTrain() {
-            if(!confirm("Usunąć pociąg trwale?")) return;
-            trains.splice(currentTrainIndex, 1);
-            currentTrainIndex = -1;
-            document.getElementById('view-editor').classList.add('hidden');
-            document.getElementById('editor-empty').classList.remove('hidden');
-            save(); renderTrainList();
+            // If map visible, redraw
+            if(!document.getElementById('tab-route').classList.contains('hidden')) {
+                setTimeout(() => { map.invalidateSize(); drawRoute(); }, 100);
+            }
         }
 
         function renderTrainList() {
-            const container = document.getElementById('train-list');
-            container.innerHTML = '';
+            const list = document.getElementById('train-list');
+            list.innerHTML = '';
             trains.forEach((t, i) => {
                 const el = document.createElement('div');
                 const active = i === currentTrainIndex;
-                el.className = `p-3 rounded-lg cursor-pointer border transition flex flex-col gap-1 ${active ? 'bg-blue-600/20 border-blue-500 shadow-md' : 'bg-slate-800/50 border-slate-700 hover:bg-slate-800'}`;
+                el.className = `p-3 rounded-lg cursor-pointer border mb-2 transition ${active ? 'bg-blue-50 border-blue-500 shadow-sm' : 'bg-white border-gray-200 hover:border-blue-300'}`;
                 el.onclick = () => selectTrain(i);
                 el.innerHTML = `
-                    <div class="flex justify-between items-center">
-                        <span class="font-mono font-bold text-sm ${active ? 'text-white':'text-slate-300'}">${t.numer}</span>
-                        ${t.trasa.length > 0 ? '<i class="fa-solid fa-route text-[10px] text-green-400"></i>' : ''}
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="font-bold text-sm text-gray-800">${t.numer || 'Bez numeru'}</span>
+                        ${t.trasa.length > 0 ? '<i class="fa-solid fa-route text-green-500 text-xs"></i>' : ''}
                     </div>
-                    <div class="text-xs text-slate-400 truncate">${t.nazwa || '(bez nazwy)'}</div>
+                    <div class="text-xs text-gray-500 truncate">${t.nazwa || ''}</div>
                 `;
-                container.appendChild(el);
+                list.appendChild(el);
             });
         }
 
-        // --- CALENDAR ---
-        document.getElementById('cal-from').addEventListener('change', (e) => { if(currentTrainIndex<0)return; trains[currentTrainIndex].valid_from=e.target.value; save(); refreshCalendar(); });
-        document.getElementById('cal-to').addEventListener('change', (e) => { if(currentTrainIndex<0)return; trains[currentTrainIndex].valid_to=e.target.value; save(); refreshCalendar(); });
-        document.querySelectorAll('.day-toggle').forEach(btn => {
-            btn.addEventListener('click', () => {
-                if(currentTrainIndex<0) return;
-                const d = parseInt(btn.dataset.day);
-                const t = trains[currentTrainIndex];
-                if(t.days.includes(d)) { t.days = t.days.filter(x => x !== d); styleDayToggle(btn, false); }
-                else { t.days.push(d); styleDayToggle(btn, true); }
-                save(); refreshCalendar();
-            });
-        });
-
-        function styleDayToggle(btn, active) {
-            if(active) { btn.classList.add('bg-blue-600', 'text-white', 'border-blue-500'); btn.classList.remove('bg-slate-800'); }
-            else { btn.classList.remove('bg-blue-600', 'text-white', 'border-blue-500'); btn.classList.add('bg-slate-800'); }
-        }
-
-        function refreshCalendar() {
+        // --- CALENDAR LOGIC ---
+        function renderCalendar() {
             if(currentTrainIndex < 0) return;
             const t = trains[currentTrainIndex];
+            const cont = document.getElementById('calendar-grid-container');
+            cont.innerHTML = '';
+
             const start = new Date(t.valid_from);
             const end = new Date(t.valid_to);
-            const container = document.getElementById('calendar-container');
-            container.innerHTML = '';
-            
             let curr = new Date(start.getFullYear(), start.getMonth(), 1);
-            const stop = new Date(end.getFullYear(), end.getMonth(), 1);
-            let safety = 0;
-            while(curr <= stop && safety < 24) {
-                container.appendChild(createMonthGrid(curr.getFullYear(), curr.getMonth(), t));
-                curr.setMonth(curr.getMonth() + 1);
-                safety++;
-            }
-        }
-
-        function createMonthGrid(year, month, train) {
-            const wrapper = document.createElement('div');
-            wrapper.className = "bg-slate-950 p-3 rounded border border-slate-800";
-            const date = new Date(year, month, 1);
-            wrapper.innerHTML = `<div class="cal-header capitalize">${date.toLocaleString('pl-PL', { month: 'long', year: 'numeric' })}</div>`;
-            const grid = document.createElement('div');
-            grid.className = "calendar-grid";
-            ['P','W','Ś','C','P','S','N'].forEach(d => { grid.innerHTML += `<div class="text-[9px] text-center text-slate-600">${d}</div>` });
             
-            let firstDay = date.getDay(); firstDay = firstDay === 0 ? 6 : firstDay - 1;
-            for(let i=0; i<firstDay; i++) grid.innerHTML += `<div class="day-empty"></div>`;
+            // Limit loop to avoid crash if dates wrong
+            let limit = 0;
+            while(curr <= end && limit < 24) { // Max 2 years view
+                const mDiv = document.createElement('div');
+                mDiv.className = "bg-white border border-gray-100 rounded p-2 shadow-sm";
+                mDiv.innerHTML = `<div class="text-center font-bold text-xs text-gray-400 mb-2 capitalize">${curr.toLocaleString('pl-PL', {month:'long', year:'numeric'})}</div>`;
+                
+                const grid = document.createElement('div');
+                grid.className = "calendar-grid";
+                // Week headers
+                ['P','W','Ś','C','P','S','N'].forEach(h => grid.innerHTML += `<div class="text-[9px] text-center text-gray-300 font-bold">${h}</div>`);
+                
+                // Empties
+                let firstDay = curr.getDay(); firstDay = firstDay === 0 ? 6 : firstDay - 1;
+                for(let k=0; k<firstDay; k++) grid.innerHTML += `<div></div>`;
 
-            const daysInMonth = new Date(year, month + 1, 0).getDate();
-            for(let d=1; d<=daysInMonth; d++) {
-                const z = new Date(year, month, d, 12,0,0);
-                const iso = z.toISOString().split('T')[0];
-                const el = document.createElement('div');
-                el.className = "calendar-day"; el.innerText = d;
-                
-                const inRange = z >= new Date(train.valid_from) && z <= new Date(train.valid_to);
-                const isSched = train.days.includes(z.getDay());
-                const isEx = train.exceptions.includes(iso);
-                
-                if (!inRange) el.classList.add('text-slate-700', 'cursor-default');
-                else {
-                    if (isSched) {
-                        if (isEx) el.classList.add('day-cancelled'); else el.classList.add('day-active');
+                const daysInMonth = new Date(curr.getFullYear(), curr.getMonth()+1, 0).getDate();
+                for(let d=1; d<=daysInMonth; d++) {
+                    const z = new Date(curr.getFullYear(), curr.getMonth(), d, 12,0,0);
+                    const iso = z.toISOString().split('T')[0];
+                    const cell = document.createElement('div');
+                    cell.className = "calendar-day";
+                    cell.innerText = d;
+                    
+                    const inRange = z >= start && z <= end;
+                    if(inRange) {
+                        const sched = t.days.includes(z.getDay());
+                        const ex = t.exceptions.includes(iso);
+                        
+                        if(sched) {
+                            if(ex) cell.classList.add('day-cancelled'); else cell.classList.add('day-active');
+                        } else {
+                            if(ex) cell.classList.add('day-added'); else cell.classList.add('day-inactive');
+                        }
+                        
+                        cell.onclick = () => {
+                            if(t.exceptions.includes(iso)) t.exceptions = t.exceptions.filter(x=>x!==iso);
+                            else t.exceptions.push(iso);
+                            save(); renderCalendar();
+                        };
                     } else {
-                        if (isEx) el.classList.add('day-added'); else el.classList.add('day-inactive');
+                        cell.style.opacity = "0.3"; cell.style.cursor = "default";
                     }
-                    el.onclick = () => {
-                        if(train.exceptions.includes(iso)) train.exceptions = train.exceptions.filter(x=>x!==iso);
-                        else train.exceptions.push(iso);
-                        save(); refreshCalendar();
-                    };
+                    grid.appendChild(cell);
                 }
-                grid.appendChild(el);
+                mDiv.appendChild(grid);
+                cont.appendChild(mDiv);
+                
+                curr.setMonth(curr.getMonth()+1);
+                limit++;
             }
-            wrapper.appendChild(grid);
-            return wrapper;
         }
 
-        // --- ROUTE & LOAD ---
-        function loadSzlakiManual(input) {
-            const f = input.files[0];
-            if(!f) return;
-            const r = new FileReader();
-            r.onload = e => {
-                try {
-                    szlakiDB = JSON.parse(e.target.result);
-                    updateDBStatus(true);
-                    alert("Baza wgrana ręcznie!");
-                    if(currentTrainIndex >= 0) { refreshRouteUI(); drawRouteOnMap(); }
-                } catch(err) { alert("Błąd pliku JSON"); }
-            };
-            r.readAsText(f);
-        }
-
-        function initRoute() {
-            const sel = document.getElementById('route-start-select');
-            // If empty options but DB exists, try populate
-            if(sel.options.length <= 1 && szlakiDB.length > 0) {
-                 const st = new Set();
-                 szlakiDB.forEach(s => { st.add(s.start); st.add(s.end); });
-                 sel.innerHTML = '<option value="">Wybierz...</option>';
-                 Array.from(st).sort().forEach(s => { sel.innerHTML += `<option value="${s}">${s}</option>`; });
-                 return; // Just refreshed list, user must pick
-            }
-            if(!sel.value) return;
-            
-            trains[currentTrainIndex].temp_start = sel.value;
-            save(); refreshRouteUI();
-        }
-
-        // Dropdown Auto-Populate
-        document.getElementById('route-start-select').addEventListener('focus', function() {
-            if(this.options.length <= 1 && szlakiDB.length > 0) {
-                 const st = new Set();
-                 szlakiDB.forEach(s => { if(s.start) st.add(s.start); if(s.end) st.add(s.end); });
-                 this.innerHTML = '<option value="">Wybierz...</option>';
-                 Array.from(st).sort().forEach(s => { this.innerHTML += `<option value="${s}">${s}</option>`; });
-            }
+        document.querySelectorAll('.day-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                if(currentTrainIndex < 0) return;
+                const d = parseInt(btn.dataset.day);
+                const t = trains[currentTrainIndex];
+                if(t.days.includes(d)) t.days = t.days.filter(x=>x!==d); else t.days.push(d);
+                save(); selectTrain(currentTrainIndex); // Refresh UI
+            });
         });
 
-        function refreshRouteUI() {
-            const t = trains[currentTrainIndex];
-            const timeline = document.getElementById('route-timeline');
-            timeline.innerHTML = '';
-            
-            const emptyState = document.getElementById('route-empty-state');
-            const controls = document.getElementById('route-active-controls');
-
-            let head = t.trasa.length > 0 ? t.trasa[t.trasa.length-1].do : t.temp_start;
-            if(!head) {
-                emptyState.classList.remove('hidden');
-                controls.classList.add('hidden');
-                // Ensure list populated
-                if(szlakiDB.length > 0) document.getElementById('route-start-select').focus();
+        function styleDayBtn(btn, active) {
+            if(active) {
+                btn.classList.add('bg-blue-600', 'text-white', 'border-blue-600');
+                btn.classList.remove('bg-white', 'text-gray-700', 'border-gray-300');
             } else {
-                emptyState.classList.add('hidden');
-                controls.classList.remove('hidden');
-                document.getElementById('current-station-name').innerText = head;
+                btn.classList.remove('bg-blue-600', 'text-white', 'border-blue-600');
+                btn.classList.add('bg-white', 'text-gray-700', 'border-gray-300');
+            }
+        }
+
+        // --- ROUTE LOGIC ---
+        function renderRouteUI() {
+            const t = trains[currentTrainIndex];
+            const list = document.getElementById('route-list');
+            list.innerHTML = '';
+            
+            const startUI = document.getElementById('route-start-ui');
+            const nextUI = document.getElementById('route-next-ui');
+            
+            // Check Head
+            let head = null;
+            if(t.trasa.length > 0) head = t.trasa[t.trasa.length-1].do;
+            else head = t.temp_start;
+
+            if(!head) {
+                startUI.classList.remove('hidden');
+                nextUI.classList.add('hidden');
+                // Populate start dropdown
+                const sel = document.getElementById('route-start-select');
+                if(sel.options.length <= 1 && szlakiDB.length > 0) {
+                    const st = new Set();
+                    szlakiDB.forEach(s => { st.add(s.start); st.add(s.end); });
+                    Array.from(st).sort().forEach(s => sel.innerHTML += `<option value="${s}">${s}</option>`);
+                }
+            } else {
+                startUI.classList.add('hidden');
+                nextUI.classList.remove('hidden');
+                document.getElementById('curr-station').innerText = head;
                 
+                // Populate next options
                 const sel = document.getElementById('next-segment-select');
-                sel.innerHTML = '<option value="">...</option>';
-                szlakiDB.filter(s => s.start === head || s.end === head).forEach(s => {
-                    const isFwd = s.start === head;
-                    const dest = isFwd ? s.end : s.start;
-                    const val = JSON.stringify({ master_id: szlakiDB.indexOf(s), od: head, do: dest, przez: s.via || null });
-                    sel.innerHTML += `<option value='${val}'>-> ${dest} ${s.via ? '('+s.via+')':''}</option>`;
+                sel.innerHTML = '<option value="">Wybierz...</option>';
+                const matches = szlakiDB.filter(s => s.start === head || s.end === head);
+                matches.forEach(m => {
+                    const isFwd = m.start === head;
+                    const dest = isFwd ? m.end : m.start;
+                    const val = JSON.stringify({ master_id: szlakiDB.indexOf(m), od: head, do: dest, przez: m.via || null });
+                    sel.innerHTML += `<option value='${val}'>-> ${dest} ${m.via ? '('+m.via+')':''}</option>`;
                 });
             }
 
-            if(head) {
-                 const startName = t.trasa.length > 0 ? t.trasa[0].od : t.temp_start;
-                 timeline.innerHTML += `<div class="flex gap-3 items-center pl-3 pb-3 border-l-2 border-slate-700 relative"><div class="absolute -left-[7px] top-0 w-3 h-3 bg-green-500 rounded-full"></div><span class="text-xs font-bold text-green-400">${startName}</span></div>`;
+            // Render Timeline
+            if(t.trasa.length > 0 || t.temp_start) {
+                const startNode = document.createElement('div');
+                const startName = t.trasa.length > 0 ? t.trasa[0].od : t.temp_start;
+                startNode.className = "pl-4 pb-4 border-l-2 border-gray-200 relative";
+                startNode.innerHTML = `<div class="absolute -left-[5px] top-0 w-2.5 h-2.5 bg-green-500 rounded-full"></div><span class="text-xs font-bold text-gray-700">${startName}</span>`;
+                list.appendChild(startNode);
             }
 
             t.trasa.forEach((seg, i) => {
-                timeline.innerHTML += `
-                    <div class="flex gap-3 items-stretch pl-3 pb-4 border-l-2 border-slate-700 relative">
-                        <div class="absolute -left-[5px] top-4 w-2 h-2 bg-slate-600 rounded-full"></div>
-                        <div class="flex-1 bg-slate-800 p-2 rounded border border-slate-700 flex justify-between items-center group">
-                            <div><div class="font-bold text-xs text-white">${seg.do}</div><div class="text-[9px] text-slate-500">${seg.przez||''}</div></div>
-                            ${i === t.trasa.length - 1 ? `<button onclick="trains[currentTrainIndex].trasa.pop(); save(); refreshRouteUI(); drawRouteOnMap()" class="text-slate-500 hover:text-red-400"><i class="fa-solid fa-times"></i></button>` : ''}
+                const item = document.createElement('div');
+                item.className = "pl-4 pb-4 border-l-2 border-gray-200 relative group";
+                item.innerHTML = `
+                    <div class="absolute -left-[5px] top-1 w-2.5 h-2.5 bg-gray-300 rounded-full border-2 border-white group-hover:bg-blue-500 transition"></div>
+                    <div class="bg-white border border-gray-200 rounded p-2 shadow-sm flex justify-between items-center">
+                        <div>
+                            <div class="text-xs font-bold text-gray-800">${seg.do}</div>
+                            ${seg.przez ? `<div class="text-[10px] text-gray-400">przez ${seg.przez}</div>` : ''}
                         </div>
-                    </div>`;
+                        ${i === t.trasa.length - 1 ? 
+                            `<button onclick="popSegment()" class="text-gray-400 hover:text-red-500"><i class="fa-solid fa-times"></i></button>` 
+                            : ''}
+                    </div>
+                `;
+                list.appendChild(item);
             });
+            
+            drawRoute();
+        }
 
-            drawRouteOnMap();
+        function setRouteStart() {
+            const val = document.getElementById('route-start-select').value;
+            if(!val) return;
+            trains[currentTrainIndex].temp_start = val;
+            save(); renderRouteUI();
         }
 
         function addSegment() {
@@ -610,71 +609,122 @@
             if(!val) return;
             trains[currentTrainIndex].trasa.push(JSON.parse(val));
             trains[currentTrainIndex].temp_start = null;
-            save(); refreshRouteUI();
+            save(); renderRouteUI();
         }
 
+        function popSegment() {
+            trains[currentTrainIndex].trasa.pop();
+            if(trains[currentTrainIndex].trasa.length === 0) trains[currentTrainIndex].temp_start = null; // Full reset if empty
+            save(); renderRouteUI();
+        }
+        
         function resetRoute() {
-            if(confirm("Reset?")) {
+            if(confirm("Zresetować trasę?")) {
                 trains[currentTrainIndex].trasa = [];
                 trains[currentTrainIndex].temp_start = null;
-                save(); refreshRouteUI();
+                save(); renderRouteUI();
             }
         }
 
-        // --- UTILS ---
-        function switchView(name) {
-            document.getElementById('view-instructions').classList.add('hidden');
-            document.getElementById('view-editor').classList.add('hidden');
-            document.getElementById('view-'+name).classList.remove('hidden');
-        }
-        function setTab(name) {
-            document.getElementById('tab-basic').classList.add('hidden');
-            document.getElementById('tab-route').classList.add('hidden');
-            document.getElementById('tab-'+name).classList.remove('hidden');
-            const btnB = document.getElementById('btn-tab-basic');
-            const btnR = document.getElementById('btn-tab-route');
-            const active = "bg-slate-700 text-white shadow-sm";
-            const inactive = "text-slate-400 hover:text-white";
-            btnB.className = "px-4 py-1.5 text-sm font-medium rounded-md transition " + (name==='basic'?active:inactive);
-            btnR.className = "px-4 py-1.5 text-sm font-medium rounded-md transition " + (name==='route'?active:inactive);
-            if(name === 'route' && mapInstance) {
-                setTimeout(() => { mapInstance.invalidateSize(); drawRouteOnMap(); }, 200);
-            }
+        // --- IO ---
+        function loadSzlakiManual(input) {
+            const f = input.files[0];
+            if(!f) return;
+            const r = new FileReader();
+            r.onload = e => {
+                szlakiDB = JSON.parse(e.target.result);
+                updateStatus('szlaki', true, szlakiDB.length);
+                if(currentTrainIndex>=0) { renderRouteUI(); drawRoute(); }
+            };
+            r.readAsText(f);
         }
 
-        ['inp-no','inp-name','inp-stock','inp-rel-from','inp-rel-to'].forEach(id => {
-            document.getElementById(id).addEventListener('input', e => {
-                if(currentTrainIndex<0) return;
-                const t = trains[currentTrainIndex];
-                if(id.includes('no')) t.numer = e.target.value;
-                if(id.includes('name')) t.nazwa = e.target.value;
-                if(id.includes('stock')) t.tabor = e.target.value;
-                if(id.includes('rel-from')) t.relacja_od = e.target.value;
-                if(id.includes('rel-to')) t.relacja_do = e.target.value;
-                save(); if(id.includes('no') || id.includes('name')) renderTrainList();
-            });
-        });
-
-        function save() {
-            localStorage.setItem('trains_v5', JSON.stringify(trains));
-            const json = JSON.stringify(trains);
-            document.getElementById('memory-usage').innerText = (new Blob([json]).size / 1024).toFixed(1) + " KB";
+        function loadTrainsManual(input) {
+            const f = input.files[0];
+            if(!f) return;
+            const r = new FileReader();
+            r.onload = e => {
+                const loaded = JSON.parse(e.target.result);
+                // Merge strategy: Append
+                trains = loaded;
+                save();
+                updateStatus('pociagi', true, trains.length);
+                renderTrainList();
+            };
+            r.readAsText(f);
         }
 
-        function downloadJSON() {
+        function downloadPociagi() {
             const b = new Blob([JSON.stringify(trains, null, 2)], {type:'application/json'});
             const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = 'pociagi.json'; a.click();
         }
 
-        function startClocks() {
-            setInterval(()=>{
-                const s = Math.floor((Date.now()-sessionStart)/1000);
-                const h=Math.floor(s/3600).toString().padStart(2,'0');
-                const m=Math.floor((s%3600)/60).toString().padStart(2,'0');
-                const sec=(s%60).toString().padStart(2,'0');
-                document.getElementById('session-timer').innerText = `${h}:${m}:${sec}`;
-            },1000);
+        function toggleJsonPreview() {
+            const modal = document.getElementById('json-modal');
+            const area = document.getElementById('json-output');
+            if(modal.classList.contains('hidden')) {
+                area.value = JSON.stringify(trains, null, 2);
+                modal.classList.remove('hidden');
+            } else {
+                modal.classList.add('hidden');
+            }
         }
+
+        function save() {
+            localStorage.setItem('trains_v6', JSON.stringify(trains));
+        }
+        
+        function deleteCurrentTrain() {
+            if(confirm("Usunąć?")) {
+                trains.splice(currentTrainIndex, 1);
+                currentTrainIndex = -1;
+                document.getElementById('editor-panel').classList.add('hidden');
+                document.getElementById('editor-empty').classList.remove('hidden');
+                save(); renderTrainList();
+            }
+        }
+
+        function hardReset() {
+            if(confirm("Czy na pewno wyczyścić dane?")) {
+                localStorage.clear();
+                location.reload();
+            }
+        }
+
+        // --- UI UTILS ---
+        function switchTab(name) {
+            document.getElementById('tab-info').classList.add('hidden');
+            document.getElementById('tab-route').classList.add('hidden');
+            document.getElementById('tab-' + name).classList.remove('hidden');
+            
+            document.getElementById('tab-btn-info').classList.remove('border-blue-600', 'text-blue-600');
+            document.getElementById('tab-btn-route').classList.remove('border-blue-600', 'text-blue-600');
+            document.getElementById('tab-btn-info').classList.add('border-transparent', 'text-gray-500');
+            document.getElementById('tab-btn-route').classList.add('border-transparent', 'text-gray-500');
+            
+            document.getElementById('tab-btn-' + name).classList.remove('border-transparent', 'text-gray-500');
+            document.getElementById('tab-btn-' + name).classList.add('border-blue-600', 'text-blue-600');
+            
+            if(name === 'route') setTimeout(() => { map.invalidateSize(); drawRoute(); }, 100);
+        }
+
+        // Input Bindings
+        ['inp-no','inp-name','inp-stock','inp-rel-from','inp-rel-to','cal-from','cal-to'].forEach(id => {
+            document.getElementById(id).addEventListener('input', e => {
+                if(currentTrainIndex<0) return;
+                const t = trains[currentTrainIndex];
+                if(id=='inp-no') t.numer = e.target.value;
+                if(id=='inp-name') t.nazwa = e.target.value;
+                if(id=='inp-stock') t.tabor = e.target.value;
+                if(id=='inp-rel-from') t.relacja_od = e.target.value;
+                if(id=='inp-rel-to') t.relacja_do = e.target.value;
+                if(id=='cal-from') { t.valid_from = e.target.value; renderCalendar(); }
+                if(id=='cal-to') { t.valid_to = e.target.value; renderCalendar(); }
+                save();
+                if(id=='inp-no' || id=='inp-name') renderTrainList();
+            });
+        });
+
     </script>
 </body>
 </html>
