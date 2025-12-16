@@ -1,25 +1,21 @@
 [
   {
-    "id": "mj91qk5s",
+    "id": "mj933a38",
     "numer": "18114/5",
-    "nazwa": "POBRZEŻE_test",
+    "nazwa": "Pobrzeże",
     "tabor": "SKŁAD WAGONOWY",
     "relacja_od": "Łódź Fabryczna",
-    "relacja_do": "Gdynia Główna",
-    "kalendarz": {
-      "od": "2025-12-14",
-      "do": "2026-02-25",
-      "dni": [
-        1,
-        2,
-        3,
-        4,
-        5,
-        6,
-        7
-      ],
-      "wyjatki": ""
-    },
+    "relacja_do": "Kołobrzeg",
+    "valid_from": "2025-12-14",
+    "valid_to": "2026-03-07",
+    "days": [
+      1,
+      2,
+      3,
+      4,
+      5
+    ],
+    "exceptions": [],
     "trasa": [
       {
         "master_id": 0,
@@ -75,6 +71,7 @@
         "do": "Gdynia Główna",
         "przez": "Gdańsk Główny"
       }
-    ]
+    ],
+    "temp_start": null
   }
 ]
