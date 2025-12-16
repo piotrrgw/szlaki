@@ -3,15 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Train Manager v4.0 - Map Edition</title>
+    <title>Train Manager v5.0 - AutoFix</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
     
     <style>
         body { font-family: 'Inter', system-ui, sans-serif; }
-        
-        /* Style kalendarza */
         .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
         .calendar-day { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; cursor: pointer; border-radius: 4px; transition: all 0.1s; }
         .cal-header { font-weight: bold; text-align: center; font-size: 0.7rem; color: #94a3b8; padding-bottom: 4px; }
@@ -22,14 +20,10 @@
         .day-active:hover { background: #1d4ed8; }
         .day-added { background: #16a34a; color: white; border: 2px solid #22c55e; }
         .day-cancelled { background: #1e293b; color: #ef4444; text-decoration: line-through; border: 1px solid #ef4444; }
-
-        /* Custom Scrollbar */
         ::-webkit-scrollbar { width: 8px; height: 8px; }
         ::-webkit-scrollbar-track { background: #0f172a; }
         ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
         ::-webkit-scrollbar-thumb:hover { background: #475569; }
-
-        /* Mapa fix */
         #map-container { z-index: 1; background: #0f172a; }
     </style>
     
@@ -43,15 +37,19 @@
                 <i class="fa-solid fa-train-subway text-white text-xl"></i>
             </div>
             <div>
-                <h1 class="font-bold text-lg text-white tracking-tight">Train Manager <span class="text-xs font-normal text-blue-400 border border-blue-900 bg-blue-900/30 px-2 py-0.5 rounded ml-2">v4.0 Map</span></h1>
+                <h1 class="font-bold text-lg text-white tracking-tight">Train Manager <span class="text-xs font-normal text-green-400 border border-green-900 bg-green-900/30 px-2 py-0.5 rounded ml-2">v5.0 Stable</span></h1>
                 <div class="flex gap-3 text-xs text-slate-400 font-mono">
-                    <span><i class="fa-solid fa-database mr-1"></i>Szlaki: <span id="db-count" class="text-slate-200">0</span></span>
+                    <span id="db-indicator"><i class="fa-solid fa-database mr-1"></i>Szlaki: <span id="db-count" class="text-slate-200">...</span></span>
                     <span><i class="fa-solid fa-memory mr-1"></i>Pamięć: <span id="memory-usage" class="text-slate-200">0 KB</span></span>
                 </div>
             </div>
         </div>
 
-        <div class="flex items-center gap-6">
+        <div class="flex items-center gap-4">
+            <button onclick="hardReset()" class="text-red-400 hover:text-red-300 text-xs uppercase font-bold px-3 py-2 border border-red-900/50 rounded hover:bg-red-900/20 transition" title="Wyczyść wszystkie dane (Factory Reset)">
+                <i class="fa-solid fa-trash-can mr-1"></i> Reset Danych
+            </button>
+            <div class="h-6 w-px bg-slate-700 mx-2 hidden md:block"></div>
             <div class="text-right hidden md:block">
                 <div class="text-xs text-slate-500 uppercase font-bold">Czas sesji</div>
                 <div class="font-mono text-blue-400 font-bold" id="session-timer">00:00:00</div>
@@ -72,9 +70,9 @@
                 <button onclick="switchView('instructions')" class="bg-slate-800 hover:bg-slate-700 text-slate-300 py-2 rounded-lg text-xs font-medium transition">
                     <i class="fa-solid fa-book-open mr-1"></i> Instrukcja
                 </button>
-                <label class="cursor-pointer bg-slate-800 hover:bg-slate-700 text-slate-300 py-2 rounded-lg text-xs font-medium transition text-center flex items-center justify-center">
-                    <input type="file" class="hidden" onchange="loadSzlaki(this)" accept=".json">
-                    <i class="fa-solid fa-upload mr-1"></i> Wgraj Szlaki
+                <label class="cursor-pointer bg-slate-800 hover:bg-slate-700 text-slate-300 py-2 rounded-lg text-xs font-medium transition text-center flex items-center justify-center" title="Użyj jeśli automatyczne ładowanie zawiedzie">
+                    <input type="file" class="hidden" onchange="loadSzlakiManual(this)" accept=".json">
+                    <i class="fa-solid fa-upload mr-1"></i> Wgraj Ręcznie
                 </label>
             </div>
 
@@ -82,7 +80,7 @@
                 </div>
             
             <div class="p-3 text-center border-t border-slate-800 text-xs text-slate-600">
-                Leaflet & OSM &bull; v4.0.0
+                Auto-Loader & GeoFix &bull; v5.0
             </div>
         </aside>
 
@@ -97,26 +95,20 @@
                     
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div class="bg-slate-900 p-6 rounded-xl border border-slate-800">
-                            <div class="w-10 h-10 bg-blue-500/10 text-blue-500 rounded-lg flex items-center justify-center mb-4 text-xl"><i class="fa-solid fa-database"></i></div>
-                            <h3 class="font-bold text-white mb-2">1. Wgraj Bazę</h3>
-                            <p class="text-slate-400 text-sm leading-relaxed">Rozpocznij od wgrania pliku <code>szlaki_master.json</code>. Bez tego edytor mapy i trasowania nie zadziała, ponieważ nie zna on współrzędnych geograficznych Twoich szlaków.</p>
+                            <div class="w-10 h-10 bg-blue-500/10 text-blue-500 rounded-lg flex items-center justify-center mb-4 text-xl"><i class="fa-solid fa-bolt"></i></div>
+                            <h3 class="font-bold text-white mb-2">Automatyczne Ładowanie</h3>
+                            <p class="text-slate-400 text-sm leading-relaxed">System teraz automatycznie szuka pliku <code>szlaki_master.json</code> w folderze strony. Jeśli go znajdzie, ikona bazy danych w nagłówku zmieni kolor na zielony.</p>
                         </div>
                          <div class="bg-slate-900 p-6 rounded-xl border border-slate-800">
-                            <div class="w-10 h-10 bg-purple-500/10 text-purple-500 rounded-lg flex items-center justify-center mb-4 text-xl"><i class="fa-solid fa-map-location-dot"></i></div>
-                            <h3 class="font-bold text-white mb-2">2. Mapa i Trasa</h3>
-                            <p class="text-slate-400 text-sm leading-relaxed">W zakładce "Trasa" zobaczysz mapę. Po dodaniu stacji początkowej i kolejnych odcinków, system automatycznie narysuje przebieg pociągu na mapie (jeśli w pliku JSON są dane geometryczne).</p>
-                        </div>
-                        <div class="bg-slate-900 p-6 rounded-xl border border-slate-800">
-                            <div class="w-10 h-10 bg-green-500/10 text-green-500 rounded-lg flex items-center justify-center mb-4 text-xl"><i class="fa-solid fa-calendar-days"></i></div>
-                            <h3 class="font-bold text-white mb-2">3. Kalendarz</h3>
-                            <p class="text-slate-400 text-sm leading-relaxed">Klikaj na dni w kalendarzu rocznym, aby tworzyć wyjątki. Niebieski = kursuje, Szary = nie kursuje, Czerwony = odwołany, Zielony = dodany ekstra.</p>
+                            <div class="w-10 h-10 bg-purple-500/10 text-purple-500 rounded-lg flex items-center justify-center mb-4 text-xl"><i class="fa-solid fa-map"></i></div>
+                            <h3 class="font-bold text-white mb-2">Poprawiona Mapa</h3>
+                            <p class="text-slate-400 text-sm leading-relaxed">Geometria szlaków jest teraz poprawnie interpretowana (zamiana współrzędnych). Trasy powinny rysować się dokładnie wzdłuż linii kolejowych.</p>
                         </div>
                     </div>
                 </div>
             </div>
 
             <div id="view-editor" class="flex flex-col h-full hidden">
-                
                 <div class="h-14 border-b border-slate-800 bg-slate-900/90 flex items-center px-6 justify-between shrink-0 backdrop-blur-sm z-20">
                     <div class="flex gap-1 bg-slate-800 p-1 rounded-lg">
                         <button onclick="setTab('basic')" id="btn-tab-basic" class="px-4 py-1.5 text-sm font-medium rounded-md transition text-white bg-slate-700 shadow-sm">Dane & Kalendarz</button>
@@ -128,10 +120,8 @@
                 </div>
 
                 <div class="flex-1 relative overflow-hidden">
-                    
                     <div id="tab-basic" class="absolute inset-0 overflow-y-auto p-6 lg:p-10 fade-in bg-slate-950">
                         <div class="max-w-5xl mx-auto space-y-8 pb-20">
-                            
                             <div class="grid grid-cols-12 gap-6">
                                 <div class="col-span-12 lg:col-span-4 space-y-4">
                                     <h3 class="text-slate-500 font-bold text-xs uppercase tracking-wider mb-4">Identyfikacja</h3>
@@ -159,9 +149,8 @@
                                         </div>
                                     </div>
                                 </div>
-
                                 <div class="col-span-12 lg:col-span-8 space-y-4">
-                                    <h3 class="text-slate-500 font-bold text-xs uppercase tracking-wider mb-4">Relacja Handlowa (Tablice)</h3>
+                                    <h3 class="text-slate-500 font-bold text-xs uppercase tracking-wider mb-4">Relacja Handlowa</h3>
                                     <div class="bg-slate-900 p-5 rounded-xl border border-slate-800 flex items-center gap-4">
                                         <div class="flex-1">
                                             <label class="block text-xs text-slate-400 mb-1.5">Stacja Początkowa</label>
@@ -175,16 +164,14 @@
                                     </div>
                                 </div>
                             </div>
-
                             <div>
                                 <div class="flex justify-between items-end mb-4">
-                                    <h3 class="text-slate-500 font-bold text-xs uppercase tracking-wider">Kalendarz Kursowania</h3>
+                                    <h3 class="text-slate-500 font-bold text-xs uppercase tracking-wider">Kalendarz</h3>
                                     <div class="flex gap-4 text-xs">
                                         <div class="flex items-center gap-2"><div class="w-3 h-3 bg-blue-600 rounded-sm"></div> Kursuje</div>
                                         <div class="flex items-center gap-2"><div class="w-3 h-3 bg-slate-800 border border-slate-600 rounded-sm"></div> Nie kursuje</div>
                                     </div>
                                 </div>
-
                                 <div class="bg-slate-900 p-6 rounded-xl border border-slate-800 shadow-xl">
                                     <div class="flex flex-wrap gap-6 border-b border-slate-800 pb-6 mb-6">
                                         <div class="flex gap-4">
@@ -217,20 +204,17 @@
                     </div>
 
                     <div id="tab-route" class="absolute inset-0 flex flex-col md:flex-row hidden bg-slate-950">
-                        
                         <div class="w-full md:w-1/3 border-r border-slate-800 flex flex-col h-full bg-slate-900 z-10 shadow-xl">
                             <div class="p-4 border-b border-slate-800 bg-slate-900 z-10">
                                 <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Edytor Odcinków</h4>
-                                
                                 <div id="route-empty-state" class="text-center py-2">
                                     <div class="flex gap-2">
                                         <select id="route-start-select" class="flex-1 bg-slate-950 border border-slate-700 rounded px-2 text-sm h-9">
-                                            <option value="">Wgraj bazę...</option>
+                                            <option value="">Ładowanie bazy...</option>
                                         </select>
                                         <button onclick="initRoute()" class="bg-blue-600 hover:bg-blue-500 text-white px-3 rounded h-9 text-xs font-bold">START</button>
                                     </div>
                                 </div>
-
                                 <div id="route-active-controls" class="hidden space-y-3">
                                     <div class="flex justify-between items-center bg-slate-800 p-2 rounded border border-slate-700">
                                         <div class="flex items-center gap-2 overflow-hidden">
@@ -249,18 +233,11 @@
                                     </div>
                                 </div>
                             </div>
-
-                            <div id="route-timeline" class="flex-1 overflow-y-auto p-4 space-y-0">
-                                </div>
+                            <div id="route-timeline" class="flex-1 overflow-y-auto p-4 space-y-0"></div>
                         </div>
-
                         <div class="w-full md:w-2/3 h-1/2 md:h-full relative bg-slate-800">
                             <div id="map-container" class="w-full h-full"></div>
-                            <div class="absolute bottom-4 left-4 z-[500] bg-slate-900/80 backdrop-blur px-3 py-1 rounded border border-slate-700 text-xs text-white pointer-events-none">
-                                <i class="fa-solid fa-layer-group text-blue-400 mr-1"></i> Widok mapy
-                            </div>
                         </div>
-
                     </div>
                 </div>
             </div>
@@ -269,18 +246,7 @@
                 <i class="fa-solid fa-train text-6xl mb-4 opacity-20"></i>
                 <p>Wybierz pociąg z menu, aby rozpocząć edycję.</p>
             </div>
-
         </main>
-    </div>
-
-    <div id="modal-preview" class="fixed inset-0 bg-black/80 z-[100] hidden flex items-center justify-center backdrop-blur-sm">
-        <div class="bg-slate-900 w-3/4 h-3/4 rounded-xl border border-slate-700 shadow-2xl flex flex-col">
-            <div class="p-4 border-b border-slate-700 flex justify-between items-center">
-                <h3 class="font-bold text-white">Podgląd JSON</h3>
-                <button onclick="document.getElementById('modal-preview').classList.add('hidden')" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-xl"></i></button>
-            </div>
-            <textarea id="json-preview" class="flex-1 bg-slate-950 p-4 font-mono text-xs text-green-400 resize-none outline-none" readonly></textarea>
-        </div>
     </div>
 
     <script>
@@ -289,45 +255,76 @@
         let currentTrainIndex = -1;
         let szlakiDB = [];
         let sessionStart = Date.now();
-        
-        // Map Variables
         let mapInstance = null;
         let routeLayerGroup = null;
 
-        // Init
         window.onload = () => {
-            if(localStorage.getItem('trains_v4')) trains = JSON.parse(localStorage.getItem('trains_v4'));
+            // Restore Session
+            if(localStorage.getItem('trains_v5')) trains = JSON.parse(localStorage.getItem('trains_v5'));
+            if(localStorage.getItem('sessionStart')) sessionStart = parseInt(localStorage.getItem('sessionStart'));
+            else localStorage.setItem('sessionStart', sessionStart);
+
             if(trains.length === 0) switchView('instructions');
             else renderTrainList();
             
             startClocks();
-            initMap(); // Initialize Leaflet immediately (even if hidden)
+            initMap();
+            
+            // --- AUTO FETCH FIX ---
+            // Try to fetch 'szlaki_master.json' automatically from current dir
+            fetch('szlaki_master.json')
+                .then(r => {
+                    if(!r.ok) throw new Error("Not found");
+                    return r.json();
+                })
+                .then(data => {
+                    szlakiDB = data;
+                    updateDBStatus(true);
+                    if(currentTrainIndex >= 0) { refreshRouteUI(); drawRouteOnMap(); }
+                    console.log("Auto-loaded szlaki_master.json");
+                })
+                .catch(err => {
+                    console.log("Auto-load failed. Manual upload required.");
+                    document.getElementById('db-count').innerText = "Brak";
+                });
         };
+
+        function updateDBStatus(ok) {
+            const countEl = document.getElementById('db-count');
+            const indEl = document.getElementById('db-indicator');
+            if(ok) {
+                countEl.innerText = szlakiDB.length;
+                indEl.className = "text-green-400 font-bold";
+            } else {
+                countEl.innerText = "Błąd";
+            }
+        }
+
+        function hardReset() {
+            if(confirm("UWAGA: To usunie WSZYSTKIE Twoje pociągi i zresetuje licznik. Kontynuować?")) {
+                localStorage.clear();
+                location.reload();
+            }
+        }
 
         // --- MAP FUNCTIONS ---
         function initMap() {
-            // Default center Poland
             mapInstance = L.map('map-container').setView([52.069, 19.480], 6);
-            
-            // Dark Mode Tiles (CartoDB Dark Matter)
             L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-                attribution: '&copy; OpenStreetMap &copy; CARTO',
+                attribution: '&copy; OSM &copy; CARTO',
                 subdomains: 'abcd',
                 maxZoom: 19
             }).addTo(mapInstance);
-
             routeLayerGroup = L.layerGroup().addTo(mapInstance);
         }
 
         function drawRouteOnMap() {
             if(!mapInstance || currentTrainIndex < 0) return;
-            
             routeLayerGroup.clearLayers();
             const t = trains[currentTrainIndex];
             const bounds = [];
 
-            // Helper to add marker
-            const addStationMarker = (name, latlng, isStart=false) => {
+            const addStationMarker = (name, latlng, isStart) => {
                 L.circleMarker(latlng, {
                     radius: isStart ? 6 : 4,
                     color: isStart ? '#22c55e' : '#3b82f6',
@@ -337,49 +334,28 @@
                 }).bindPopup(`<b>${name}</b>`).addTo(routeLayerGroup);
             };
 
-            // Iterate segments
             t.trasa.forEach((seg, idx) => {
-                // Find geometry in DB
-                const master = szlakiDB[seg.master_id]; // Assuming index matches or use .find() if ID based
-                
-                // Try to find coords: 'geometry' or 'geometria'
-                let coords = null;
-                if (master) {
-                     if(master.geometry) coords = master.geometry;
-                     else if(master.geometria) coords = master.geometria;
-                }
+                const master = szlakiDB[seg.master_id];
+                // Support both lowercase 'geometry' and Polish 'geometria'
+                let geo = null;
+                if(master) geo = master.geometry || master.geometria;
 
-                if (coords && Array.isArray(coords) && coords.length > 0) {
-                    // Check if it's GeoJSON [[lon,lat]] or Leaflet [[lat,lon]]
-                    // Usually raw JSONs might be lon/lat. Leaflet needs Lat/Lon.
-                    // Simple heuristic: Lat for Poland is ~49-54, Lon is ~14-24.
-                    // If first val < 25, it's likely Lon (x), second is Lat (y). Swap needed?
-                    // Let's assume input is [lat, lon] for now, or check typical errors.
+                if (geo && geo.coordinates && geo.coordinates.length > 0) {
+                    // FIX: GeoJSON is [Lon, Lat], Leaflet needs [Lat, Lon].
+                    // We map the array to swap them.
+                    const leafletCoords = geo.coordinates.map(c => [c[1], c[0]]);
                     
-                    // Drawing the line
-                    const line = L.polyline(coords, {
-                        color: '#3b82f6', // Blue
-                        weight: 4,
-                        opacity: 0.8
-                    }).bindTooltip(`Odcinek: ${seg.od} - ${seg.do}`);
+                    L.polyline(leafletCoords, {
+                        color: '#3b82f6', weight: 4, opacity: 0.8
+                    }).bindTooltip(`Odcinek: ${seg.od} - ${seg.do}`).addTo(routeLayerGroup);
                     
-                    line.addTo(routeLayerGroup);
-                    
-                    // Add coords to bounds
-                    coords.forEach(c => bounds.push(c));
-
-                    // Add markers for stations if coords available
-                    // Start of segment
-                    if(idx === 0) addStationMarker(seg.od, coords[0], true);
-                    // End of segment
-                    addStationMarker(seg.do, coords[coords.length-1], false);
+                    leafletCoords.forEach(c => bounds.push(c));
+                    if(idx === 0) addStationMarker(seg.od, leafletCoords[0], true);
+                    addStationMarker(seg.do, leafletCoords[leafletCoords.length-1], false);
                 }
             });
 
-            // Fit bounds
-            if (bounds.length > 0) {
-                mapInstance.fitBounds(bounds, { padding: [50, 50] });
-            }
+            if (bounds.length > 0) mapInstance.fitBounds(bounds, { padding: [50, 50] });
         }
 
         // --- TRAIN CRUD ---
@@ -406,7 +382,6 @@
         function selectTrain(idx) {
             currentTrainIndex = idx;
             const t = trains[idx];
-            
             document.getElementById('view-instructions').classList.add('hidden');
             document.getElementById('view-editor').classList.remove('hidden');
             document.getElementById('editor-empty').classList.add('hidden');
@@ -416,7 +391,6 @@
             document.getElementById('inp-stock').value = t.tabor;
             document.getElementById('inp-rel-from').value = t.relacja_od;
             document.getElementById('inp-rel-to').value = t.relacja_do;
-            
             document.getElementById('cal-from').value = t.valid_from;
             document.getElementById('cal-to').value = t.valid_to;
             
@@ -429,7 +403,6 @@
             refreshCalendar();
             refreshRouteUI();
             
-            // If map tab is active, redraw
             if(!document.getElementById('tab-route').classList.contains('hidden')) {
                 setTimeout(() => { mapInstance.invalidateSize(); drawRouteOnMap(); }, 100);
             }
@@ -441,8 +414,7 @@
             currentTrainIndex = -1;
             document.getElementById('view-editor').classList.add('hidden');
             document.getElementById('editor-empty').classList.remove('hidden');
-            save();
-            renderTrainList();
+            save(); renderTrainList();
         }
 
         function renderTrainList() {
@@ -456,7 +428,7 @@
                 el.innerHTML = `
                     <div class="flex justify-between items-center">
                         <span class="font-mono font-bold text-sm ${active ? 'text-white':'text-slate-300'}">${t.numer}</span>
-                        ${t.trasa.length > 0 ? '<i class="fa-solid fa-route text-[10px] text-green-400" title="Trasa OK"></i>' : ''}
+                        ${t.trasa.length > 0 ? '<i class="fa-solid fa-route text-[10px] text-green-400"></i>' : ''}
                     </div>
                     <div class="text-xs text-slate-400 truncate">${t.nazwa || '(bez nazwy)'}</div>
                 `;
@@ -464,10 +436,9 @@
             });
         }
 
-        // --- CALENDAR LOGIC ---
+        // --- CALENDAR ---
         document.getElementById('cal-from').addEventListener('change', (e) => { if(currentTrainIndex<0)return; trains[currentTrainIndex].valid_from=e.target.value; save(); refreshCalendar(); });
         document.getElementById('cal-to').addEventListener('change', (e) => { if(currentTrainIndex<0)return; trains[currentTrainIndex].valid_to=e.target.value; save(); refreshCalendar(); });
-        
         document.querySelectorAll('.day-toggle').forEach(btn => {
             btn.addEventListener('click', () => {
                 if(currentTrainIndex<0) return;
@@ -544,35 +515,39 @@
             return wrapper;
         }
 
-        // --- ROUTE LOGIC ---
-        function loadSzlaki(input) {
+        // --- ROUTE & LOAD ---
+        function loadSzlakiManual(input) {
             const f = input.files[0];
             if(!f) return;
             const r = new FileReader();
             r.onload = e => {
                 try {
                     szlakiDB = JSON.parse(e.target.result);
-                    document.getElementById('db-count').innerText = szlakiDB.length;
-                    alert("Baza wgrana pomyślnie!");
+                    updateDBStatus(true);
+                    alert("Baza wgrana ręcznie!");
                     if(currentTrainIndex >= 0) { refreshRouteUI(); drawRouteOnMap(); }
-                } catch(err) { alert("Błąd pliku JSON"); console.error(err); }
+                } catch(err) { alert("Błąd pliku JSON"); }
             };
             r.readAsText(f);
         }
 
         function initRoute() {
             const sel = document.getElementById('route-start-select');
-            if(!sel.value) return;
-            if(sel.options.length < 2) {
+            // If empty options but DB exists, try populate
+            if(sel.options.length <= 1 && szlakiDB.length > 0) {
                  const st = new Set();
                  szlakiDB.forEach(s => { st.add(s.start); st.add(s.end); });
+                 sel.innerHTML = '<option value="">Wybierz...</option>';
                  Array.from(st).sort().forEach(s => { sel.innerHTML += `<option value="${s}">${s}</option>`; });
-                 return;
+                 return; // Just refreshed list, user must pick
             }
+            if(!sel.value) return;
+            
             trains[currentTrainIndex].temp_start = sel.value;
             save(); refreshRouteUI();
         }
 
+        // Dropdown Auto-Populate
         document.getElementById('route-start-select').addEventListener('focus', function() {
             if(this.options.length <= 1 && szlakiDB.length > 0) {
                  const st = new Set();
@@ -594,6 +569,8 @@
             if(!head) {
                 emptyState.classList.remove('hidden');
                 controls.classList.add('hidden');
+                // Ensure list populated
+                if(szlakiDB.length > 0) document.getElementById('route-start-select').focus();
             } else {
                 emptyState.classList.add('hidden');
                 controls.classList.remove('hidden');
@@ -625,7 +602,6 @@
                     </div>`;
             });
 
-            // Trigger Map Update
             drawRouteOnMap();
         }
 
@@ -655,16 +631,12 @@
             document.getElementById('tab-basic').classList.add('hidden');
             document.getElementById('tab-route').classList.add('hidden');
             document.getElementById('tab-'+name).classList.remove('hidden');
-            
             const btnB = document.getElementById('btn-tab-basic');
             const btnR = document.getElementById('btn-tab-route');
             const active = "bg-slate-700 text-white shadow-sm";
             const inactive = "text-slate-400 hover:text-white";
-            
             btnB.className = "px-4 py-1.5 text-sm font-medium rounded-md transition " + (name==='basic'?active:inactive);
             btnR.className = "px-4 py-1.5 text-sm font-medium rounded-md transition " + (name==='route'?active:inactive);
-
-            // Leaflet Resize fix when showing tab
             if(name === 'route' && mapInstance) {
                 setTimeout(() => { mapInstance.invalidateSize(); drawRouteOnMap(); }, 200);
             }
@@ -684,7 +656,7 @@
         });
 
         function save() {
-            localStorage.setItem('trains_v4', JSON.stringify(trains));
+            localStorage.setItem('trains_v5', JSON.stringify(trains));
             const json = JSON.stringify(trains);
             document.getElementById('memory-usage').innerText = (new Blob([json]).size / 1024).toFixed(1) + " KB";
         }
