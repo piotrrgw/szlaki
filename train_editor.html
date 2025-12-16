@@ -1,0 +1,755 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>System Zarządzania Rozkładem Jazdy v2.0</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .fade-in { animation: fadeIn 0.2s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #111827; }
+        ::-webkit-scrollbar-thumb { background: #374151; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #4b5563; }
+        
+        /* Custom Checkbox Style */
+        .day-checkbox:checked + div { background-color: #2563eb; color: white; border-color: #2563eb; }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-100 h-screen flex flex-col overflow-hidden">
+
+    <nav class="bg-gray-800 border-b border-gray-700 p-3 shadow-lg flex-none z-50">
+        <div class="container mx-auto flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <div class="bg-blue-600 p-2 rounded text-white"><i class="fa-solid fa-train-subway"></i></div>
+                <div>
+                    <h1 class="text-lg font-bold tracking-wide leading-tight">Train Manager</h1>
+                    <p class="text-xs text-gray-400">Edytor bazy pociągów JSON</p>
+                </div>
+            </div>
+            <div class="flex gap-6 text-xs font-mono text-gray-400 items-center">
+                <div class="flex items-center gap-2" title="Zużycie pamięci (rozmiar JSON)">
+                    <i class="fa-solid fa-memory text-purple-400"></i>
+                    <span id="memory-usage">0 KB</span>
+                </div>
+                <div class="h-4 w-px bg-gray-600"></div>
+                <div class="flex items-center gap-2">
+                    <i class="fa-regular fa-clock"></i>
+                    <span id="current-time">00:00</span>
+                </div>
+                <div class="flex items-center gap-2 text-blue-400">
+                    <i class="fa-solid fa-stopwatch"></i>
+                    <span id="session-timer">00:00:00</span>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="flex flex-grow overflow-hidden">
+        
+        <aside class="w-64 bg-gray-800 border-r border-gray-700 flex flex-col flex-none">
+            <div class="p-3 border-b border-gray-700 flex gap-2">
+                <button onclick="addNewTrain()" class="flex-grow bg-blue-600 hover:bg-blue-500 text-white py-2 rounded text-sm font-bold transition">
+                    <i class="fa-solid fa-plus"></i> Nowy pociąg
+                </button>
+            </div>
+
+            <div id="train-list" class="flex-grow overflow-y-auto p-2 space-y-2">
+                </div>
+
+            <div class="p-3 border-t border-gray-700 space-y-2 bg-gray-850">
+                 <label class="block w-full cursor-pointer bg-gray-700 hover:bg-gray-600 text-center py-2 rounded text-xs transition border border-gray-600 text-gray-300">
+                    <input type="file" id="szlaki-file" accept=".json" class="hidden" onchange="loadSzlaki(this)">
+                    <span id="db-status-text"><i class="fa-solid fa-database mr-1"></i> Wgraj szlaki.json</span>
+                </label>
+                <div class="flex gap-2">
+                    <button onclick="downloadJSON()" class="flex-1 bg-green-700 hover:bg-green-600 text-white py-2 rounded text-xs font-bold transition">
+                        <i class="fa-solid fa-download"></i> Zapisz
+                    </button>
+                    <button onclick="togglePreview()" class="px-3 bg-gray-700 hover:bg-gray-600 text-white rounded text-xs transition" title="Podgląd kodu">
+                        <i class="fa-solid fa-code"></i>
+                    </button>
+                </div>
+            </div>
+        </aside>
+
+        <main class="flex-grow flex flex-col bg-gray-900 relative">
+            
+            <div id="empty-state" class="absolute inset-0 flex flex-col items-center justify-center text-gray-500 z-0">
+                <i class="fa-solid fa-train text-6xl mb-4 opacity-20"></i>
+                <p>Wybierz pociąg z listy lub dodaj nowy.</p>
+            </div>
+
+            <div id="editor-panel" class="hidden flex flex-col h-full z-10 fade-in">
+                
+                <div class="flex border-b border-gray-700 bg-gray-800">
+                    <button onclick="switchTab('details')" id="tab-btn-details" class="px-6 py-3 text-sm font-bold border-b-2 border-blue-500 text-white bg-gray-700">Dane Podstawowe</button>
+                    <button onclick="switchTab('route')" id="tab-btn-route" class="px-6 py-3 text-sm font-bold text-gray-400 hover:text-white border-b-2 border-transparent">Trasa (Odcinki)</button>
+                    <button onclick="switchTab('map')" id="tab-btn-map" class="px-6 py-3 text-sm font-bold text-gray-400 hover:text-white border-b-2 border-transparent"><i class="fa-solid fa-map"></i> Mapa</button>
+                    <div class="flex-grow flex justify-end items-center px-4">
+                        <button onclick="deleteCurrentTrain()" class="text-red-400 hover:text-red-200 text-xs uppercase font-bold"><i class="fa-solid fa-trash-can mr-1"></i> Usuń ten pociąg</button>
+                    </div>
+                </div>
+
+                <div class="flex-grow overflow-y-auto p-6">
+                    
+                    <div id="tab-details">
+                        <div class="grid grid-cols-12 gap-6 max-w-5xl">
+                            <div class="col-span-12 lg:col-span-4 space-y-4">
+                                <div class="bg-gray-800 p-4 rounded border border-gray-700">
+                                    <h3 class="text-blue-400 font-bold text-xs uppercase mb-3">Identyfikacja</h3>
+                                    <div class="space-y-3">
+                                        <div>
+                                            <label class="block text-xs text-gray-500 mb-1">Numer pociągu</label>
+                                            <input type="text" id="inp-no" class="w-full bg-gray-900 border border-gray-600 rounded p-2 text-sm focus:border-blue-500 outline-none font-mono" placeholder="np. EIC 1200">
+                                        </div>
+                                        <div>
+                                            <label class="block text-xs text-gray-500 mb-1">Nazwa handlowa</label>
+                                            <input type="text" id="inp-name" class="w-full bg-gray-900 border border-gray-600 rounded p-2 text-sm focus:border-blue-500 outline-none" placeholder="np. LECH">
+                                        </div>
+                                        <div>
+                                            <label class="block text-xs text-gray-500 mb-1">Rodzaj taboru</label>
+                                            <select id="inp-stock" class="w-full bg-gray-900 border border-gray-600 rounded p-2 text-sm focus:border-blue-500 outline-none">
+                                                <option value="">-- Wybierz --</option>
+                                                <option value="SKŁAD WAGONOWY">SKŁAD WAGONOWY</option>
+                                                <option value="ED250">ED250 (Pendolino)</option>
+                                                <option value="ED160">ED160 (Flirt)</option>
+                                                <option value="ED161">ED161 (Dart)</option>
+                                                <option value="ED74">ED74</option>
+                                                <option value="SN84">SN84</option>
+                                                <option value="SD85">SD85</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="col-span-12 lg:col-span-8 space-y-4">
+                                <div class="bg-gray-800 p-4 rounded border border-gray-700">
+                                    <h3 class="text-blue-400 font-bold text-xs uppercase mb-3">Relacja Handlowa</h3>
+                                    <div class="grid grid-cols-2 gap-4 mb-4">
+                                        <div>
+                                            <label class="block text-xs text-gray-500 mb-1">Stacja początkowa (Relacja)</label>
+                                            <input type="text" id="inp-rel-from" class="w-full bg-gray-900 border border-gray-600 rounded p-2 text-sm focus:border-blue-500 outline-none" placeholder="np. Warszawa Wschodnia">
+                                        </div>
+                                        <div>
+                                            <label class="block text-xs text-gray-500 mb-1">Stacja końcowa (Relacja)</label>
+                                            <input type="text" id="inp-rel-to" class="w-full bg-gray-900 border border-gray-600 rounded p-2 text-sm focus:border-blue-500 outline-none" placeholder="np. Wrocław Główny">
+                                        </div>
+                                    </div>
+                                    <p class="text-xs text-gray-500 italic"><i class="fa-solid fa-circle-info"></i> Pola te służą do opisu relacji na tablicach kierunkowych. Rzeczywistą trasę przejazdu ustalisz w zakładce "Trasa".</p>
+                                </div>
+
+                                <div class="bg-gray-800 p-4 rounded border border-gray-700">
+                                    <h3 class="text-blue-400 font-bold text-xs uppercase mb-3">Kalendarz Kursowania</h3>
+                                    <div class="flex gap-4 mb-4">
+                                        <div class="flex-1">
+                                            <label class="block text-xs text-gray-500 mb-1">Ważny od</label>
+                                            <input type="date" id="inp-date-from" class="w-full bg-gray-900 border border-gray-600 rounded p-2 text-sm text-gray-300 outline-none focus:border-blue-500">
+                                        </div>
+                                        <div class="flex-1">
+                                            <label class="block text-xs text-gray-500 mb-1">Ważny do</label>
+                                            <input type="date" id="inp-date-to" class="w-full bg-gray-900 border border-gray-600 rounded p-2 text-sm text-gray-300 outline-none focus:border-blue-500">
+                                        </div>
+                                    </div>
+                                    
+                                    <label class="block text-xs text-gray-500 mb-2">Dni kursowania</label>
+                                    <div class="flex justify-between gap-2 mb-4">
+                                        <label class="cursor-pointer flex-1"><input type="checkbox" class="hidden day-checkbox" value="1" id="day-1"><div class="border border-gray-600 rounded text-center py-2 text-xs hover:bg-gray-700 select-none">Pn</div></label>
+                                        <label class="cursor-pointer flex-1"><input type="checkbox" class="hidden day-checkbox" value="2" id="day-2"><div class="border border-gray-600 rounded text-center py-2 text-xs hover:bg-gray-700 select-none">Wt</div></label>
+                                        <label class="cursor-pointer flex-1"><input type="checkbox" class="hidden day-checkbox" value="3" id="day-3"><div class="border border-gray-600 rounded text-center py-2 text-xs hover:bg-gray-700 select-none">Śr</div></label>
+                                        <label class="cursor-pointer flex-1"><input type="checkbox" class="hidden day-checkbox" value="4" id="day-4"><div class="border border-gray-600 rounded text-center py-2 text-xs hover:bg-gray-700 select-none">Cz</div></label>
+                                        <label class="cursor-pointer flex-1"><input type="checkbox" class="hidden day-checkbox" value="5" id="day-5"><div class="border border-gray-600 rounded text-center py-2 text-xs hover:bg-gray-700 select-none">Pt</div></label>
+                                        <label class="cursor-pointer flex-1"><input type="checkbox" class="hidden day-checkbox" value="6" id="day-6"><div class="border border-gray-600 rounded text-center py-2 text-xs hover:bg-gray-700 select-none">Sb</div></label>
+                                        <label class="cursor-pointer flex-1"><input type="checkbox" class="hidden day-checkbox" value="7" id="day-7"><div class="border border-gray-600 rounded text-center py-2 text-xs hover:bg-gray-700 select-none text-red-400 font-bold">Nd</div></label>
+                                    </div>
+
+                                    <div>
+                                        <label class="block text-xs text-gray-500 mb-1">Wyjątki / Uwagi do terminów</label>
+                                        <textarea id="inp-date-ex" rows="2" class="w-full bg-gray-900 border border-gray-600 rounded p-2 text-sm focus:border-blue-500 outline-none" placeholder="np. oprócz 25.XII, 1.I..."></textarea>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="tab-route" class="hidden max-w-4xl">
+                        
+                        <div class="bg-gray-800 p-4 rounded border border-gray-700 mb-4 sticky top-0 z-20 shadow-xl">
+                            <div id="route-start-selector">
+                                <label class="block text-xs text-blue-400 font-bold uppercase mb-2">Rozpocznij trasowanie</label>
+                                <div class="flex gap-2">
+                                    <select id="start-station-select" class="flex-grow bg-gray-900 border border-gray-600 p-2 rounded text-sm">
+                                        <option value="">Wgraj bazę szlaków, aby wybrać stację...</option>
+                                    </select>
+                                    <button onclick="startRoute()" class="bg-blue-600 hover:bg-blue-500 text-white px-4 rounded text-sm font-bold">Ustaw Start</button>
+                                </div>
+                            </div>
+
+                            <div id="route-next-selector" class="hidden">
+                                <div class="flex justify-between items-center mb-2">
+                                    <span class="text-xs text-gray-400 uppercase font-bold">Aktualna lokalizacja:</span>
+                                    <span class="text-xs text-gray-500">Kliknij "Usuń ostatni", aby cofnąć.</span>
+                                </div>
+                                <div class="text-xl font-bold text-white mb-3 flex items-center gap-2">
+                                    <i class="fa-solid fa-location-dot text-red-500"></i> <span id="current-loc-display">---</span>
+                                </div>
+                                
+                                <label class="block text-xs text-blue-400 font-bold uppercase mb-1">Następny odcinek:</label>
+                                <div class="flex gap-2">
+                                    <select id="next-segment-select" class="flex-grow bg-gray-900 border border-gray-600 p-2 rounded text-sm">
+                                        <option>-- Wybierz kierunek --</option>
+                                    </select>
+                                    <button onclick="addSegment()" class="bg-green-600 hover:bg-green-500 text-white px-4 rounded text-sm font-bold"><i class="fa-solid fa-plus"></i> Dodaj</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="route-list" class="space-y-1 pb-10">
+                            </div>
+                        
+                        <div class="mt-4 text-center">
+                            <button onclick="resetRoute()" class="text-red-500 text-xs hover:underline">Resetuj całą trasę pociągu</button>
+                        </div>
+                    </div>
+
+                    <div id="tab-map" class="hidden h-full flex flex-col">
+                        <div class="bg-gray-800 border border-gray-700 rounded-lg flex-grow flex items-center justify-center relative overflow-hidden group">
+                            <div class="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/diagmonds-light.png')] opacity-10"></div>
+                            <div class="text-center z-10 p-10">
+                                <i class="fa-solid fa-map-location-dot text-6xl text-gray-600 mb-4 group-hover:text-blue-500 transition duration-500 group-hover:scale-110 transform"></i>
+                                <h3 class="text-2xl font-bold text-gray-300">Podgląd Mapy</h3>
+                                <p class="text-gray-500 mt-2">Funkcja dostępna wkrótce po wdrożeniu geometrii szlaków.</p>
+                                <div class="mt-6 inline-block bg-gray-700 px-4 py-2 rounded text-xs font-mono text-green-400">
+                                    Feature Flag: MAP_PREVIEW = pending
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <div id="json-modal" class="fixed inset-0 bg-black bg-opacity-80 hidden flex items-center justify-center z-[100]">
+        <div class="bg-gray-800 w-4/5 h-4/5 rounded-lg border border-gray-600 flex flex-col shadow-2xl">
+            <div class="flex justify-between items-center p-4 border-b border-gray-700 bg-gray-900 rounded-t-lg">
+                <h3 class="font-bold text-white"><i class="fa-solid fa-code mr-2"></i>pociagi.json</h3>
+                <button onclick="togglePreview()" class="text-gray-400 hover:text-white"><i class="fa-solid fa-xmark text-xl"></i></button>
+            </div>
+            <textarea id="json-preview-area" class="flex-grow bg-[#0d1117] text-green-400 font-mono text-xs p-4 resize-none focus:outline-none" readonly></textarea>
+            <div class="p-4 border-t border-gray-700 bg-gray-900 flex justify-end gap-3 rounded-b-lg">
+                <button onclick="copyToClipboard()" class="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded text-sm font-bold">Kopiuj</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- GLOBAL STATE ---
+        let trains = []; // Array of train objects
+        let currentTrainIndex = -1; // -1 means no train selected
+        let szlakiData = []; // Loaded from file
+        
+        let sessionStartTime = Date.now();
+
+        // --- INITIALIZATION ---
+        window.onload = function() {
+            // 1. Restore Session Timer
+            const savedStart = localStorage.getItem('sessionStart');
+            if (savedStart) sessionStartTime = parseInt(savedStart);
+            else localStorage.setItem('sessionStart', sessionStartTime);
+            
+            // 2. Restore Data
+            const savedTrains = localStorage.getItem('trainsData');
+            if (savedTrains) {
+                trains = JSON.parse(savedTrains);
+                renderTrainList();
+            }
+
+            // 3. Start clocks
+            startClocks();
+            updateMemoryUsage();
+        };
+
+        // --- TRAIN MANAGEMENT ---
+        function addNewTrain() {
+            const newTrain = {
+                id: Date.now().toString(36), // simple ID
+                numer: "",
+                nazwa: "",
+                tabor: "",
+                relacja_od: "",
+                relacja_do: "",
+                kalendarz: {
+                    od: "",
+                    do: "",
+                    dni: [], // [1, 2, ... 7]
+                    wyjatki: ""
+                },
+                trasa: [] // Array of segments
+            };
+            trains.push(newTrain);
+            selectTrain(trains.length - 1);
+            saveData();
+        }
+
+        function selectTrain(index) {
+            currentTrainIndex = index;
+            renderTrainList();
+            
+            // Show editor
+            document.getElementById('empty-state').classList.add('hidden');
+            document.getElementById('editor-panel').classList.remove('hidden');
+            
+            // Populate Form
+            loadTrainToForm(trains[index]);
+            
+            // Reset to first tab
+            switchTab('details');
+        }
+
+        function deleteCurrentTrain() {
+            if (currentTrainIndex === -1) return;
+            if (confirm("Czy na pewno usunąć ten pociąg?")) {
+                trains.splice(currentTrainIndex, 1);
+                currentTrainIndex = -1;
+                document.getElementById('editor-panel').classList.add('hidden');
+                document.getElementById('empty-state').classList.remove('hidden');
+                saveData();
+                renderTrainList();
+            }
+        }
+
+        function renderTrainList() {
+            const list = document.getElementById('train-list');
+            list.innerHTML = '';
+            
+            trains.forEach((train, idx) => {
+                const isActive = idx === currentTrainIndex;
+                const div = document.createElement('div');
+                div.className = `p-3 rounded cursor-pointer border transition flex flex-col gap-1 ${isActive ? 'bg-blue-900/40 border-blue-500' : 'bg-gray-800 border-gray-700 hover:bg-gray-750'}`;
+                div.onclick = () => selectTrain(idx);
+                
+                const title = train.numer || "Bez numeru";
+                const subtitle = train.nazwa || "(Brak nazwy)";
+                const routeInfo = (train.relacja_od && train.relacja_do) ? `${train.relacja_od} - ${train.relacja_do}` : 'Brak relacji';
+
+                div.innerHTML = `
+                    <div class="flex justify-between items-center">
+                        <span class="font-bold text-sm ${isActive ? 'text-white' : 'text-gray-300'}">${title}</span>
+                        ${train.tabor ? '<span class="text-[10px] bg-gray-700 px-1 rounded text-gray-400">'+train.tabor+'</span>' : ''}
+                    </div>
+                    <div class="text-xs text-blue-400 font-bold">${subtitle}</div>
+                    <div class="text-[10px] text-gray-500 truncate"><i class="fa-solid fa-arrow-right-arrow-left mr-1"></i>${routeInfo}</div>
+                `;
+                list.appendChild(div);
+            });
+        }
+
+        // --- FORM HANDLING ---
+        // Bind inputs to currentTrain object
+        function loadTrainToForm(train) {
+            // Inputs
+            document.getElementById('inp-no').value = train.numer || "";
+            document.getElementById('inp-name').value = train.nazwa || "";
+            document.getElementById('inp-stock').value = train.tabor || "";
+            document.getElementById('inp-rel-from').value = train.relacja_od || "";
+            document.getElementById('inp-rel-to').value = train.relacja_do || "";
+            
+            document.getElementById('inp-date-from').value = train.kalendarz.od || "";
+            document.getElementById('inp-date-to').value = train.kalendarz.do || "";
+            document.getElementById('inp-date-ex').value = train.kalendarz.wyjatki || "";
+
+            // Checkboxes
+            document.querySelectorAll('.day-checkbox').forEach(cb => {
+                cb.checked = train.kalendarz.dni.includes(parseInt(cb.value));
+            });
+
+            // Prepare Route Tab
+            renderRouteList();
+            updateRouteControls();
+        }
+
+        // Auto-save listeners
+        const inputs = ['inp-no', 'inp-name', 'inp-stock', 'inp-rel-from', 'inp-rel-to', 'inp-date-from', 'inp-date-to', 'inp-date-ex'];
+        inputs.forEach(id => {
+            document.getElementById(id).addEventListener('input', (e) => {
+                if(currentTrainIndex === -1) return;
+                
+                // Map ID to property
+                const train = trains[currentTrainIndex];
+                const val = e.target.value;
+                
+                if (id === 'inp-no') train.numer = val;
+                if (id === 'inp-name') train.nazwa = val;
+                if (id === 'inp-stock') train.tabor = val;
+                if (id === 'inp-rel-from') train.relacja_od = val;
+                if (id === 'inp-rel-to') train.relacja_do = val;
+                if (id === 'inp-date-from') train.kalendarz.od = val;
+                if (id === 'inp-date-to') train.kalendarz.do = val;
+                if (id === 'inp-date-ex') train.kalendarz.wyjatki = val;
+
+                saveData(); // Save & Update List if title changed
+                if(id === 'inp-no' || id === 'inp-name' || id === 'inp-rel-from') renderTrainList(); 
+            });
+        });
+
+        document.querySelectorAll('.day-checkbox').forEach(cb => {
+            cb.addEventListener('change', () => {
+                if(currentTrainIndex === -1) return;
+                const train = trains[currentTrainIndex];
+                const val = parseInt(cb.value);
+                if(cb.checked) {
+                    if(!train.kalendarz.dni.includes(val)) train.kalendarz.dni.push(val);
+                } else {
+                    train.kalendarz.dni = train.kalendarz.dni.filter(d => d !== val);
+                }
+                train.kalendarz.dni.sort();
+                saveData();
+            });
+        });
+
+        // --- ROUTING LOGIC ---
+        
+        function updateRouteControls() {
+            if(currentTrainIndex === -1) return;
+            const train = trains[currentTrainIndex];
+            
+            const startSelector = document.getElementById('route-start-selector');
+            const nextSelector = document.getElementById('route-next-selector');
+
+            if (train.trasa.length === 0) {
+                // Show Start Selector
+                startSelector.classList.remove('hidden');
+                nextSelector.classList.add('hidden');
+                
+                // Populate stations if DB loaded
+                const select = document.getElementById('start-station-select');
+                if (szlakiData.length > 0) {
+                    // Collect unique stations
+                    if(select.options.length <= 1) { // Populate only once or on reload
+                         const stations = new Set();
+                         szlakiData.forEach(s => { if(s.start) stations.add(s.start); if(s.end) stations.add(s.end); });
+                         select.innerHTML = '<option value="">-- Wybierz stację --</option>';
+                         Array.from(stations).sort().forEach(st => {
+                             select.innerHTML += `<option value="${st}">${st}</option>`;
+                         });
+                    }
+                }
+            } else {
+                // Show Next Segment Selector
+                startSelector.classList.add('hidden');
+                nextSelector.classList.remove('hidden');
+
+                // Determine current head
+                const lastSeg = train.trasa[train.trasa.length - 1];
+                const currentHead = lastSeg.do; // The destination of the last segment
+                document.getElementById('current-loc-display').innerText = currentHead;
+
+                // Populate valid next segments
+                const select = document.getElementById('next-segment-select');
+                select.innerHTML = '';
+                
+                if (szlakiData.length > 0) {
+                    const candidates = szlakiData.filter(szlak => szlak.start === currentHead || szlak.end === currentHead);
+                    if (candidates.length === 0) {
+                        select.innerHTML = '<option>Koniec trasy (ślepy tor)</option>';
+                    } else {
+                        candidates.forEach((szlak, idxInMaster) => {
+                            // Determine logic
+                            const isForward = szlak.start === currentHead;
+                            const dest = isForward ? szlak.end : szlak.start;
+                            // Check if this is not a U-turn (optional check, but good for UX)
+                            // Allow U-turns but mark them? No, just list options.
+                            
+                            const opt = document.createElement('option');
+                            // Store essential data in value to reconstruct
+                            opt.value = JSON.stringify({
+                                master_id: szlakiData.indexOf(szlak), // using index as temporary ID
+                                od: currentHead,
+                                do: dest,
+                                przez: szlak.via || null
+                            });
+                            opt.innerText = `-> ${dest} ${szlak.via ? '(przez '+szlak.via+')' : ''}`;
+                            select.appendChild(opt);
+                        });
+                    }
+                }
+            }
+        }
+
+        function startRoute() {
+            const startVal = document.getElementById('start-station-select').value;
+            if(!startVal || currentTrainIndex === -1) return;
+
+            // Creating a "Virtual" start segment? No, let's just make the first segment really explicit.
+            // Actually, we need to know where we start.
+            // Let's add a special "START" marker if we want, OR just rely on logic that the first segment has 'od' == Start.
+            // BUT wait, we need to pick a segment FROM start.
+            // My logic in v1 was: Pick Start -> Then pick connected segments.
+            // The route array stores SEGMENTS.
+            // So choosing start station just initializes the "Head".
+            
+            // To make "Head" persistent without a segment, we need a separate field or a "Start Node".
+            // Let's cheat: We won't add to `trasa` array yet. We just hide start selector and set a temp "Head".
+            // PROBLEM: If I refresh, I lose the temp Head.
+            // FIX: Add `stacja_startowa` to train object.
+            
+            // Let's update `relacja_od` automatically if empty? Maybe.
+            // Better: Add a dummy segment "START" -> "START" ? No.
+            
+            // Re-think: The user picks a Start Station.
+            // We find all segments connected to it.
+            // User picks the FIRST segment.
+            // So `startRoute` logic is actually just UI logic in this design?
+            
+            // Let's create a "Ghost" start. 
+            // We will push a "Start Point" into the route array?
+            // train.trasa = [ { type: 'start', station: 'Warszawa' }, ... segments ]
+            // This complicates JSON structure.
+            
+            // Alternative: The `trasa` array only holds segments.
+            // But we need to know the entry point of the first segment.
+            // Let's assume `train.trasa[0].od` is the start.
+            // But before we add the first segment, we need to know available options.
+            
+            // Sol: We force the user to pick the *First Segment* immediately? 
+            // No, user picked "Start Station".
+            // Let's just create a temporary object in `trasa`?
+            
+            // Let's go with: `trasa` is empty. 
+            // UI state `tempStartNode` = "Warszawa".
+            // When user adds first segment, we use `tempStartNode` as `.od`.
+            // We save `tempStartNode` in the train object to persist it if trasa is empty.
+            
+            trains[currentTrainIndex].temp_start = startVal;
+            saveData();
+            // Force UI update
+            updateRouteControls_SpecialStart(startVal);
+        }
+        
+        // Special handler for the state where we have a Start Station but 0 segments
+        function updateRouteControls_SpecialStart(stationName) {
+            document.getElementById('route-start-selector').classList.add('hidden');
+            document.getElementById('route-next-selector').classList.remove('hidden');
+            document.getElementById('current-loc-display').innerText = stationName;
+            
+            const select = document.getElementById('next-segment-select');
+            select.innerHTML = '';
+            
+            const candidates = szlakiData.filter(szlak => szlak.start === stationName || szlak.end === stationName);
+             candidates.forEach((szlak) => {
+                const isForward = szlak.start === stationName;
+                const dest = isForward ? szlak.end : szlak.start;
+                const opt = document.createElement('option');
+                opt.value = JSON.stringify({
+                    master_id: szlakiData.indexOf(szlak),
+                    od: stationName,
+                    do: dest,
+                    przez: szlak.via || null
+                });
+                opt.innerText = `-> ${dest} ${szlak.via ? '(przez '+szlak.via+')' : ''}`;
+                select.appendChild(opt);
+            });
+        }
+
+        // Override normal update if we detect the "temp start" state
+        const originalUpdate = updateRouteControls;
+        updateRouteControls = function() {
+            if(currentTrainIndex === -1) return;
+            const train = trains[currentTrainIndex];
+            
+            if(train.trasa.length === 0 && train.temp_start) {
+                updateRouteControls_SpecialStart(train.temp_start);
+            } else if (train.trasa.length === 0) {
+                 document.getElementById('route-start-selector').classList.remove('hidden');
+                 document.getElementById('route-next-selector').classList.add('hidden');
+                 // populate start dropdown logic (from original function)
+                 const select = document.getElementById('start-station-select');
+                 if (szlakiData.length > 0 && select.options.length <= 1) {
+                     const stations = new Set();
+                     szlakiData.forEach(s => { if(s.start) stations.add(s.start); if(s.end) stations.add(s.end); });
+                     select.innerHTML = '<option value="">-- Wybierz stację --</option>';
+                     Array.from(stations).sort().forEach(st => {
+                         select.innerHTML += `<option value="${st}">${st}</option>`;
+                     });
+                 }
+            } else {
+                originalUpdate();
+            }
+        }
+
+        function addSegment() {
+            const select = document.getElementById('next-segment-select');
+            if(!select.value) return;
+            
+            const val = JSON.parse(select.value);
+            // val has { master_id, od, do, przez }
+            
+            trains[currentTrainIndex].trasa.push(val);
+            // If we had a temp start, we can clear it now, as the first segment defines the start
+            delete trains[currentTrainIndex].temp_start;
+            
+            saveData();
+            renderRouteList();
+            updateRouteControls();
+        }
+
+        function resetRoute() {
+            if(confirm("Usunąć całą trasę?")) {
+                trains[currentTrainIndex].trasa = [];
+                delete trains[currentTrainIndex].temp_start;
+                saveData();
+                renderRouteList();
+                updateRouteControls();
+            }
+        }
+
+        function removeLastSegment() {
+            trains[currentTrainIndex].trasa.pop();
+            // If we popped the last one, do we have a temp start? 
+            // If trasa is empty now, we revert to start selector unless we saved the start station somewhere else.
+            // For UX simplicity: if trasa becomes empty, ask user for start station again.
+            saveData();
+            renderRouteList();
+            updateRouteControls();
+        }
+
+        function renderRouteList() {
+            const list = document.getElementById('route-list');
+            list.innerHTML = '';
+            
+            const train = trains[currentTrainIndex];
+            if(!train) return;
+
+            // Start Indicator
+            if(train.trasa.length > 0) {
+                const startNode = document.createElement('div');
+                startNode.className = "pl-4 text-xs text-gray-500 flex items-center gap-2";
+                startNode.innerHTML = `<i class="fa-regular fa-circle text-blue-500"></i> ${train.trasa[0].od}`;
+                list.appendChild(startNode);
+            } else if (train.temp_start) {
+                const startNode = document.createElement('div');
+                startNode.className = "pl-4 text-xs text-gray-500 flex items-center gap-2";
+                startNode.innerHTML = `<i class="fa-regular fa-circle text-blue-500"></i> ${train.temp_start} (Start)`;
+                list.appendChild(startNode);
+            }
+
+            train.trasa.forEach((seg, idx) => {
+                const row = document.createElement('div');
+                row.className = "flex items-stretch";
+                row.innerHTML = `
+                    <div class="w-8 flex flex-col items-center">
+                        <div class="h-full w-0.5 bg-blue-900"></div>
+                    </div>
+                    <div class="flex-grow py-2">
+                        <div class="bg-gray-800 border border-gray-700 p-2 rounded flex justify-between items-center group">
+                            <div>
+                                <div class="font-bold text-sm">${seg.do}</div>
+                                ${seg.przez ? `<div class="text-[10px] text-gray-500">przez: ${seg.przez}</div>` : ''}
+                            </div>
+                            ${idx === train.trasa.length - 1 ? 
+                                '<button onclick="removeLastSegment()" class="text-red-500 opacity-0 group-hover:opacity-100 transition"><i class="fa-solid fa-times"></i></button>' 
+                                : ''}
+                        </div>
+                    </div>
+                `;
+                list.appendChild(row);
+            });
+        }
+
+        // --- UTILS ---
+        function switchTab(tab) {
+            ['details', 'route', 'map'].forEach(t => {
+                document.getElementById(`tab-${t}`).classList.add('hidden');
+                document.getElementById(`tab-btn-${t}`).classList.remove('border-blue-500', 'text-white', 'bg-gray-700');
+                document.getElementById(`tab-btn-${t}`).classList.add('border-transparent', 'text-gray-400');
+            });
+            
+            document.getElementById(`tab-${tab}`).classList.remove('hidden');
+            const btn = document.getElementById(`tab-btn-${tab}`);
+            btn.classList.remove('border-transparent', 'text-gray-400');
+            btn.classList.add('border-blue-500', 'text-white', 'bg-gray-700');
+        }
+
+        function startClocks() {
+            setInterval(() => {
+                const now = new Date();
+                document.getElementById('current-time').innerText = now.toLocaleTimeString('pl-PL', {hour:'2-digit', minute:'2-digit'});
+                
+                const diff = Math.floor((Date.now() - sessionStartTime) / 1000);
+                const h = Math.floor(diff / 3600).toString().padStart(2, '0');
+                const m = Math.floor((diff % 3600) / 60).toString().padStart(2, '0');
+                const s = (diff % 60).toString().padStart(2, '0');
+                document.getElementById('session-timer').innerText = `${h}:${m}:${s}`;
+            }, 1000);
+        }
+
+        function updateMemoryUsage() {
+            const json = JSON.stringify(trains);
+            const bytes = new Blob([json]).size;
+            const kb = (bytes / 1024).toFixed(1);
+            document.getElementById('memory-usage').innerText = `${kb} KB`;
+        }
+
+        function saveData() {
+            localStorage.setItem('trainsData', JSON.stringify(trains));
+            updateMemoryUsage();
+            // Re-render list not strictly needed unless title changed, but handled in input listeners
+        }
+
+        function loadSzlaki(input) {
+            const file = input.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    szlakiData = JSON.parse(e.target.result);
+                    document.getElementById('db-status-text').innerHTML = `<i class="fa-solid fa-check text-green-400"></i> Baza OK (${szlakiData.length})`;
+                    // If a train is selected and route tab active, refresh it
+                    if(currentTrainIndex > -1) updateRouteControls();
+                } catch (err) { alert("Błąd JSON!"); }
+            };
+            reader.readAsText(file);
+        }
+
+        function generateExportJSON() {
+            return JSON.stringify(trains, null, 2);
+        }
+
+        function togglePreview() {
+            const modal = document.getElementById('json-modal');
+            const area = document.getElementById('json-preview-area');
+            if(modal.classList.contains('hidden')) {
+                area.value = generateExportJSON();
+                modal.classList.remove('hidden');
+            } else {
+                modal.classList.add('hidden');
+            }
+        }
+
+        function copyToClipboard() {
+            const area = document.getElementById('json-preview-area');
+            area.select();
+            document.execCommand('copy');
+            alert("Skopiowano!");
+        }
+
+        function downloadJSON() {
+            const blob = new Blob([generateExportJSON()], { type: "application/json" });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = "pociagi.json";
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        }
+
+    </script>
+</body>
+</html>
