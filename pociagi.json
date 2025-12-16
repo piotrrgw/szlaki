@@ -1,0 +1,80 @@
+[
+  {
+    "id": "mj91qk5s",
+    "numer": "18114/5",
+    "nazwa": "POBRZEŻE_test",
+    "tabor": "SKŁAD WAGONOWY",
+    "relacja_od": "Łódź Fabryczna",
+    "relacja_do": "Gdynia Główna",
+    "kalendarz": {
+      "od": "2025-12-14",
+      "do": "2026-02-25",
+      "dni": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "wyjatki": ""
+    },
+    "trasa": [
+      {
+        "master_id": 0,
+        "od": "Łódź Fabryczna",
+        "do": "Łódź Widzew",
+        "przez": "-"
+      },
+      {
+        "master_id": 11,
+        "od": "Łódź Widzew",
+        "do": "Koluszki",
+        "przez": "-"
+      },
+      {
+        "master_id": 12,
+        "od": "Koluszki",
+        "do": "Grodzisk Mazowiecki",
+        "przez": "Skierniewice"
+      },
+      {
+        "master_id": 17,
+        "od": "Grodzisk Mazowiecki",
+        "do": "Warszawa Zachodnia",
+        "przez": "Józefinów, Warszawa Włochy"
+      },
+      {
+        "master_id": 24,
+        "od": "Warszawa Zachodnia",
+        "do": "W-wa Wschodnia",
+        "przez": "W-wa Śródmieście"
+      },
+      {
+        "master_id": 35,
+        "od": "W-wa Wschodnia",
+        "do": "Działdowo",
+        "przez": "Ciechanów"
+      },
+      {
+        "master_id": 36,
+        "od": "Działdowo",
+        "do": "Iława Główna",
+        "przez": "-"
+      },
+      {
+        "master_id": 37,
+        "od": "Iława Główna",
+        "do": "Tczew",
+        "przez": "Prabuty, Malbork"
+      },
+      {
+        "master_id": 38,
+        "od": "Tczew",
+        "do": "Gdynia Główna",
+        "przez": "Gdańsk Główny"
+      }
+    ]
+  }
+]
