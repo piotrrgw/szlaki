@@ -19,7 +19,50 @@
       0
     ],
     "exceptions": [],
-    "trasa": [],
+    "trasa": [
+      {
+        "master_id": 0,
+        "od": "Łódź Fabryczna",
+        "do": "Łódź Widzew",
+        "przez": "-"
+      },
+      {
+        "master_id": 11,
+        "od": "Łódź Widzew",
+        "do": "Koluszki",
+        "przez": "-"
+      },
+      {
+        "master_id": 12,
+        "od": "Koluszki",
+        "do": "Grodzisk Mazowiecki",
+        "przez": "Skierniewice"
+      },
+      {
+        "master_id": 17,
+        "od": "Grodzisk Mazowiecki",
+        "do": "Warszawa Zachodnia",
+        "przez": "Józefinów, Warszawa Włochy"
+      },
+      {
+        "master_id": 23,
+        "od": "Warszawa Zachodnia",
+        "do": "Warszawa Wschodnia",
+        "przez": "Warszawa Centralna"
+      },
+      {
+        "master_id": 33,
+        "od": "Warszawa Wschodnia",
+        "do": "Tłuszcz",
+        "przez": "Warszawa Rembertów"
+      },
+      {
+        "master_id": 34,
+        "od": "Tłuszcz",
+        "do": "Białystok",
+        "przez": "Małkinia"
+      }
+    ],
     "temp_start": null
   },
   {
