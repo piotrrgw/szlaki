@@ -1,11 +1,12 @@
 [
   {
-    "id": "mj933a38",
-    "numer": "18114/5",
-    "nazwa": "Pobrzeże",
-    "tabor": "SKŁAD WAGONOWY",
+    "id": "mjew4yc6",
+    "numer": "1000/1",
+    "nazwa": "NAREW",
+    "tabor": "ED161",
     "relacja_od": "Łódź Fabryczna",
-    "relacja_do": "Kołobrzeg",
+    "relacja_do": "Białystok",
+    "editor": "Piotr M",
     "valid_from": "2025-12-14",
     "valid_to": "2026-03-07",
     "days": [
@@ -13,65 +14,58 @@
       2,
       3,
       4,
-      5
+      5,
+      6,
+      0
     ],
     "exceptions": [],
-    "trasa": [
-      {
-        "master_id": 0,
-        "od": "Łódź Fabryczna",
-        "do": "Łódź Widzew",
-        "przez": "-"
-      },
-      {
-        "master_id": 11,
-        "od": "Łódź Widzew",
-        "do": "Koluszki",
-        "przez": "-"
-      },
-      {
-        "master_id": 12,
-        "od": "Koluszki",
-        "do": "Grodzisk Mazowiecki",
-        "przez": "Skierniewice"
-      },
-      {
-        "master_id": 17,
-        "od": "Grodzisk Mazowiecki",
-        "do": "Warszawa Zachodnia",
-        "przez": "Józefinów, Warszawa Włochy"
-      },
-      {
-        "master_id": 24,
-        "od": "Warszawa Zachodnia",
-        "do": "W-wa Wschodnia",
-        "przez": "W-wa Śródmieście"
-      },
-      {
-        "master_id": 35,
-        "od": "W-wa Wschodnia",
-        "do": "Działdowo",
-        "przez": "Ciechanów"
-      },
-      {
-        "master_id": 36,
-        "od": "Działdowo",
-        "do": "Iława Główna",
-        "przez": "-"
-      },
-      {
-        "master_id": 37,
-        "od": "Iława Główna",
-        "do": "Tczew",
-        "przez": "Prabuty, Malbork"
-      },
-      {
-        "master_id": 38,
-        "od": "Tczew",
-        "do": "Gdynia Główna",
-        "przez": "Gdańsk Główny"
-      }
+    "trasa": [],
+    "temp_start": null
+  },
+  {
+    "id": "mjew5zmp",
+    "numer": "1100/1",
+    "nazwa": "NAREW",
+    "tabor": "ED161",
+    "relacja_od": "Białystok",
+    "relacja_do": "Łódź Fabryczna",
+    "editor": "Piotr M",
+    "valid_from": "2025-12-14",
+    "valid_to": "2026-03-07",
+    "days": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      0
     ],
+    "exceptions": [],
+    "trasa": [],
+    "temp_start": null
+  },
+  {
+    "id": "mjew7t95",
+    "numer": "1328/9",
+    "nazwa": "REYMONT",
+    "tabor": "ED160",
+    "relacja_od": "Łódź Fabryczna",
+    "relacja_do": "Kraków Główny",
+    "editor": "Piotr M",
+    "valid_from": "2025-12-14",
+    "valid_to": "2026-01-06",
+    "days": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      0
+    ],
+    "exceptions": [],
+    "trasa": [],
     "temp_start": null
   }
 ]
