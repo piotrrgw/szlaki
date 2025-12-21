@@ -11,7 +11,7 @@
 
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TRAIN MANAGER v7.1</title>
+    <title>TRAIN MANAGER v7.2</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -94,7 +94,7 @@
                 </div>
             
             <div class="p-2 border-t border-slate-100 text-center text-[10px] text-slate-400 bg-slate-50">
-                v7.1 &bull; OpenRailwayMap &bull; Piotr M 🚂 & Gemini
+                v7.2 &bull; OpenRailwayMap &bull; Piotr M 🚂 & Gemini
             </div>
         </aside>
 
@@ -112,9 +112,16 @@
                         <button onclick="switchTab('info')" id="tab-btn-info" class="h-full border-b-2 border-blue-600 text-blue-600 font-bold text-xs uppercase px-4 transition">Dane</button>
                         <button onclick="switchTab('route')" id="tab-btn-route" class="h-full border-b-2 border-transparent text-slate-500 hover:text-slate-800 font-bold text-xs uppercase px-4 transition">Trasa</button>
                     </div>
-                    <button onclick="deleteCurrentTrain()" class="text-red-500 hover:text-red-700 text-[10px] font-bold uppercase tracking-wide border border-red-100 hover:bg-red-50 px-2 py-1 rounded transition">
-                        <i class="fa-regular fa-trash-can mr-1"></i> Usuń
-                    </button>
+                    
+                    <div class="flex items-center gap-2">
+                        <button onclick="duplicateCurrentTrain()" class="text-blue-500 hover:text-blue-700 text-[10px] font-bold uppercase tracking-wide border border-blue-100 hover:bg-blue-50 px-2 py-1 rounded transition" title="Duplikuj pociąg">
+                            <i class="fa-regular fa-copy mr-1"></i> Duplikuj
+                        </button>
+                        
+                        <button onclick="deleteCurrentTrain()" class="text-red-500 hover:text-red-700 text-[10px] font-bold uppercase tracking-wide border border-red-100 hover:bg-red-50 px-2 py-1 rounded transition">
+                            <i class="fa-regular fa-trash-can mr-1"></i> Usuń
+                        </button>
+                    </div>
                 </div>
 
                 <div class="flex-1 relative overflow-hidden bg-slate-50/50">
@@ -455,6 +462,26 @@
             selectTrain(trains.length-1);
         }
 
+        function duplicateCurrentTrain() {
+            if(currentTrainIndex < 0) return;
+            // Deep copy existing train
+            const source = trains[currentTrainIndex];
+            const copy = JSON.parse(JSON.stringify(source));
+            
+            // Modify unique identifiers
+            copy.id = Date.now().toString(36);
+            copy.numer = (copy.numer || "") + " (KOPIA)";
+            
+            // Push to db
+            trains.push(copy);
+            save();
+            renderTrainList();
+            
+            // Switch to new train
+            selectTrain(trains.length - 1);
+            alert("Skopiowano pociąg!");
+        }
+
         function selectTrain(idx) {
             currentTrainIndex = idx;
             const t = trains[idx];
@@ -476,11 +503,10 @@
                 styleDayBtn(btn, t.days.includes(d));
             });
 
-            renderTrainList(); // Refresh list to update active state
+            renderTrainList();
             renderCalendar();
             renderRouteUI();
             
-            // Fix map redraw
             if(!document.getElementById('tab-route').classList.contains('hidden')) {
                 setTimeout(() => { map.invalidateSize(); drawRoute(); }, 100);
             }
@@ -500,7 +526,7 @@
                 el.className = `p-3 border-b border-slate-100 cursor-pointer hover:bg-slate-50 transition relative group ${active ? 'active-train' : 'bg-white'}`;
                 el.onclick = () => selectTrain(i);
                 
-                // DATE RANGE DISPLAY ADDED HERE
+                // DATE RANGE IN LIST
                 const dateRange = (t.valid_from && t.valid_to) 
                     ? `<div class="text-[10px] text-slate-400 mt-0.5"><i class="fa-regular fa-calendar mr-1"></i>${t.valid_from} &rarr; ${t.valid_to}</div>` 
                     : '';
