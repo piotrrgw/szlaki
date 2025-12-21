@@ -1,9 +1,17 @@
 <!DOCTYPE html>
 <html lang="pl">
 <head>
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-W05T4L1HFD"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-W05T4L1HFD');
+    </script>
+
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TRAIN MANAGER v7.0</title>
+    <title>TRAIN MANAGER v7.1</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -31,7 +39,6 @@
         .day-cancelled::after { content: '✕'; font-size: 10px; }
 
         /* Map Fixes & Z-Index Stratification */
-        /* Leaflet map pane is usually z-400. Modals need to be much higher */
         #map { z-index: 1; isolation: isolate; }
         .z-modal { z-index: 9999 !important; }
         
@@ -87,7 +94,7 @@
                 </div>
             
             <div class="p-2 border-t border-slate-100 text-center text-[10px] text-slate-400 bg-slate-50">
-                v7.0 &bull; OpenRailwayMap
+                v7.1 &bull; OpenRailwayMap &bull; Piotr M 🚂 & Gemini
             </div>
         </aside>
 
@@ -194,8 +201,7 @@
                     </div>
 
                     <div id="tab-route" class="absolute inset-0 flex flex-col md:flex-row hidden">
-                        
-                        <div class="w-full md:w-80 border-r border-slate-200 flex flex-col h-full bg-white z-10 shadow-lg">
+                        <div class="w-full md:w-80 md:shrink-0 border-r border-slate-200 flex flex-col h-1/2 md:h-full bg-white z-10 shadow-lg transition-all">
                             <div class="p-3 border-b border-slate-100 bg-white">
                                 <h4 class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Edytor Trasy</h4>
                                 
@@ -230,7 +236,7 @@
                                 </div>
                         </div>
 
-                        <div class="flex-1 relative bg-slate-100">
+                        <div class="flex-1 relative bg-slate-100 min-w-0">
                             <div id="map" class="absolute inset-0 z-0"></div>
                             <div class="absolute bottom-2 left-2 z-[5] bg-white/90 backdrop-blur px-2 py-1 text-[10px] rounded shadow border border-slate-200 text-slate-600">
                                 Warstwa: OpenRailwayMap
@@ -337,7 +343,6 @@
                 document.getElementById('g-valid-from').value = globalSettings.validFrom;
                 document.getElementById('g-valid-to').value = globalSettings.validTo;
             } else {
-                // Set inputs to defaults
                 document.getElementById('g-editor').value = globalSettings.editor;
                 document.getElementById('g-valid-from').value = globalSettings.validFrom;
                 document.getElementById('g-valid-to').value = globalSettings.validTo;
@@ -430,7 +435,6 @@
 
         // --- CORE LOGIC ---
         function addNewTrain() {
-            // Use Globals
             trains.push({
                 id: Date.now().toString(36),
                 numer: "NOWY",
@@ -438,9 +442,9 @@
                 tabor: "",
                 relacja_od: "",
                 relacja_do: "",
-                editor: globalSettings.editor, // From Global
-                valid_from: globalSettings.validFrom, // From Global
-                valid_to: globalSettings.validTo, // From Global
+                editor: globalSettings.editor,
+                valid_from: globalSettings.validFrom,
+                valid_to: globalSettings.validTo,
                 days: [1,2,3,4,5],
                 exceptions: [],
                 trasa: [],
@@ -458,13 +462,12 @@
             document.getElementById('editor-empty').classList.add('hidden');
             document.getElementById('editor-panel').classList.remove('hidden');
 
-            // Map inputs
             document.getElementById('inp-no').value = t.numer || "";
             document.getElementById('inp-name').value = t.nazwa || "";
             document.getElementById('inp-stock').value = t.tabor || "";
             document.getElementById('inp-rel-from').value = t.relacja_od || "";
             document.getElementById('inp-rel-to').value = t.relacja_do || "";
-            document.getElementById('inp-meta-editor').value = t.editor || ""; // Meta
+            document.getElementById('inp-meta-editor').value = t.editor || "";
             document.getElementById('cal-from').value = t.valid_from || "";
             document.getElementById('cal-to').value = t.valid_to || "";
 
@@ -473,7 +476,7 @@
                 styleDayBtn(btn, t.days.includes(d));
             });
 
-            renderTrainList();
+            renderTrainList(); // Refresh list to update active state
             renderCalendar();
             renderRouteUI();
             
@@ -487,7 +490,6 @@
             const list = document.getElementById('train-list');
             list.innerHTML = '';
             
-            // Search filter
             const filter = document.getElementById('search-input').value.toLowerCase();
 
             trains.forEach((t, i) => {
@@ -498,18 +500,23 @@
                 el.className = `p-3 border-b border-slate-100 cursor-pointer hover:bg-slate-50 transition relative group ${active ? 'active-train' : 'bg-white'}`;
                 el.onclick = () => selectTrain(i);
                 
+                // DATE RANGE DISPLAY ADDED HERE
+                const dateRange = (t.valid_from && t.valid_to) 
+                    ? `<div class="text-[10px] text-slate-400 mt-0.5"><i class="fa-regular fa-calendar mr-1"></i>${t.valid_from} &rarr; ${t.valid_to}</div>` 
+                    : '';
+
                 el.innerHTML = `
                     <div class="flex justify-between items-center mb-1">
                         <span class="font-bold text-sm text-slate-800 font-mono">${t.numer || '---'}</span>
                         ${t.trasa.length > 0 ? '<i class="fa-solid fa-route text-green-500 text-[10px]"></i>' : ''}
                     </div>
                     <div class="text-[11px] text-slate-500 truncate">${t.nazwa || '(bez nazwy)'}</div>
+                    ${dateRange}
                 `;
                 list.appendChild(el);
             });
         }
         
-        // Search Listener
         document.getElementById('search-input').addEventListener('input', renderTrainList);
 
         // --- CALENDAR ---
@@ -669,7 +676,7 @@
                 if(id=='inp-rel-to')t.relacja_do=e.target.value; if(id=='inp-meta-editor')t.editor=e.target.value;
                 if(id=='cal-from'){t.valid_from=e.target.value;renderCalendar();}
                 if(id=='cal-to'){t.valid_to=e.target.value;renderCalendar();}
-                save(); if(id=='inp-no'||id=='inp-name')renderTrainList();
+                save(); if(id=='inp-no'||id=='inp-name'||id=='cal-from'||id=='cal-to')renderTrainList();
             });
         });
     </script>
