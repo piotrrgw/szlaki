@@ -11,7 +11,7 @@
 
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TRAIN MANAGER v7.2</title>
+    <title>TRAIN MANAGER v7.3 (ZRJ)</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -94,7 +94,7 @@
                 </div>
             
             <div class="p-2 border-t border-slate-100 text-center text-[10px] text-slate-400 bg-slate-50">
-                v7.2 &bull; OpenRailwayMap &bull; Piotr M 🚂 & Gemini
+                v7.3 &bull; OpenRailwayMap &bull; Piotr M 🚂 & Gemini
             </div>
         </aside>
 
@@ -172,7 +172,7 @@
                             </div>
 
                             <div class="bg-white rounded border border-slate-200 p-5 shadow-sm">
-                                <div class="flex justify-between items-end mb-4">
+                                <div class="flex flex-col md:flex-row justify-between items-end mb-4 gap-2">
                                     <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider">Kalendarz Kursowania</h3>
                                     <div class="flex gap-2 text-[10px] uppercase font-bold">
                                         <span class="px-2 py-0.5 rounded bg-blue-100 text-blue-600">Kursuje</span>
@@ -181,7 +181,7 @@
                                     </div>
                                 </div>
 
-                                <div class="flex flex-wrap gap-4 mb-4 bg-slate-50 p-3 rounded border border-slate-100">
+                                <div class="flex flex-wrap items-end gap-4 mb-4 bg-slate-50 p-3 rounded border border-slate-100">
                                     <div>
                                         <label class="block text-[10px] text-slate-500 font-bold mb-1">Ważny od</label>
                                         <input type="date" id="cal-from" class="bg-white border border-slate-300 rounded px-2 py-1 text-sm outline-none focus:border-blue-500">
@@ -190,6 +190,14 @@
                                         <label class="block text-[10px] text-slate-500 font-bold mb-1">Ważny do</label>
                                         <input type="date" id="cal-to" class="bg-white border border-slate-300 rounded px-2 py-1 text-sm outline-none focus:border-blue-500">
                                     </div>
+                                    
+                                    <div class="min-w-[180px]">
+                                        <label class="block text-[10px] text-blue-600 font-bold mb-1"><i class="fa-solid fa-calendar-week mr-1"></i>Szybki wybór (ZRJ)</label>
+                                        <select id="zrj-select" class="w-full bg-white border border-blue-200 text-blue-800 rounded px-2 py-1 text-xs outline-none focus:border-blue-500" onchange="applyZRJ(this.value)">
+                                            <option value="">-- Wybierz cykl --</option>
+                                        </select>
+                                    </div>
+
                                     <div class="flex-1 flex justify-end items-end gap-1">
                                         <button class="day-btn w-8 h-8 rounded border text-xs font-bold transition" data-day="1">Pn</button>
                                         <button class="day-btn w-8 h-8 rounded border text-xs font-bold transition" data-day="2">Wt</button>
@@ -326,6 +334,21 @@
     </div>
 
     <script>
+        // --- ZRJ CONFIGURATION ---
+        const ZRJ_PERIODS = [
+            { label: "--- 2024/2025 ---", from: "", to: "" },
+            { label: "Roczny (15.12.24 - 13.12.25)", from: "2024-12-15", to: "2025-12-13" },
+            { label: "1) ZRJ (15 XII - 08 III)", from: "2024-12-15", to: "2025-03-08" },
+            { label: "2) ZRJ (09 III - 14 VI)", from: "2025-03-09", to: "2025-06-14" },
+            { label: "3) ZRJ (15 VI - 30 VIII)", from: "2025-06-15", to: "2025-08-30" },
+            { label: "4) ZRJ (31 VIII - 08 XI)", from: "2025-08-31", to: "2025-11-08" },
+            { label: "5) ZRJ (09 XI - 13 XII)", from: "2025-11-09", to: "2025-12-13" },
+            
+            { label: "--- 2025/2026 ---", from: "", to: "" },
+            { label: "Roczny (14.12.25 - 12.12.26)", from: "2025-12-14", to: "2026-12-12" },
+            { label: "1) ZRJ (14 XII - 14 III)", from: "2025-12-14", to: "2026-03-14" } // Przybliżona data I cyklu
+        ];
+
         // --- GLOBAL VARIABLES ---
         let trains = [];
         let szlakiDB = [];
@@ -354,6 +377,21 @@
                 document.getElementById('g-valid-from').value = globalSettings.validFrom;
                 document.getElementById('g-valid-to').value = globalSettings.validTo;
             }
+
+            // Init ZRJ Select
+            const zrjSel = document.getElementById('zrj-select');
+            ZRJ_PERIODS.forEach(z => {
+                const opt = document.createElement('option');
+                opt.text = z.label;
+                if(z.from && z.to) {
+                    opt.value = JSON.stringify({f:z.from, t:z.to});
+                } else {
+                    opt.disabled = true;
+                    opt.style.fontWeight = "bold";
+                    opt.style.color = "#ccc";
+                }
+                zrjSel.add(opt);
+            });
 
             initMap();
             
@@ -407,6 +445,24 @@
             globalSettings.validTo = document.getElementById('g-valid-to').value;
             localStorage.setItem('global_settings', JSON.stringify(globalSettings));
             alert("Ustawienia zapisane!");
+        }
+
+        // --- ZRJ LOGIC ---
+        function applyZRJ(val) {
+            if(!val || currentTrainIndex < 0) return;
+            const range = JSON.parse(val);
+            const t = trains[currentTrainIndex];
+            
+            t.valid_from = range.f;
+            t.valid_to = range.t;
+            
+            // Update inputs
+            document.getElementById('cal-from').value = range.f;
+            document.getElementById('cal-to').value = range.t;
+            
+            save();
+            renderCalendar();
+            renderTrainList(); // Update list dates
         }
 
         // --- MAP ENGINE ---
@@ -464,20 +520,15 @@
 
         function duplicateCurrentTrain() {
             if(currentTrainIndex < 0) return;
-            // Deep copy existing train
             const source = trains[currentTrainIndex];
             const copy = JSON.parse(JSON.stringify(source));
             
-            // Modify unique identifiers
             copy.id = Date.now().toString(36);
             copy.numer = (copy.numer || "") + " (KOPIA)";
             
-            // Push to db
             trains.push(copy);
             save();
             renderTrainList();
-            
-            // Switch to new train
             selectTrain(trains.length - 1);
             alert("Skopiowano pociąg!");
         }
@@ -497,6 +548,7 @@
             document.getElementById('inp-meta-editor').value = t.editor || "";
             document.getElementById('cal-from').value = t.valid_from || "";
             document.getElementById('cal-to').value = t.valid_to || "";
+            document.getElementById('zrj-select').value = ""; // Reset ZRJ select
 
             document.querySelectorAll('.day-btn').forEach(btn => {
                 const d = parseInt(btn.dataset.day);
@@ -526,7 +578,6 @@
                 el.className = `p-3 border-b border-slate-100 cursor-pointer hover:bg-slate-50 transition relative group ${active ? 'active-train' : 'bg-white'}`;
                 el.onclick = () => selectTrain(i);
                 
-                // DATE RANGE IN LIST
                 const dateRange = (t.valid_from && t.valid_to) 
                     ? `<div class="text-[10px] text-slate-400 mt-0.5"><i class="fa-regular fa-calendar mr-1"></i>${t.valid_from} &rarr; ${t.valid_to}</div>` 
                     : '';
