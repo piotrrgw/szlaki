@@ -8280,7 +8280,7 @@
     "id": 52,
     "start": "Bydgoszcz Główna",
     "end": "Tczew",
-    "via": "Maksymilianowo, Terespol Pomorski, Laskowice Pomorskie, Smętowo, Peplin",
+    "via": "Maksymilianowo, Terespol Pomorski, Laskowice Pomorskie, Smętowo, Pelplin",
     "geometry": {
       "type": "LineString",
       "coordinates": [
@@ -9913,30 +9913,6 @@
     "start": "Szczecin Dąbie",
     "end": "Szczecin Główny",
     "via": "Szczecin Port Centr."
-  },
-  {
-    "id": 63,
-    "start": "Poznań Główny",
-    "end": "Zbąszynek",
-    "via": "Opalenica, Nowy Tomyśl"
-  },
-  {
-    "id": 64,
-    "start": "Zbąszynek",
-    "end": "Zielona Góra Główna",
-    "via": "-"
-  },
-  {
-    "id": 65,
-    "start": "Zbąszynek",
-    "end": "Rzepin",
-    "via": "Świebodzin"
-  },
-  {
-    "id": 66,
-    "start": "Zbąszynek",
-    "end": "Gorzów Wielkopolski",
-    "via": "Międzyrzecz, Skwierzyna"
   },
   {
     "id": 67,
@@ -12572,5 +12548,26 @@
         ]
       ]
     }
+  },
+  {
+    "id": 102,
+    "start": "Warszawa Gdańska",
+    "end": "Działdowo",
+    "via": "Warszawa ZOO, Ciechanów",
+    "geometry": null
+  },
+  {
+    "id": 103,
+    "start": "Warszawa Gdańska",
+    "end": "Tłuszcz",
+    "via": "Warszawa Zoo, Warszawa Rembertów, Wołomin",
+    "geometry": null
+  },
+  {
+    "id": 104,
+    "start": "Gajweniki",
+    "end": "Kutno",
+    "via": "Poddębice, Kraski, Kłodawa",
+    "geometry": null
   }
 ]
