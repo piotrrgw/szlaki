@@ -3,605 +3,271 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Edytor Bazy Szlaków (Master)</title>
-    
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-W05T4L1HFD"></script> 
-    <script> window.dataLayer = window.dataLayer || []; function gtag(){dataLayer.push(arguments);} gtag('js', new Date()); gtag('config', 'G-W05T4L1HFD'); </script>
+    <title>Edytor Bazy Szlaków v2.0</title>
 
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-W05T4L1HFD"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'G-W05T4L1HFD');
+    </script>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" />
+    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
 
     <style>
-        body, html { margin: 0; padding: 0; height: 100%; font-family: 'Segoe UI', sans-serif; overflow: hidden; }
-        #app { display: flex; height: 100vh; }
-        
-        /* PANEL BOCZNY */
-        #sidebar {
-            width: 450px;
-            background: #fff;
-            border-right: 1px solid #ccc;
-            display: flex;
-            flex-direction: column;
-            z-index: 1000;
-            box-shadow: 2px 0 15px rgba(0,0,0,0.1);
-        }
-
-        .header {
-            background: #2c3e50; color: white; padding: 15px;
-        }
-        .header h2 { margin: 0; font-size: 1.1rem; }
-        .data-source { font-size: 0.75rem; color: #bbb; margin-top: 5px; }
-        .source-tag { font-weight: bold; color: #4db6ac; }
-
-        .list-controls { padding: 10px; background: #f8f9fa; border-bottom: 1px solid #ddd; }
-        #search-box { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
-        
-        #list-container { flex-grow: 1; overflow-y: auto; background: #f1f1f1; }
-        
-        .segment-item {
-            background: white; border-bottom: 1px solid #e0e0e0; padding: 10px; cursor: pointer;
-            display: flex; align-items: center; transition: background 0.2s;
-        }
-        .segment-item:hover { background: #e9ecef; }
-        .segment-item.active { background: #d1ecf1; border-left: 5px solid #17a2b8; }
-        
-        .status-dot {
-            width: 12px; height: 12px; border-radius: 50%; margin-right: 10px; flex-shrink: 0;
-            background: #ccc; 
-        }
-        .status-dot.done { background: #28a745; }
-        
-        .seg-details { flex-grow: 1; }
-        .seg-title { font-weight: bold; font-size: 0.9rem; display: block; }
-        .seg-via { font-size: 0.75rem; color: #666; }
-
-        /* PANEL EDYCJI */
-        #edit-panel {
-            padding: 15px; background: white; border-top: 2px solid #ddd;
-            display: none; 
-        }
-        .panel-row { margin-bottom: 5px; }
-        .panel-row label { font-size: 0.75rem; color: #555; display: block;}
-        .panel-row input { width: 100%; padding: 5px; border: 1px solid #ccc; border-radius: 3px; }
-
-        .btn {
-            border: none; padding: 10px; border-radius: 4px; cursor: pointer; font-weight: bold; width: 100%; margin-top: 5px;
-            font-size: 0.9rem; transition: 0.2s;
-        }
-        .btn-green { background: #28a745; color: white; } .btn-green:hover { background: #218838; }
-        .btn-blue { background: #007bff; color: white; } .btn-blue:hover { background: #0056b3; }
-        .btn-orange { background: #fd7e14; color: white; } .btn-orange:hover { background: #e36d0a; }
-
-        #map { flex-grow: 1; height: 100%; }
-        
-        .footer {
-            text-align: center; padding: 5px; font-size: 0.7rem; color: #aaa; background: #2c3e50; border-top: 1px solid #444;
-        }
-
-        /* MODAL */
-        #json-modal {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.7); z-index: 2000;
-            display: none; justify-content: center; align-items: center;
-        }
-        #json-modal-content {
-            background: white; padding: 20px; border-radius: 8px; width: 80%; max-width: 900px;
-            max-height: 80%; overflow: hidden;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-            display: flex; flex-direction: column;
-        }
-        #json-modal-content pre {
-            background: #f4f4f4; padding: 10px; border: 1px solid #ddd; border-radius: 4px;
-            white-space: pre-wrap; word-wrap: break-word; font-size: 0.8rem;
-            flex-grow: 1; overflow: auto; margin-top: 10px;
-        }
-        
-        /* Zmiana stylu przycisków w modalu na flex */
-        #json-modal-content .button-group {
-            display: flex; 
-            gap: 10px; 
-            margin-top: 10px;
-        }
-        #json-modal-content .button-group .btn {
-            width: 50%;
-            margin-top: 0; /* Usuwamy domyślny margin-top z .btn */
-        }
+        body { font-family: 'Inter', sans-serif; }
+        /* Ukrywanie scrollbara dla estetyki, ale zachowanie funkcjonalności */
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
 </head>
-<body>
+<body class="h-screen flex flex-col md:flex-row overflow-hidden bg-slate-100">
 
-<div id="app">
-    <div id="sidebar">
-        <div class="header">
-            <h2>Baza Szlaków (101 odcinków)</h2>
-            <div class="data-source">Źródło danych: <span id="source-display" class="source-tag">Ładowanie...</span></div>
-            <div style="font-size: 0.8rem; margin-top:5px;">Postęp geometrii: <span id="stats-counter">0/0</span></div>
-        </div>
-
-        <div class="list-controls">
-            <button class="btn btn-blue" onclick="addNewSegment()" style="margin-bottom:10px;">+ Dodaj szlak</button>
-            <input type="text" id="search-box" placeholder="Szukaj (np. Kalisz)..." onkeyup="renderList()">
-        </div>
-
-        <div id="list-container"></div>
-
-        <div id="edit-panel">
-            <div class="panel-row">
-                <label>Początek:</label>
-                <input type="text" id="edit-start" onchange="updateMeta()">
-            </div>
-            <div class="panel-row">
-                <label>Koniec:</label>
-                <input type="text" id="edit-end" onchange="updateMeta()">
-            </div>
-            <div class="panel-row">
-                <label>Przez:</label>
-                <input type="text" id="edit-via" onchange="updateMeta()">
-            </div>
-            
-            <hr style="border:0; border-top:1px solid #eee; margin:10px 0;">
-            
-            <button class="btn btn-orange" onclick="autoLocate()">📍 Znajdź stacje (Auto-Start)</button>
-            <button class="btn btn-green" onclick="saveGeometry()">💾 ZAPISZ GEOMETRIĘ</button>
-            <button class="btn" style="background:#dc3545; color:white; margin-top:10px;" onclick="deleteSegment()">Usuń szlak</button>
-        </div>
-
-        <div style="padding:10px; background:#f8f9fa; border-top:1px solid #ccc;">
-            <button class="btn btn-blue" onclick="viewJSON()" style="margin-bottom: 5px;">👀 Podgląd JSON</button>
-            <button class="btn btn-green" onclick="exportJSON()">📤 Pobierz szlaki_master.json</button>
-            <small style="display:block; text-align:center; color:#666; margin-top:5px;">Zapisz plik na dysku i nadpisz na serwerze.</small>
-        </div>
-
-        <div class="footer">
-            Admin Panel | Współautorzy: Gemini & Piotr M 🚂
-        </div>
-    </div>
-
-    <div id="map"></div>
-</div>
-
-<div id="json-modal" onclick="closeModal(event)">
-    <div id="json-modal-content" onclick="event.stopPropagation()">
-        <h3>Podgląd szlaki_master.json</h3>
-        <pre id="json-output"></pre>
-        <div class="button-group">
-            <button class="btn btn-green" onclick="copyJSON()">📋 Kopiuj cały kod</button>
-            <button class="btn btn-blue" onclick="document.getElementById('json-modal').style.display='none'">Zamknij</button>
-        </div>
-    </div>
-</div>
-<script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
-
-<script>
-    // --- 1. DANE Z PLIKU CSV (101 pozycji) ---
-    const initialData = [
-        {id: 1, start: "Łódź Fabryczna", end: "Łódź Widzew", via: "-"},
-        {id: 2, start: "Łódź Widzew", end: "Łódź Chojny", via: "Łódź Dąbrowa"},
-        {id: 3, start: "Łódź Widzew", end: "Łódź Chojny", via: "Łódź Olechów"},
-        {id: 4, start: "Łódź Chojny", end: "Łódź Lublinek", via: "-"},
-        {id: 5, start: "Łódź Chojny", end: "Łódź Kaliska", via: "-"},
-        {id: 6, start: "Łódź Kaliska", end: "Łódź Lublinek", via: "-"},
-        {id: 7, start: "Łódź Kaliska", end: "Zgierz", via: "Łódź Żabieniec"},
-        {id: 8, start: "Łódź Widzew", end: "Zgierz", via: "Łódź Arturówek"},
-        {id: 9, start: "Zgierz", end: "Kutno", via: "Łęczyca"},
-        {id: 10, start: "Zgierz", end: "Łowicz Główny", via: "Stryków"},
-        {id: 11, start: "Łowicz Główny", end: "Kutno", via: "-"},
-        {id: 12, start: "Łódź Widzew", end: "Koluszki", via: "-"},
-        {id: 13, start: "Koluszki", end: "Grodzisk Maz.", via: "Skierniewice"},
-        {id: 14, start: "Koluszki", end: "Łowicz Główny", via: "Skierniewice Park, Bełchów"},
-        {id: 15, start: "Łowicz Główny", end: "W-wa Zachodnia", via: "Sochaczew, W-wa Włochy"},
-        {id: 16, start: "Łowicz Główny", end: "Grodzisk Maz.", via: "Bełchów, Żyrardów"},
-        {id: 17, start: "Łowicz Główny", end: "W-wa Główna Towarowa", via: "Sochaczew"},
-        {id: 18, start: "Grodzisk Maz.", end: "W-wa Zachodnia", via: "W-wa Włochy"},
-        {id: 19, start: "Grodzisk Maz.", end: "W-wa Gdańska", via: "W-wa Młynów"},
-        {id: 20, start: "Grodzisk Maz.", end: "W-wa Główna Towarowa", via: "-"},
-        {id: 21, start: "Grodzisk Maz.", end: "Idzikowice", via: "Szeligi"},
-        {id: 22, start: "W-wa Główna Towarowa", end: "W-wa Gdańska", via: "W-wa Jelonki"},
-        {id: 23, start: "W-wa Główna Towarowa", end: "W-wa Zachodnia", via: "W-wa Odolany"},
-        {id: 24, start: "W-wa Zachodnia", end: "W-wa Wschodnia", via: "W-wa Centralna"},
-        {id: 25, start: "W-wa Zachodnia", end: "W-wa Wschodnia", via: "W-wa Śródmieście"},
-        {id: 26, start: "W-wa Zachodnia", end: "W-wa Główna.", via: "-"},
-        {id: 27, start: "W-wa Wschodnia", end: "W-wa Grochów", via: "-"},
-        {id: 28, start: "W-wa Gdańska", end: "W-wa Wschodnia", via: "W-wa ZOO"},
-        {id: 29, start: "W-wa Gdańska", end: "W-wa Grochów", via: "W-wa ZOO"},
-        {id: 30, start: "W-wa Wschodnia", end: "Pilawa", via: "W-wa Olszynka Grochowska, Otwock"},
-        {id: 31, start: "W-wa Wschodnia", end: "Pilawa", via: "W-wa Wsch Towarowa, Otwock"},
-        {id: 32, start: "W-wa Wschodnia", end: "Pilawa", via: "W-wa Rembertów, Grzebowilk"},
-        {id: 33, start: "Pilawa", end: "Lublin Główny", via: "Dęblin, Nałęczów"},
-        {id: 34, start: "W-wa Wschodnia", end: "Tłuszcz", via: "W-wa Rembertów"},
-        {id: 35, start: "Tłuszcz", end: "Białystok", via: "Małkinia"},
-        {id: 36, start: "W-wa Wschodnia", end: "Działdowo", via: "Ciechanów"},
-        {id: 37, start: "Działdowo", end: "Iława Główna", via: "-"},
-        {id: 38, start: "Iława Główna", end: "Tczew", via: "Prabuty, Malbork"},
-        {id: 39, start: "Tczew", end: "Gdynia Główna", via: "Gdańsk Główny"},
-        {id: 40, start: "Działdowo", end: "Olsztyn Główny", via: "Nidzica"},
-        {id: 41, start: "Iława Główna", end: "Olsztyn Główny", via: "Ostróda"},
-        {id: 42, start: "Łódź Lublinek", end: "Gajewniki", via: "Pabianice"},
-        {id: 43, start: "Gajewniki", end: "Kalisz", via: "Sieradz"},
-        {id: 44, start: "Gajewniki", end: "Koło", via: "Poddębice, Barłogi"},
-        {id: 45, start: "Gajewniki", end: "Inowrocław Rąbinek", via: "Poddębice, Piotrków Kujawski"},
-        {id: 46, start: "Kalisz", end: "Ostrów Wielkopolski", via: "-"},
-        {id: 47, start: "Kalisz", end: "Jarocin", via: "Pleszew"},
-        {id: 48, start: "Ostrów Wielkopolski", end: "Jarocin", via: "Pleszew"},
-        {id: 49, start: "Jarocin", end: "Poznań Główny", via: "Środa Wielkopolska"},
-        {id: 50, start: "Jarocin", end: "Poznań Główny", via: "Września"},
-        {id: 51, start: "Kutno", end: "Bydgoszcz Główna", via: "Toruń Główny"},
-        {id: 52, start: "Bydgoszcz Główna", end: "Tczew", via: "Laskowice Pomorskie"},
-        {id: 53, start: "Kutno", end: "Płock Trzepowo", via: "Gostynin"},
-        {id: 54, start: "Kutno", end: "Swarzędz", via: "-"},
-        {id: 55, start: "Kutno", end: "Swarzędz", via: "Września"},
-        {id: 56, start: "Swarzędz", end: "Poznań Główny", via: "Poznań Wschód"},
-        {id: 57, start: "Swarzędz", end: "Poznań Główny", via: "Poznań Franowo"},
-        {id: 58, start: "Poznań Główny", end: "Piła Główna", via: "Oborniki Wielkopolskie, Chodzież"},
-        {id: 59, start: "Poznań Główny", end: "Krzyż", via: "Poznań Wola, Szamotuły"},
-        {id: 60, start: "Krzyż", end: "Szczecin Dąbie", via: "Choszczno"},
-        {id: 61, start: "Szczecin Dąbie", end: "Szczecin Główny", via: "Dziewoklicz"},
-        {id: 62, start: "Szczecin Dąbie", end: "Szczecin Główny", via: "Szczecin Port Centr."},
-        {id: 63, start: "Poznań Główny", end: "Zbąszynek", via: "Opalenica, Nowy Tomyśl"},
-        {id: 64, start: "Zbąszynek", end: "Zielona Góra Główna", via: "-"},
-        {id: 65, start: "Zbąszynek", end: "Rzepin", via: "Świebodzin"},
-        {id: 66, start: "Zbąszynek", end: "Gorzów Wielkopolski", via: "Międzyrzecz, Skwierzyna"},
-        {id: 67, start: "Kutno", end: "Inowrocław Rąbinek", via: "Zamków, Piotrków Kujawski"},
-        {id: 68, start: "Inowrocław Rąbinek", end: "Poznań Główny", via: "Gniezno, Kobylnica"},
-        {id: 69, start: "Inowrocław Rąbinek", end: "Poznań Główny", via: "Gniezno, Września"},
-        {id: 70, start: "Inowrocław Rąbinek", end: "Bydgoszcz Główna", via: "Złotniki Kujawskie, Brzoza Bydgoska"},
-        {id: 71, start: "Inowrocław Rąbinek", end: "Bydgoszcz Główna", via: "Złotniki Kujawskie, Bydgoszcz Leśna"},
-        {id: 72, start: "Ostrów Wielkopolski", end: "Wrocław Główny", via: "Twardogóra"},
-        {id: 73, start: "Ostrów Wielkopolski", end: "Wrocław Główny", via: "Krotoszyn, Milicz"},
-        {id: 74, start: "Łódź Widzew", end: "Piotrków Trybunalski", via: "Bęzelin"},
-        {id: 75, start: "Koluszki", end: "Piotrków Trybunalski", via: "-"},
-        {id: 76, start: "Piotrków Trybunalski", end: "Częstochowa", via: "Radomsko, Wyczerpy"},
-        {id: 77, start: "Częstochowa", end: "Lubliniec", via: "Herby Stare"},
-        {id: 78, start: "Lubliniec", end: "Wrocław Główny", via: "Opole, Brzeg"},
-        {id: 79, start: "Częstochowa", end: "Zawiercie", via: "Poraj"},
-        {id: 80, start: "Zawiercie", end: "Dorota", via: "Dąbrowa Górnicza Huta Katowice"},
-        {id: 81, start: "Zawiercie", end: "Dorota", via: "Przemiarki, Kozioł"},
-        {id: 82, start: "Dorota", end: "Jaworzno Szczakowa", via: "Sosnowiec Maczki"},
-        {id: 83, start: "Dorota", end: "Katowice", via: "Sosnowiec Dańdówka, Sosnowiec Południowy"},
-        {id: 84, start: "Dorota", end: "Katowice", via: "Sosnowiec Maczki, Mysłowice"},
-        {id: 85, start: "Zawiercie", end: "Katowice", via: "Dąbrowa Górnicza, Sosnowiec Główny"},
-        {id: 86, start: "Katowice", end: "Jaworzno Szczakowa", via: "Mysłowice"},
-        {id: 87, start: "Jaworzno Szczakowa", end: "Kraków Główny", via: "Trzebinia, Kraków Mydlniki"},
-        {id: 88, start: "Częstochowa", end: "Koniecpol", via: "Julianka"},
-        {id: 89, start: "Koniecpol", end: "Kozłów", via: "Starzyny"},
-        {id: 90, start: "Kozłów", end: "Kraków Główny", via: "Miechów, Zastów"},
-        {id: 91, start: "Kraków Główny", end: "Kraków Płaszów", via: "-"},
-        {id: 92, start: "Koniecpol", end: "Włoszczowa Północ", via: "Żelisławice"},
-        {id: 93, start: "Łódź Widzew", end: "Tomaszów Mazowiecki", via: "-"},
-        {id: 94, start: "Koluszki", end: "Tomaszów Mazowiecki", via: "Słotwiny"},
-        {id: 95, start: "Tomaszów Mazowiecki", end: "Idzikowice", via: "-"},
-        {id: 96, start: "Tomaszów Mazowiecki", end: "Idzikowice", via: "Radzice"},
-        {id: 97, start: "Idzikowice", end: "Włoszczowa Północ", via: "Opoczno Południe"},
-        {id: 98, start: "Włoszczowa Północ", end: "Kozłów", via: "Starzyny"},
-        {id: 99, start: "Włoszczowa Północ", end: "Zawiercie", via: "Góra Włodowska"},
-        {id: 100, start: "Tomaszów Mazowiecki", end: "Radom Główny", via: "Drzewica, Przysucha"},
-        {id: 101, start: "Radom Główny", end: "Lublin Główny", via: "Pionki, Nałęczów"}
-    ];
-
-    let db = [];
-    let selectedId = null;
-
-    // --- MAPA ---
-    var map = L.map('map').setView([52.0, 19.2], 6);
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', { attribution: '&copy; OpenStreetMap &copy; CARTO' }).addTo(map);
-    L.tileLayer('https://{s}.tiles.openrailwaymap.org/standard/{z}/{x}/{y}.png', { maxZoom: 19, attribution: 'OpenRailwayMap' }).addTo(map);
-
-    var drawnItems = new L.FeatureGroup().addTo(map);
-    var drawControl = new L.Control.Draw({
-        edit: { featureGroup: drawnItems },
-        draw: {
-            polygon: false, rectangle: false, circle: false, circlemarker: false, marker: false,
-            polyline: { shapeOptions: { color: '#007bff', weight: 4 }, metric: true }
-        }
-    });
-    map.addControl(drawControl);
-
-    map.on(L.Draw.Event.CREATED, function (e) {
-        drawnItems.clearLayers();
-        drawnItems.addLayer(e.layer);
-    });
-
-    // --- INICJALIZACJA DANYCH ---
-    async function initData() {
-        const statusEl = document.getElementById('source-display');
+    <div id="sidebar" class="w-full md:w-[480px] bg-white flex flex-col shadow-xl z-20 h-full transition-transform transform md:translate-x-0">
         
-        // 1. Próba pobrania z serwera (master file)
-        try {
-            // timestamp by ominąć cache
-            const response = await fetch('szlaki_master.json?t=' + new Date().getTime());
-            if (response.ok) {
-                const json = await response.json();
-                if(Array.isArray(json) && json.length > 0) {
-                    db = json;
-                    statusEl.innerText = "SERWER (szlaki_master.json)";
-                    statusEl.style.color = "green";
-                    renderList();
-                    return;
+        <div class="bg-slate-800 text-white p-4 flex justify-between items-center shadow-md shrink-0">
+            <div>
+                <h1 class="text-lg font-bold flex items-center gap-2">
+                    <i class="fa-solid fa-route text-blue-400"></i> Edytor Szlaków
+                </h1>
+                <p class="text-xs text-slate-400">Baza: szlaki_master.json</p>
+            </div>
+            <div class="flex gap-2">
+                <button onclick="downloadJSON()" class="bg-green-600 hover:bg-green-700 text-white text-xs font-bold py-2 px-3 rounded shadow transition flex items-center gap-1">
+                    <i class="fa-solid fa-floppy-disk"></i> <span class="hidden sm:inline">Zapisz</span>
+                </button>
+            </div>
+        </div>
+
+        <div class="p-3 bg-slate-50 border-b border-slate-200 shrink-0">
+            <input type="text" id="search-input" onkeyup="filterList()" placeholder="Szukaj (np. Zgierz)..." 
+                   class="w-full bg-white border border-slate-300 text-slate-700 text-sm rounded px-3 py-2 outline-none focus:border-blue-500 transition">
+        </div>
+
+        <div id="list-container" class="flex-1 overflow-y-auto p-2 space-y-2 bg-slate-100 relative">
+            <div class="text-center text-slate-400 mt-10">
+                <i class="fa-solid fa-spinner fa-spin text-2xl"></i><br>Ładowanie danych...
+            </div>
+        </div>
+
+        <div class="bg-slate-900 text-slate-400 text-[10px] p-2 text-center border-t border-slate-700 shrink-0">
+            Wersja aplikacji: v2.0 | Współautorzy: Gemini & Piotr M 🚂
+        </div>
+    </div>
+
+    <div class="flex-1 relative z-10 h-full">
+        <div id="map" class="w-full h-full"></div>
+        
+        <button onclick="toggleSidebar()" class="md:hidden absolute top-4 left-4 z-[1000] bg-white text-slate-800 p-3 rounded-full shadow-lg border border-slate-200">
+            <i class="fa-solid fa-bars"></i>
+        </button>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
+
+    <script>
+        // --- KONFIGURACJA I DANE ---
+        let map, drawnItems;
+        let szlakiData = []; // Główna tablica danych
+        let geoJsonLayerGroup;
+
+        // --- INICJALIZACJA ---
+        window.onload = async () => {
+            initMap();
+            await loadData();
+        };
+
+        // 1. Inicjalizacja Mapy
+        function initMap() {
+            map = L.map('map').setView([51.759, 19.457], 11); // Łódź
+            
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; OpenStreetMap contributors',
+                maxZoom: 19
+            }).addTo(map);
+
+            // Warstwa do rysowania
+            drawnItems = new L.FeatureGroup();
+            map.addLayer(drawnItems);
+            
+            // Grupa dla wczytanych szlaków
+            geoJsonLayerGroup = L.layerGroup().addTo(map);
+
+            // Kontrolki edycji (Leaflet.Draw)
+            const drawControl = new L.Control.Draw({
+                edit: { featureGroup: drawnItems },
+                draw: {
+                    polygon: false, circle: false, rectangle: false, marker: false, circlemarker: false,
+                    polyline: { shapeOptions: { color: '#3388ff', weight: 4 } }
                 }
+            });
+            map.addControl(drawControl);
+
+            // Obsługa zdarzeń rysowania
+            map.on(L.Draw.Event.CREATED, function (e) {
+                const layer = e.layer;
+                drawnItems.addLayer(layer);
+                // Tutaj można dodać logikę dodawania nowego szlaku do szlakiData
+                alert("Narysowano nowy kształt. Aby dodać go do bazy, wymagana jest dodatkowa logika formularza (w tej wersji skupiamy się na edycji kolejności).");
+            });
+        }
+
+        // 2. Pobieranie Danych
+        async function loadData() {
+            try {
+                const response = await fetch('szlaki_master.json');
+                if (!response.ok) throw new Error("Błąd sieci");
+                szlakiData = await response.json();
+                renderList();
+                renderMapShapes();
+            } catch (error) {
+                console.error(error);
+                document.getElementById('list-container').innerHTML = `
+                    <div class="text-red-500 text-center mt-5 p-4 bg-red-50 rounded border border-red-200">
+                        <i class="fa-solid fa-circle-exclamation text-xl mb-2"></i><br>
+                        Nie udało się wczytać pliku <b>szlaki_master.json</b>.<br>
+                        Upewnij się, że plik jest w tym samym folderze.
+                    </div>`;
             }
-        } catch(e) {
-            console.log("Brak pliku na serwerze lub błąd sieci.");
         }
 
-        // 2. Fallback do LocalStorage
-        const local = localStorage.getItem('szlakiDB');
-        if (local) {
-            db = JSON.parse(local);
-            statusEl.innerText = "Lokalna pamięć przeglądarki";
-            statusEl.style.color = "orange";
-        } else {
-            // 3. Fallback do wbudowanej listy CSV
-            db = JSON.parse(JSON.stringify(initialData));
-            statusEl.innerText = "Domyślna lista (101 pozycji)";
-            statusEl.style.color = "blue";
-        }
-        renderList();
-    }
+        // 3. Renderowanie Listy (z funkcją zmiany kolejności)
+        function renderList() {
+            const container = document.getElementById('list-container');
+            const searchVal = document.getElementById('search-input').value.toLowerCase();
+            container.innerHTML = '';
 
-    // --- LOGIKA UI ---
-    function renderList() {
-        const list = document.getElementById('list-container');
-        const filter = document.getElementById('search-box').value.toLowerCase();
-        list.innerHTML = '';
-        
-        let done = 0;
-        db.forEach(item => {
-            const hasGeo = item.geometry && item.geometry.coordinates && item.geometry.coordinates.length > 0;
-            if(hasGeo) done++;
+            szlakiData.forEach((item, index) => {
+                // Filtrowanie
+                const text = `${item.start} ${item.end} ${item.via} ${item.id}`.toLowerCase();
+                if (!text.includes(searchVal)) return;
 
-            const txt = `${item.id} ${item.start} ${item.end} ${item.via || ''}`.toLowerCase();
-            if (txt.includes(filter)) {
-                const div = document.createElement('div');
-                div.className = `segment-item ${selectedId === item.id ? 'active' : ''}`;
-                div.onclick = () => selectSegment(item.id);
-                div.innerHTML = `
-                    <div class="status-dot ${hasGeo ? 'done' : ''}"></div>
-                    <div class="seg-details">
-                        <span class="seg-title">${item.id}. ${item.start} - ${item.end}</span>
-                        <span class="seg-via">${item.via !== '-' ? item.via : ''}</span>
+                // Tworzenie elementu listy
+                const el = document.createElement('div');
+                el.className = "bg-white border border-slate-200 rounded-lg p-3 shadow-sm hover:shadow-md transition flex gap-3 items-center group";
+                
+                // --- SEKCJA PRZYCISKÓW KOLEJNOŚCI (NOWOŚĆ) ---
+                const controls = document.createElement('div');
+                controls.className = "flex flex-col gap-1";
+                
+                // Przycisk GÓRA
+                const btnUp = document.createElement('button');
+                btnUp.innerHTML = '<i class="fa-solid fa-chevron-up"></i>';
+                btnUp.className = `w-8 h-8 rounded flex items-center justify-center text-xs transition 
+                    ${index === 0 ? 'text-slate-200 cursor-not-allowed' : 'bg-slate-100 hover:bg-blue-100 text-slate-600 hover:text-blue-600'}`;
+                if (index > 0) btnUp.onclick = () => moveItem(index, -1);
+
+                // Przycisk DÓŁ
+                const btnDown = document.createElement('button');
+                btnDown.innerHTML = '<i class="fa-solid fa-chevron-down"></i>';
+                btnDown.className = `w-8 h-8 rounded flex items-center justify-center text-xs transition 
+                    ${index === szlakiData.length - 1 ? 'text-slate-200 cursor-not-allowed' : 'bg-slate-100 hover:bg-blue-100 text-slate-600 hover:text-blue-600'}`;
+                if (index < szlakiData.length - 1) btnDown.onclick = () => moveItem(index, 1);
+
+                controls.appendChild(btnUp);
+                controls.appendChild(btnDown);
+                
+                // --- TREŚĆ ---
+                const content = document.createElement('div');
+                content.className = "flex-1 cursor-pointer";
+                content.onclick = () => zoomToRoute(index);
+                content.innerHTML = `
+                    <div class="flex justify-between items-start mb-1">
+                        <span class="bg-slate-800 text-white text-[10px] px-1.5 py-0.5 rounded font-mono">ID: ${item.id}</span>
                     </div>
+                    <div class="font-bold text-slate-800 text-sm leading-tight">${item.start} <i class="fa-solid fa-arrow-right text-slate-400 text-xs mx-1"></i> ${item.end}</div>
+                    <div class="text-xs text-slate-500 mt-1">Przez: <span class="font-semibold text-blue-600">${item.via}</span></div>
                 `;
-                list.appendChild(div);
+
+                el.appendChild(controls);
+                el.appendChild(content);
+                container.appendChild(el);
+            });
+        }
+
+        // 4. Logika Zmiany Kolejności (CORE)
+        function moveItem(index, direction) {
+            // direction: -1 (góra), 1 (dół)
+            if (direction === -1 && index > 0) {
+                // Swap
+                [szlakiData[index], szlakiData[index - 1]] = [szlakiData[index - 1], szlakiData[index]];
+            } else if (direction === 1 && index < szlakiData.length - 1) {
+                // Swap
+                [szlakiData[index], szlakiData[index + 1]] = [szlakiData[index + 1], szlakiData[index]];
             }
-        });
-        document.getElementById('stats-counter').innerText = `${done} / ${db.length}`;
-    }
+            // Odśwież widok
+            renderList();
+            // Opcjonalnie: zaznacz na liście, że dokonano zmian (można dodać flagę "isDirty")
+        }
 
-    function selectSegment(id) {
-        selectedId = id;
-        renderList();
-        const item = db.find(x => x.id === id);
-        
-        document.getElementById('edit-panel').style.display = 'block';
-        document.getElementById('edit-start').value = item.start;
-        document.getElementById('edit-end').value = item.end;
-        document.getElementById('edit-via').value = item.via;
+        function filterList() {
+            renderList();
+        }
 
-        drawnItems.clearLayers();
-        if (item.geometry) {
-            L.geoJSON(item.geometry, {
-                onEachFeature: function(feature, layer) {
-                    if(layer instanceof L.Polyline) {
-                        const poly = L.polyline(layer.getLatLngs(), {color: '#007bff', weight: 4});
-                        drawnItems.addLayer(poly);
-                        map.fitBounds(poly.getBounds(), {padding:[50,50]});
-                    }
+        // 5. Wizualizacja na mapie
+        function renderMapShapes() {
+            geoJsonLayerGroup.clearLayers();
+            szlakiData.forEach((item, idx) => {
+                if (item.geometry) {
+                    const layer = L.geoJSON(item.geometry, {
+                        style: { color: '#64748b', weight: 4, opacity: 0.6 }
+                    }).bindPopup(`<b>${item.start} - ${item.end}</b><br>ID: ${item.id}`);
+                    
+                    // Hover effect
+                    layer.on('mouseover', function() { this.setStyle({ color: '#2563eb', weight: 6, opacity: 1 }); });
+                    layer.on('mouseout', function() { this.setStyle({ color: '#64748b', weight: 4, opacity: 0.6 }); });
+                    
+                    geoJsonLayerGroup.addLayer(layer);
                 }
             });
         }
-    }
 
-    function updateMeta() {
-        if(!selectedId) return;
-        const item = db.find(x => x.id === selectedId);
-        item.start = document.getElementById('edit-start').value;
-        item.end = document.getElementById('edit-end').value;
-        item.via = document.getElementById('edit-via').value;
-        saveAll();
-    }
+        function zoomToRoute(index) {
+            // Znajdź warstwę odpowiadającą temu szlakowi
+            // W tej prostej implementacji czyścimy i rysujemy tylko wybrany (jako highlight) lub centrujemy
+            const item = szlakiData[index];
+            if(!item.geometry) return;
+            
+            const tempLayer = L.geoJSON(item.geometry);
+            map.fitBounds(tempLayer.getBounds(), { padding: [50, 50] });
 
-    function saveGeometry() {
-        if(!selectedId) return;
-        const layers = drawnItems.getLayers();
-        const item = db.find(x => x.id === selectedId);
-        
-        if(layers.length === 0) {
-            item.geometry = null;
-        } else {
-            item.geometry = layers[0].toGeoJSON().geometry;
+            // Highlight na mapie (opcjonalne)
+            renderMapShapes(); // Reset stylów
+            // Tutaj można dodać kod, który konkretnie "podświetli" wybraną warstwę w geoJsonLayerGroup
         }
-        saveAll();
-        alert("Geometria zapisana!");
-    }
 
-    function addNewSegment() {
-        const maxId = db.reduce((max, item) => (item.id > max ? item.id : max), 0);
-        const newId = maxId + 1;
-        db.push({ id: newId, start: "Nowy", end: "Szlak", via: "-", geometry: null });
-        saveAll();
-        selectSegment(newId);
-    }
-
-    function deleteSegment() {
-        if(!selectedId || !confirm("Usunąć szlak?")) return;
-        db = db.filter(x => x.id !== selectedId);
-        selectedId = null;
-        document.getElementById('edit-panel').style.display = 'none';
-        drawnItems.clearLayers();
-        saveAll();
-    }
-
-    function saveAll() {
-        localStorage.setItem('szlakiDB', JSON.stringify(db));
-        renderList();
-    }
-
-    /**
-     * Funkcja do podglądu sformatowanego JSON-a
-     */
-    function viewJSON() {
-        const jsonOutput = document.getElementById('json-output');
-        const modal = document.getElementById('json-modal');
-        
-        // Format JSON z wcięciem na 2 spacje dla czytelności
-        jsonOutput.textContent = JSON.stringify(db, null, 2);
-        modal.style.display = 'flex';
-    }
-    
-    /**
-     * NOWA FUNKCJA: Kopiowanie całego kodu JSON do schowka
-     */
-    function copyJSON() {
-        const jsonOutput = document.getElementById('json-output');
-        
-        if (navigator.clipboard) {
-            // Nowoczesna metoda
-            navigator.clipboard.writeText(jsonOutput.textContent)
-                .then(() => {
-                    alert("Kod JSON został skopiowany do schowka!");
-                })
-                .catch(err => {
-                    console.error('Błąd podczas kopiowania:', err);
-                    alert("Błąd podczas kopiowania kodu. Spróbuj zaznaczyć ręcznie.");
-                });
-        } else {
-            // Awaryjna metoda (mniej niezawodna, ale zapewnia skopiowanie)
-            const range = document.createRange();
-            range.selectNode(jsonOutput);
-            window.getSelection().removeAllRanges();
-            window.getSelection().addRange(range);
-            try {
-                document.execCommand('copy');
-                alert("Kod JSON został skopiowany do schowka! (Metoda awaryjna)");
-            } catch (err) {
-                alert("Błąd podczas kopiowania kodu. Schowek niedostępny.");
-            }
-            window.getSelection().removeAllRanges();
+        // 6. Zapis Pliku (Download)
+        function downloadJSON() {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(szlakiData, null, 2));
+            const downloadAnchorNode = document.createElement('a');
+            downloadAnchorNode.setAttribute("href", dataStr);
+            downloadAnchorNode.setAttribute("download", "szlaki_master.json");
+            document.body.appendChild(downloadAnchorNode);
+            downloadAnchorNode.click();
+            downloadAnchorNode.remove();
         }
-    }
 
-    /**
-     * Funkcja do zamykania modala przez kliknięcie w tło
-     */
-    function closeModal(event) {
-        if (event.target.id === 'json-modal') {
-            event.target.style.display = 'none';
-        }
-    }
-    
-    /**
-     * Funkcja do pobierania (eksporu) JSON-a
-     */
-    function exportJSON() {
-        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(db, null, 2));
-        const a = document.createElement('a');
-        a.href = dataStr;
-        a.download = "szlaki_master.json";
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-    }
-
-    // Funkcja pomocnicza: opóźnienie
-    function delay(ms) {
-        return new Promise(resolve => setTimeout(resolve, ms));
-    }
-
-    // ZMIENIONA FUNKCJA autoLocate (z opóźnieniem)
-    async function autoLocate() {
-        if(!selectedId) return;
-        const item = db.find(x => x.id === selectedId);
-        
-        // 1. Zbierz wszystkie punkty (start, via, end)
-        const startStation = item.start;
-        const endStation = item.end;
-        
-        let stations = [startStation];
-        
-        if (item.via && item.via !== '-') {
-            // Czyści tekst i dzieli po przecinku, uwzględniając różne separatory i usuwając puste ciągi
-            const viaStations = item.via.split(/,\s*/).map(s => s.trim()).filter(s => s.length > 0);
-            stations = stations.concat(viaStations);
-        }
-        
-        stations.push(endStation);
-
-        // Tworzy zapytania dla każdej stacji
-        const stationQueries = stations.map(s => `${s} station`);
-        const queryList = stationQueries.map((q, i) => `${i + 1}. ${q.replace(' station', '')}`).join('\n');
-
-        if(confirm(`Szukam ${stations.length} stacji (z opóźnieniem 1s na zapytanie):\n${queryList}`)) {
-            try {
-                const locations = [];
-                const MIN_DELAY_MS = 1000; // Minimalne opóźnienie 1 sekunda, aby uniknąć blokady przez Nominatim
-                let totalStationsFound = 0;
-
-                for (let i = 0; i < stationQueries.length; i++) {
-                    const q = stationQueries[i];
-                    
-                    // Wyszukaj i poczekaj
-                    const loc = await fetchLoc(q);
-                    locations.push(loc);
-
-                    if (loc) {
-                        totalStationsFound++;
-                        console.log(`Znalazłem stację ${i + 1}/${stations.length}: ${stations[i]}`);
-                    } else {
-                        console.log(`Nie znaleziono stacji ${i + 1}/${stations.length}: ${stations[i]}`);
-                    }
-                    
-                    // Opóźnienie po każdym zapytaniu
-                    if (i < stationQueries.length - 1) {
-                         await delay(MIN_DELAY_MS);
-                    }
-                }
-                
-                // 3. Filtruj nieznalezione i twórz listę współrzędnych
-                const foundLocations = locations.filter(loc => loc !== null);
-                
-                if(foundLocations.length >= 2) {
-                    drawnItems.clearLayers();
-                    
-                    // Rysuj Polyline z wszystkich znalezionych punktów w kolejności
-                    const line = L.polyline(foundLocations, {color: '#007bff', weight: 4});
-                    drawnItems.addLayer(line);
-                    
-                    // Dodaj markery dla znalezionych stacji
-                    stations.forEach((stationName, index) => {
-                        if (locations[index]) {
-                            // Używamy domyślnej ikony
-                            L.marker(locations[index]).addTo(drawnItems).bindPopup(`${stationName} (${index+1}/${stations.length})`);
-                        }
-                    });
-
-                    map.fitBounds(line.getBounds(), {padding:[50,50]});
-                    
-                    alert(`Znalazłem ${totalStationsFound} z ${stations.length} stacji! Dopasuj linię do torów.`);
-                } else {
-                    alert(`Znaleziono zbyt mało stacji (${totalStationsFound}/${stations.length}). Sprawdź nazwy stacji.`);
-                }
-            } catch(err) { 
-                console.error("Błąd API Nominatim:", err);
-                alert("Błąd API podczas lokalizowania stacji. (Sprawdź konsolę, czy serwer Nominatim nie blokuje dostępu)"); 
+        // RWD Toggle
+        function toggleSidebar() {
+            const sb = document.getElementById('sidebar');
+            sb.classList.toggle('-translate-x-full');
+            // Jeśli jest ukryty (translate-x-full na mobile), usuń to, jeśli nie, dodaj.
+            // W Tailwind klasa 'md:translate-x-0' trzyma go na miejscu na desktopie.
+            // Dla mobile domyślnie dodajmy klasę 'absolute' lub podobną logikę w CSS.
+            // Tutaj prosta logika:
+            if (sb.style.transform === 'translateX(-100%)') {
+                sb.style.transform = 'translateX(0)';
+            } else {
+                sb.style.transform = 'translateX(-100%)';
             }
         }
-    }
-
-    async function fetchLoc(q) {
-        const r = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&limit=1`);
-        const d = await r.json();
-        return d.length ? [parseFloat(d[0].lat), parseFloat(d[0].lon)] : null;
-    }
-
-    // Fix ikon Draw
-    const style = document.createElement('style');
-    style.innerHTML = `.leaflet-draw-toolbar a { background-image: url('https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/images/spritesheet.png'); }`;
-    document.head.appendChild(style);
-
-    // Start
-    initData();
-</script>
-
+    </script>
 </body>
 </html>
