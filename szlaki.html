@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Edytor Bazy Szlaków v3.0</title>
+    <title>Edytor Bazy Szlaków v3.1</title>
     
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-W05T4L1HFD"></script> 
     <script> window.dataLayer = window.dataLayer || []; function gtag(){dataLayer.push(arguments);} gtag('js', new Date()); gtag('config', 'G-W05T4L1HFD'); </script>
@@ -60,7 +60,7 @@
         .seg-title { font-weight: bold; font-size: 0.85rem; display: block; }
         .seg-via { font-size: 0.75rem; color: #666; }
 
-        /* PRZYCISKI KOLEJNOŚCI (Nowe) */
+        /* PRZYCISKI KOLEJNOŚCI */
         .order-controls {
             display: flex; flex-direction: column; gap: 2px;
         }
@@ -84,12 +84,13 @@
 
         .btn {
             border: none; padding: 8px; border-radius: 4px; cursor: pointer; font-weight: bold; width: 100%; margin-top: 5px;
-            font-size: 0.85rem; transition: 0.2s;
+            font-size: 0.85rem; transition: 0.2s; display: flex; justify-content: center; align-items: center; gap: 5px;
         }
         .btn-green { background: #28a745; color: white; } .btn-green:hover { background: #218838; }
         .btn-blue { background: #007bff; color: white; } .btn-blue:hover { background: #0056b3; }
         .btn-orange { background: #fd7e14; color: white; } .btn-orange:hover { background: #e36d0a; }
         .btn-red { background: #dc3545; color: white; } .btn-red:hover { background: #c82333; }
+        .btn-grey { background: #6c757d; color: white; } .btn-grey:hover { background: #5a6268; }
 
         #map { flex-grow: 1; height: 100%; }
         
@@ -126,7 +127,7 @@
 <div id="app">
     <div id="sidebar">
         <div class="header">
-            <h2>Baza Szlaków (Edytor v3.0)</h2>
+            <h2>Baza Szlaków (Edytor v3.1)</h2>
             <div class="data-source">Źródło: <span id="source-display" class="source-tag">Ładowanie...</span></div>
             <div style="font-size: 0.8rem; margin-top:5px;">Postęp geometrii: <span id="stats-counter">0/0</span></div>
         </div>
@@ -163,12 +164,22 @@
         </div>
 
         <div style="padding:10px; background:#f8f9fa; border-top:1px solid #ccc;">
-            <button class="btn btn-blue" onclick="viewJSON()" style="margin-bottom: 5px;">👀 Podgląd JSON</button>
-            <button class="btn btn-green" onclick="exportJSON()">📤 Pobierz szlaki_master.json</button>
+            <div style="display: flex; gap: 5px;">
+                <button class="btn btn-grey" onclick="viewJSON()" style="width: 50%">👀 Podgląd</button>
+                <button class="btn btn-green" onclick="exportJSON()" style="width: 50%">📥 Pobierz</button>
+            </div>
+            
+            <hr style="margin: 8px 0; border: 0; border-top: 1px solid #ddd;">
+            
+            <input type="file" id="file-input" accept=".json" style="display: none;" onchange="importFromFile(this)">
+            
+            <button class="btn btn-blue" onclick="document.getElementById('file-input').click()">
+                <i class="fa-solid fa-folder-open"></i> Wczytaj z pliku (Offline)
+            </button>
         </div>
 
         <div class="footer">
-            Wersja aplikacji: v3.0 | Współautorzy: Gemini & Piotr M 🚂
+            Wersja aplikacji: v3.1 | Współautorzy: Gemini & Piotr M 🚂
         </div>
     </div>
 
@@ -190,22 +201,11 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
 
 <script>
-    // --- 1. DANE ZAPASOWE (Oryginalna lista 101 szlaków - zachowana jako fallback) ---
-    const initialData = [
-        {id: 1, start: "Łódź Fabryczna", end: "Łódź Widzew", via: "-"},
-        {id: 2, start: "Łódź Widzew", end: "Łódź Chojny", via: "Łódź Dąbrowa"},
-        {id: 3, start: "Łódź Widzew", end: "Łódź Chojny", via: "Łódź Olechów"},
-        // ... (dla oszczędności miejsca w kodzie wynikowym, skrypt załaduje dane z pliku. Jeśli pliku nie będzie, odtworzy strukturę)
-        // Jeśli chcesz mieć tu pełne 101 linii jako twardy backup, wklej je z oryginału.
-        // Poniżej zostawiam przykładowe, aby kod działał:
-        {id: 4, start: "Łódź Chojny", end: "Łódź Lublinek", via: "-"}
-    ];
-    // W pełnej wersji v3.0, zalecam polegać na pliku szlaki_master.json, ale zachowuję logikę fallbacku.
-
+    // --- 1. ZMIENNE GLOBALNE ---
     let db = [];
     let selectedId = null;
 
-    // --- MAPA (Zachowano OpenRailwayMap) ---
+    // --- MAPA ---
     var map = L.map('map').setView([52.0, 19.2], 6);
     L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', { attribution: '&copy; OpenStreetMap &copy; CARTO' }).addTo(map);
     L.tileLayer('https://{s}.tiles.openrailwaymap.org/standard/{z}/{x}/{y}.png', { maxZoom: 19, attribution: 'OpenRailwayMap' }).addTo(map);
@@ -229,35 +229,90 @@
     async function initData() {
         const statusEl = document.getElementById('source-display');
         
+        // 1. Najpierw sprawdź pamięć lokalną
+        const local = localStorage.getItem('szlakiDB');
+        if (local) {
+            try {
+                db = JSON.parse(local);
+                statusEl.innerHTML = '<span style="color:orange"><i class="fa-solid fa-triangle-exclamation"></i> Pamięć przeglądarki</span>';
+                addResetButton();
+                renderList();
+                return;
+            } catch (e) { console.error("Błąd pamięci lokalnej", e); }
+        }
+
+        // 2. Jeśli pamięć pusta, spróbuj pobrać plik z serwera
         try {
             const response = await fetch('szlaki_master.json?t=' + new Date().getTime());
             if (response.ok) {
                 const json = await response.json();
                 if(Array.isArray(json) && json.length > 0) {
                     db = json;
-                    statusEl.innerText = "szlaki_master.json (Serwer)";
-                    statusEl.style.color = "green";
+                    statusEl.innerText = "szlaki_master.json (Plik)";
+                    statusEl.style.color = "#4db6ac";
                     renderList();
                     return;
                 }
             }
         } catch(e) { console.log("Brak pliku na serwerze."); }
 
-        const local = localStorage.getItem('szlakiDB');
-        if (local) {
-            db = JSON.parse(local);
-            statusEl.innerText = "Pamięć lokalna";
-            statusEl.style.color = "orange";
-        } else {
-            // Tutaj normalnie byłby pełen fallback do initialData
-            db = JSON.parse(JSON.stringify(initialData));
-            statusEl.innerText = "Dane Domyślne (Demo)";
-            statusEl.style.color = "blue";
-        }
-        renderList();
+        statusEl.innerText = "Brak danych / Nowa baza";
     }
 
-    // --- LOGIKA UI (Z dodanymi przyciskami kolejności) ---
+    function addResetButton() {
+        const header = document.querySelector('.header');
+        if(!document.getElementById('reset-btn')) {
+            const resetBtn = document.createElement('button');
+            resetBtn.id = 'reset-btn';
+            resetBtn.className = 'mini-btn'; 
+            resetBtn.style.cssText = "float:right; margin-top:-20px; background:#dc3545; color:white; width:auto; padding:2px 8px; border:none;";
+            resetBtn.innerText = "Wyczyść pamięć";
+            resetBtn.onclick = () => {
+                if(confirm("Czy na pewno usunąć zmiany z pamięci przeglądarki i spróbować wczytać plik z serwera?")) {
+                    localStorage.removeItem('szlakiDB');
+                    location.reload();
+                }
+            };
+            header.appendChild(resetBtn);
+        }
+    }
+
+    // --- IMPORT Z PLIKU (OFFLINE) ---
+    function importFromFile(input) {
+        const file = input.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const json = JSON.parse(e.target.result);
+                if (Array.isArray(json)) {
+                    if(confirm(`Wczytano plik zawierający ${json.length} szlaków. Czy chcesz ZASTĄPIĆ obecną bazę tymi danymi?`)) {
+                        db = json;
+                        saveAll(); // Zapis do LocalStorage
+                        renderList();
+                        
+                        // Aktualizacja statusu
+                        const statusEl = document.getElementById('source-display');
+                        statusEl.innerHTML = '<span style="color:blue"><i class="fa-solid fa-file-import"></i> Wczytano z pliku</span>';
+                        addResetButton();
+                        
+                        alert("Baza została zaktualizowana!");
+                    }
+                } else {
+                    alert("Błąd: Wybrany plik nie zawiera poprawnej struktury (nie jest tablicą JSON).");
+                }
+            } catch (err) {
+                alert("Błąd parsowania JSON: " + err.message);
+            }
+        };
+        reader.readAsText(file);
+        // Reset inputa, żeby można było wczytać ten sam plik ponownie w razie potrzeby
+        input.value = '';
+    }
+
+
+    // --- LOGIKA UI ---
     function renderList() {
         const list = document.getElementById('list-container');
         const filter = document.getElementById('search-box').value.toLowerCase();
@@ -273,11 +328,10 @@
                 const div = document.createElement('div');
                 div.className = `segment-item ${selectedId === item.id ? 'active' : ''}`;
                 
-                // 1. Panel Przycisków (NOWE)
+                // 1. Panel Przycisków
                 const btns = document.createElement('div');
                 btns.className = 'order-controls';
                 
-                // Góra
                 if (index > 0) {
                     const up = document.createElement('button');
                     up.className = 'mini-btn';
@@ -286,7 +340,6 @@
                     btns.appendChild(up);
                 }
                 
-                // Dół
                 if (index < db.length - 1) {
                     const down = document.createElement('button');
                     down.className = 'mini-btn';
@@ -295,15 +348,14 @@
                     btns.appendChild(down);
                 }
 
-                // Insert After
                 const insert = document.createElement('button');
                 insert.className = 'mini-btn insert-btn';
                 insert.innerHTML = '<i class="fa-solid fa-level-down-alt"></i>';
-                insert.title = "Wstaw ten element za ID...";
+                insert.title = "Wstaw za...";
                 insert.onclick = (e) => { e.stopPropagation(); moveAfter(index); };
                 btns.appendChild(insert);
                 
-                // 2. Treść (Oryginalna)
+                // 2. Treść
                 const content = document.createElement('div');
                 content.className = 'segment-content';
                 content.onclick = () => selectSegment(item.id);
@@ -323,16 +375,12 @@
         document.getElementById('stats-counter').innerText = `${done} / ${db.length}`;
     }
 
-    // --- LOGIKA ZMIANY KOLEJNOŚCI (NOWE FUNKCJE) ---
+    // --- ZMIANA KOLEJNOŚCI ---
     function moveItem(index, direction) {
         const newIndex = index + direction;
         if (newIndex < 0 || newIndex >= db.length) return;
-        
-        // Swap
         [db[index], db[newIndex]] = [db[newIndex], db[index]];
-        
-        // Jeśli przenosimy element który jest edytowany, nic się nie dzieje złego,
-        // bo selectSegment opiera się na ID, a ID zostaje przy obiekcie.
+        saveAll();
         renderList();
     }
 
@@ -341,36 +389,30 @@
         if (!targetIdInput) return;
         const targetId = parseInt(targetIdInput);
         
-        // Logika z poprzedniej wersji v2.1
-        const itemToMove = db[currentIndex]; // referencja
+        const itemToMove = db[currentIndex]; 
         const targetIndex = db.findIndex(x => x.id === targetId);
 
         if (targetIndex === -1) { alert("Nie znaleziono ID."); return; }
         if (targetIndex === currentIndex) return;
 
-        // Usuń ze starego miejsca
         db.splice(currentIndex, 1);
-        
-        // Znajdź nowy index celu (bo tablica się przesunęła)
         const newTargetIndex = db.findIndex(x => x.id === targetId);
-        
-        // Wstaw ZA (index + 1)
         db.splice(newTargetIndex + 1, 0, itemToMove);
         
+        saveAll();
         renderList();
     }
 
     function fixIds() {
-        if (!confirm("UWAGA: Czy chcesz przenumerować wszystkie szlaki od 1 do N zgodnie z obecną kolejnością na liście?")) return;
-        db.forEach((item, index) => {
-            item.id = index + 1;
-        });
+        if (!confirm("UWAGA: Czy chcesz przenumerować wszystkie szlaki od 1 do N?")) return;
+        db.forEach((item, index) => { item.id = index + 1; });
+        saveAll();
         renderList();
-        if(selectedId) selectSegment(selectedId); // Odśwież panel edycji jeśli ID się zmieniło
-        alert("ID naprawione. Pamiętaj o zapisaniu pliku!");
+        if(selectedId) selectSegment(selectedId);
+        alert("ID naprawione.");
     }
 
-    // --- LOGIKA ORYGINALNA (ZACHOWANA) ---
+    // --- EDYCJA ---
     function selectSegment(id) {
         selectedId = id;
         renderList();
@@ -415,16 +457,18 @@
             item.geometry = layers[0].toGeoJSON().geometry;
         }
         saveAll();
-        alert("Geometria zapisana w pamięci przeglądarki. Aby zapisać na stałe, pobierz plik JSON.");
+        renderList();
+        alert("Zapisano geometrię!");
     }
 
     function addNewSegment() {
         const maxId = db.reduce((max, item) => (item.id > max ? item.id : max), 0);
-        const newId = maxId + 1;
-        db.push({ id: newId, start: "Nowy", end: "Szlak", via: "-", geometry: null });
+        db.push({ id: maxId + 1, start: "Nowy", end: "Szlak", via: "-", geometry: null });
         saveAll();
         renderList();
-        // Scroll to bottom optionally
+        // Scroll to bottom
+        const list = document.getElementById('list-container');
+        list.scrollTop = list.scrollHeight;
     }
 
     function deleteSegment() {
@@ -434,31 +478,67 @@
         document.getElementById('edit-panel').style.display = 'none';
         drawnItems.clearLayers();
         saveAll();
+        renderList();
     }
 
     function saveAll() {
         localStorage.setItem('szlakiDB', JSON.stringify(db));
-        renderList();
     }
 
-    function viewJSON() {
-        const jsonOutput = document.getElementById('json-output');
-        const modal = document.getElementById('json-modal');
-        jsonOutput.textContent = JSON.stringify(db, null, 2);
-        modal.style.display = 'flex';
+    // --- AUTO-LOCATE ---
+    function delay(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
+    async function autoLocate() {
+        if(!selectedId) return;
+        const item = db.find(x => x.id === selectedId);
+        const stations = [item.start];
+        if (item.via && item.via !== '-') {
+            item.via.split(/,\s*/).forEach(s => { if(s.trim()) stations.push(s.trim()); });
+        }
+        stations.push(item.end);
+
+        if(confirm(`Szukam ${stations.length} stacji...`)) {
+            try {
+                const locations = [];
+                for (let i = 0; i < stations.length; i++) {
+                    const loc = await fetchLoc(stations[i] + ' station');
+                    locations.push(loc);
+                    if(i < stations.length - 1) await delay(1100); 
+                }
+                const validLocs = locations.filter(l => l !== null);
+                if(validLocs.length >= 2) {
+                    drawnItems.clearLayers();
+                    const line = L.polyline(validLocs, {color: '#007bff', weight: 4});
+                    drawnItems.addLayer(line);
+                    stations.forEach((name, idx) => {
+                        if(locations[idx]) L.marker(locations[idx]).addTo(drawnItems).bindPopup(name);
+                    });
+                    map.fitBounds(line.getBounds(), {padding:[50,50]});
+                    alert(`Znaleziono ${validLocs.length} stacji.`);
+                } else { alert("Za mało znalezionych stacji."); }
+            } catch(e) { alert("Błąd API: " + e.message); }
+        }
     }
-    
+    async function fetchLoc(q) {
+        try {
+            const r = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&limit=1`);
+            const d = await r.json();
+            return d.length ? [parseFloat(d[0].lat), parseFloat(d[0].lon)] : null;
+        } catch(e) { return null; }
+    }
+
+    // --- IMPORT/EXPORT JSON ---
+    function viewJSON() {
+        document.getElementById('json-output').textContent = JSON.stringify(db, null, 2);
+        document.getElementById('json-modal').style.display = 'flex';
+    }
     function copyJSON() {
-        const jsonOutput = document.getElementById('json-output');
-        navigator.clipboard.writeText(jsonOutput.textContent)
-            .then(() => alert("Skopiowano JSON!"))
+        navigator.clipboard.writeText(document.getElementById('json-output').textContent)
+            .then(() => alert("Skopiowano!"))
             .catch(() => alert("Błąd kopiowania."));
     }
-
     function closeModal(event) {
         if (event.target.id === 'json-modal') event.target.style.display = 'none';
     }
-    
     function exportJSON() {
         const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(db, null, 2));
         const a = document.createElement('a');
@@ -469,59 +549,7 @@
         a.remove();
     }
 
-    // --- AUTO-LOCATE (ZACHOWANE) ---
-    function delay(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
-
-    async function autoLocate() {
-        if(!selectedId) return;
-        const item = db.find(x => x.id === selectedId);
-        
-        const stations = [item.start];
-        if (item.via && item.via !== '-') {
-            item.via.split(/,\s*/).forEach(s => { if(s.trim()) stations.push(s.trim()); });
-        }
-        stations.push(item.end);
-
-        if(confirm(`Szukam ${stations.length} stacji (z opóźnieniem dla Nominatim)...`)) {
-            try {
-                const locations = [];
-                let foundCount = 0;
-                
-                for (let i = 0; i < stations.length; i++) {
-                    const loc = await fetchLoc(stations[i] + ' station');
-                    locations.push(loc);
-                    if(loc) foundCount++;
-                    if(i < stations.length - 1) await delay(1100); // 1.1s delay
-                }
-                
-                const validLocs = locations.filter(l => l !== null);
-                if(validLocs.length >= 2) {
-                    drawnItems.clearLayers();
-                    const line = L.polyline(validLocs, {color: '#007bff', weight: 4});
-                    drawnItems.addLayer(line);
-                    
-                    stations.forEach((name, idx) => {
-                        if(locations[idx]) L.marker(locations[idx]).addTo(drawnItems).bindPopup(name);
-                    });
-
-                    map.fitBounds(line.getBounds(), {padding:[50,50]});
-                    alert(`Znaleziono ${foundCount}/${stations.length} stacji.`);
-                } else {
-                    alert("Nie znaleziono wystarczającej liczby stacji.");
-                }
-            } catch(e) { alert("Błąd API: " + e.message); }
-        }
-    }
-
-    async function fetchLoc(q) {
-        try {
-            const r = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&limit=1`);
-            const d = await r.json();
-            return d.length ? [parseFloat(d[0].lat), parseFloat(d[0].lon)] : null;
-        } catch(e) { return null; }
-    }
-
-    // Fix ikon Draw
+    // Fix ikon
     const style = document.createElement('style');
     style.innerHTML = `.leaflet-draw-toolbar a { background-image: url('https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/images/spritesheet.png'); }`;
     document.head.appendChild(style);
