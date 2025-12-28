@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edytor Bazy Szlaków v2.0</title>
+
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-W05T4L1HFD"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'G-W05T4L1HFD');
+    </script>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" />
+    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        /* Ukrywanie scrollbara dla estetyki, ale zachowanie funkcjonalności */
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+</head>
+<body class="h-screen flex flex-col md:flex-row overflow-hidden bg-slate-100">
+
+    <div id="sidebar" class="w-full md:w-[480px] bg-white flex flex-col shadow-xl z-20 h-full transition-transform transform md:translate-x-0">
+        
+        <div class="bg-slate-800 text-white p-4 flex justify-between items-center shadow-md shrink-0">
+            <div>
+                <h1 class="text-lg font-bold flex items-center gap-2">
+                    <i class="fa-solid fa-route text-blue-400"></i> Edytor Szlaków
+                </h1>
+                <p class="text-xs text-slate-400">Baza: szlaki_master.json</p>
+            </div>
+            <div class="flex gap-2">
+                <button onclick="downloadJSON()" class="bg-green-600 hover:bg-green-700 text-white text-xs font-bold py-2 px-3 rounded shadow transition flex items-center gap-1">
+                    <i class="fa-solid fa-floppy-disk"></i> <span class="hidden sm:inline">Zapisz</span>
+                </button>
+            </div>
+        </div>
+
+        <div class="p-3 bg-slate-50 border-b border-slate-200 shrink-0">
+            <input type="text" id="search-input" onkeyup="filterList()" placeholder="Szukaj (np. Zgierz)..." 
+                   class="w-full bg-white border border-slate-300 text-slate-700 text-sm rounded px-3 py-2 outline-none focus:border-blue-500 transition">
+        </div>
+
+        <div id="list-container" class="flex-1 overflow-y-auto p-2 space-y-2 bg-slate-100 relative">
+            <div class="text-center text-slate-400 mt-10">
+                <i class="fa-solid fa-spinner fa-spin text-2xl"></i><br>Ładowanie danych...
+            </div>
+        </div>
+
+        <div class="bg-slate-900 text-slate-400 text-[10px] p-2 text-center border-t border-slate-700 shrink-0">
+            Wersja aplikacji: v2.0 | Współautorzy: Gemini & Piotr M 🚂
+        </div>
+    </div>
+
+    <div class="flex-1 relative z-10 h-full">
+        <div id="map" class="w-full h-full"></div>
+        
+        <button onclick="toggleSidebar()" class="md:hidden absolute top-4 left-4 z-[1000] bg-white text-slate-800 p-3 rounded-full shadow-lg border border-slate-200">
+            <i class="fa-solid fa-bars"></i>
+        </button>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
+
+    <script>
+        // --- KONFIGURACJA I DANE ---
+        let map, drawnItems;
+        let szlakiData = []; // Główna tablica danych
+        let geoJsonLayerGroup;
+
+        // --- INICJALIZACJA ---
+        window.onload = async () => {
+            initMap();
+            await loadData();
+        };
+
+        // 1. Inicjalizacja Mapy
+        function initMap() {
+            map = L.map('map').setView([51.759, 19.457], 11); // Łódź
+            
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; OpenStreetMap contributors',
+                maxZoom: 19
+            }).addTo(map);
+
+            // Warstwa do rysowania
+            drawnItems = new L.FeatureGroup();
+            map.addLayer(drawnItems);
+            
+            // Grupa dla wczytanych szlaków
+            geoJsonLayerGroup = L.layerGroup().addTo(map);
+
+            // Kontrolki edycji (Leaflet.Draw)
+            const drawControl = new L.Control.Draw({
+                edit: { featureGroup: drawnItems },
+                draw: {
+                    polygon: false, circle: false, rectangle: false, marker: false, circlemarker: false,
+                    polyline: { shapeOptions: { color: '#3388ff', weight: 4 } }
+                }
+            });
+            map.addControl(drawControl);
+
+            // Obsługa zdarzeń rysowania
+            map.on(L.Draw.Event.CREATED, function (e) {
+                const layer = e.layer;
+                drawnItems.addLayer(layer);
+                // Tutaj można dodać logikę dodawania nowego szlaku do szlakiData
+                alert("Narysowano nowy kształt. Aby dodać go do bazy, wymagana jest dodatkowa logika formularza (w tej wersji skupiamy się na edycji kolejności).");
+            });
+        }
+
+        // 2. Pobieranie Danych
+        async function loadData() {
+            try {
+                const response = await fetch('szlaki_master.json');
+                if (!response.ok) throw new Error("Błąd sieci");
+                szlakiData = await response.json();
+                renderList();
+                renderMapShapes();
+            } catch (error) {
+                console.error(error);
+                document.getElementById('list-container').innerHTML = `
+                    <div class="text-red-500 text-center mt-5 p-4 bg-red-50 rounded border border-red-200">
+                        <i class="fa-solid fa-circle-exclamation text-xl mb-2"></i><br>
+                        Nie udało się wczytać pliku <b>szlaki_master.json</b>.<br>
+                        Upewnij się, że plik jest w tym samym folderze.
+                    </div>`;
+            }
+        }
+
+        // 3. Renderowanie Listy (z funkcją zmiany kolejności)
+        function renderList() {
+            const container = document.getElementById('list-container');
+            const searchVal = document.getElementById('search-input').value.toLowerCase();
+            container.innerHTML = '';
+
+            szlakiData.forEach((item, index) => {
+                // Filtrowanie
+                const text = `${item.start} ${item.end} ${item.via} ${item.id}`.toLowerCase();
+                if (!text.includes(searchVal)) return;
+
+                // Tworzenie elementu listy
+                const el = document.createElement('div');
+                el.className = "bg-white border border-slate-200 rounded-lg p-3 shadow-sm hover:shadow-md transition flex gap-3 items-center group";
+                
+                // --- SEKCJA PRZYCISKÓW KOLEJNOŚCI (NOWOŚĆ) ---
+                const controls = document.createElement('div');
+                controls.className = "flex flex-col gap-1";
+                
+                // Przycisk GÓRA
+                const btnUp = document.createElement('button');
+                btnUp.innerHTML = '<i class="fa-solid fa-chevron-up"></i>';
+                btnUp.className = `w-8 h-8 rounded flex items-center justify-center text-xs transition 
+                    ${index === 0 ? 'text-slate-200 cursor-not-allowed' : 'bg-slate-100 hover:bg-blue-100 text-slate-600 hover:text-blue-600'}`;
+                if (index > 0) btnUp.onclick = () => moveItem(index, -1);
+
+                // Przycisk DÓŁ
+                const btnDown = document.createElement('button');
+                btnDown.innerHTML = '<i class="fa-solid fa-chevron-down"></i>';
+                btnDown.className = `w-8 h-8 rounded flex items-center justify-center text-xs transition 
+                    ${index === szlakiData.length - 1 ? 'text-slate-200 cursor-not-allowed' : 'bg-slate-100 hover:bg-blue-100 text-slate-600 hover:text-blue-600'}`;
+                if (index < szlakiData.length - 1) btnDown.onclick = () => moveItem(index, 1);
+
+                controls.appendChild(btnUp);
+                controls.appendChild(btnDown);
+                
+                // --- TREŚĆ ---
+                const content = document.createElement('div');
+                content.className = "flex-1 cursor-pointer";
+                content.onclick = () => zoomToRoute(index);
+                content.innerHTML = `
+                    <div class="flex justify-between items-start mb-1">
+                        <span class="bg-slate-800 text-white text-[10px] px-1.5 py-0.5 rounded font-mono">ID: ${item.id}</span>
+                    </div>
+                    <div class="font-bold text-slate-800 text-sm leading-tight">${item.start} <i class="fa-solid fa-arrow-right text-slate-400 text-xs mx-1"></i> ${item.end}</div>
+                    <div class="text-xs text-slate-500 mt-1">Przez: <span class="font-semibold text-blue-600">${item.via}</span></div>
+                `;
+
+                el.appendChild(controls);
+                el.appendChild(content);
+                container.appendChild(el);
+            });
+        }
+
+        // 4. Logika Zmiany Kolejności (CORE)
+        function moveItem(index, direction) {
+            // direction: -1 (góra), 1 (dół)
+            if (direction === -1 && index > 0) {
+                // Swap
+                [szlakiData[index], szlakiData[index - 1]] = [szlakiData[index - 1], szlakiData[index]];
+            } else if (direction === 1 && index < szlakiData.length - 1) {
+                // Swap
+                [szlakiData[index], szlakiData[index + 1]] = [szlakiData[index + 1], szlakiData[index]];
+            }
+            // Odśwież widok
+            renderList();
+            // Opcjonalnie: zaznacz na liście, że dokonano zmian (można dodać flagę "isDirty")
+        }
+
+        function filterList() {
+            renderList();
+        }
+
+        // 5. Wizualizacja na mapie
+        function renderMapShapes() {
+            geoJsonLayerGroup.clearLayers();
+            szlakiData.forEach((item, idx) => {
+                if (item.geometry) {
+                    const layer = L.geoJSON(item.geometry, {
+                        style: { color: '#64748b', weight: 4, opacity: 0.6 }
+                    }).bindPopup(`<b>${item.start} - ${item.end}</b><br>ID: ${item.id}`);
+                    
+                    // Hover effect
+                    layer.on('mouseover', function() { this.setStyle({ color: '#2563eb', weight: 6, opacity: 1 }); });
+                    layer.on('mouseout', function() { this.setStyle({ color: '#64748b', weight: 4, opacity: 0.6 }); });
+                    
+                    geoJsonLayerGroup.addLayer(layer);
+                }
+            });
+        }
+
+        function zoomToRoute(index) {
+            // Znajdź warstwę odpowiadającą temu szlakowi
+            // W tej prostej implementacji czyścimy i rysujemy tylko wybrany (jako highlight) lub centrujemy
+            const item = szlakiData[index];
+            if(!item.geometry) return;
+            
+            const tempLayer = L.geoJSON(item.geometry);
+            map.fitBounds(tempLayer.getBounds(), { padding: [50, 50] });
+
+            // Highlight na mapie (opcjonalne)
+            renderMapShapes(); // Reset stylów
+            // Tutaj można dodać kod, który konkretnie "podświetli" wybraną warstwę w geoJsonLayerGroup
+        }
+
+        // 6. Zapis Pliku (Download)
+        function downloadJSON() {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(szlakiData, null, 2));
+            const downloadAnchorNode = document.createElement('a');
+            downloadAnchorNode.setAttribute("href", dataStr);
+            downloadAnchorNode.setAttribute("download", "szlaki_master.json");
+            document.body.appendChild(downloadAnchorNode);
+            downloadAnchorNode.click();
+            downloadAnchorNode.remove();
+        }
+
+        // RWD Toggle
+        function toggleSidebar() {
+            const sb = document.getElementById('sidebar');
+            sb.classList.toggle('-translate-x-full');
+            // Jeśli jest ukryty (translate-x-full na mobile), usuń to, jeśli nie, dodaj.
+            // W Tailwind klasa 'md:translate-x-0' trzyma go na miejscu na desktopie.
+            // Dla mobile domyślnie dodajmy klasę 'absolute' lub podobną logikę w CSS.
+            // Tutaj prosta logika:
+            if (sb.style.transform === 'translateX(-100%)') {
+                sb.style.transform = 'translateX(0)';
+            } else {
+                sb.style.transform = 'translateX(-100%)';
+            }
+        }
+    </script>
+</body>
+</html>
