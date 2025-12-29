@@ -11,7 +11,7 @@
 
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TRAIN MANAGER v7.3 (ZRJ)</title>
+    <title>TRAIN MANAGER v7.4 (SmartFix)</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -94,7 +94,7 @@
                 </div>
             
             <div class="p-2 border-t border-slate-100 text-center text-[10px] text-slate-400 bg-slate-50">
-                v7.3 &bull; OpenRailwayMap &bull; Piotr M 🚂 & Gemini
+                v7.4 &bull; OpenRailwayMap &bull; Piotr M 🚂 & Gemini
             </div>
         </aside>
 
@@ -333,6 +333,10 @@
         </div>
     </div>
 
+    <footer class="fixed bottom-0 w-full bg-slate-900 text-white text-[10px] text-center py-1 z-50">
+        Wersja aplikacji: v7.4 | Współautorzy: Gemini oraz Piotr M 🚂
+    </footer>
+
     <script>
         // --- ZRJ CONFIGURATION ---
         const ZRJ_PERIODS = [
@@ -346,7 +350,7 @@
             
             { label: "--- 2025/2026 ---", from: "", to: "" },
             { label: "Roczny (14.12.25 - 12.12.26)", from: "2025-12-14", to: "2026-12-12" },
-            { label: "1) ZRJ (14 XII - 14 III)", from: "2025-12-14", to: "2026-03-07" } // Przybliżona data I cyklu
+            { label: "1) ZRJ (14 XII - 14 III)", from: "2025-12-14", to: "2026-03-07" } 
         ];
 
         // --- GLOBAL VARIABLES ---
@@ -465,7 +469,7 @@
             renderTrainList(); // Update list dates
         }
 
-        // --- MAP ENGINE ---
+        // --- MAP ENGINE (UPDATED WITH SMART MATCH) ---
         function initMap() {
             map = L.map('map').setView([52.0, 19.0], 6);
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: 'OSM' }).addTo(map);
@@ -480,7 +484,28 @@
             const bounds = [];
 
             t.trasa.forEach((seg, i) => {
-                const track = szlakiDB[seg.master_id];
+                // SMART MATCH FIX:
+                // 1. Najpierw spróbuj znaleźć szlak po nazwach stacji (najpewniejsze przy uszkodzonych ID)
+                let track = szlakiDB.find(x => 
+                    (x.start === seg.od && x.end === seg.do) || 
+                    (x.start === seg.do && x.end === seg.od)
+                );
+
+                // 2. Jeśli nie znaleziono po nazwach, spróbuj po ID (jeśli jest poprawne w nowej wersji)
+                if (!track && seg.master_id !== undefined && seg.master_id !== null) {
+                    track = szlakiDB.find(x => x.id == seg.master_id);
+                }
+
+                // 3. Ostateczność: użyj indeksu tablicy (Legacy Support) - ale sprawdź czy nazwy pasują
+                if (!track && typeof seg.master_id === 'number' && szlakiDB[seg.master_id]) {
+                    const candidate = szlakiDB[seg.master_id];
+                    // Sprawdź czy to nie jest zupełnie inny szlak (zabezpieczenie przed przesunięciem indeksów)
+                    if ((candidate.start === seg.od && candidate.end === seg.do) || 
+                        (candidate.start === seg.do && candidate.end === seg.od)) {
+                        track = candidate;
+                    }
+                }
+
                 if(track) {
                     const geo = track.geometry || track.geometria;
                     if(geo && geo.coordinates) {
@@ -661,7 +686,7 @@
             btn.className = `day-btn w-8 h-8 rounded border text-xs font-bold transition ${active ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-slate-600 border-slate-200'}`;
         }
 
-        // --- ROUTE UI ---
+        // --- ROUTE UI (UPDATED: USE ID NOT INDEX) ---
         function renderRouteUI() {
             const t = trains[currentTrainIndex];
             const list = document.getElementById('route-list');
@@ -686,7 +711,16 @@
                 sel.innerHTML = '<option value="">...</option>';
                 szlakiDB.filter(x=>x.start===head||x.end===head).forEach(x=>{
                     const isFwd = x.start===head; const dest=isFwd?x.end:x.start;
-                    const val = JSON.stringify({master_id:szlakiDB.indexOf(x), od:head, do:dest, przez:x.via||null});
+                    
+                    // FIX: Zapisujemy x.id zamiast szlakiDB.indexOf(x)
+                    // Dzięki temu kolejność w pliku JSON nie ma znaczenia
+                    const val = JSON.stringify({
+                        master_id: x.id, 
+                        od: head, 
+                        do: dest, 
+                        przez: x.via||null
+                    });
+                    
                     sel.innerHTML+=`<option value='${val}'>-> ${dest} ${x.via?'('+x.via+')':''}</option>`;
                 });
             }
