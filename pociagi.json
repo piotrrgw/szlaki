@@ -21,7 +21,7 @@
     "exceptions": [],
     "trasa": [
       {
-        "master_id": 0,
+        "master_id": 1,
         "od": "Łódź Fabryczna",
         "do": "Łódź Widzew",
         "przez": "-"
