@@ -14,17 +14,19 @@
     </script>
 
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
     
     <style>
         body {
             background-color: #f8f9fa;
             color: #212529;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            padding-bottom: 80px; /* Space for footer */
+            padding-bottom: 80px;
         }
-        .container {
-            max-width: 1000px;
-        }
+        .container { max-width: 1000px; }
+        
+        /* Styl panelu sterowania */
         .control-panel {
             background-color: #ffffff;
             border-radius: 8px;
@@ -33,24 +35,20 @@
             margin-bottom: 20px;
             border: 1px solid #dee2e6;
         }
+
+        /* Styl tabeli */
         .table-responsive {
             background-color: #ffffff;
             border-radius: 8px;
             box-shadow: 0 4px 6px rgba(0,0,0,0.05);
         }
-        th {
-            background-color: #343a40;
-            color: #ffffff;
-        }
-        /* WCAG Focus visible */
-        *:focus {
-            outline: 3px solid #0d6efd;
-            outline-offset: 2px;
-        }
-        .memory-counter {
-            font-size: 0.8rem;
-            color: #6c757d;
-        }
+        th { background-color: #343a40; color: #ffffff; }
+        .row-updated { background-color: #d1e7dd !important; transition: background-color 0.5s; }
+        
+        /* Mapa w modalu */
+        #map { height: 400px; width: 100%; }
+
+        /* Stopka */
         .app-footer {
             position: fixed;
             bottom: 0;
@@ -62,102 +60,140 @@
             font-size: 0.9rem;
             z-index: 1000;
         }
-        .footer-version {
-            font-size: 0.8rem;
-            opacity: 0.8;
-            margin-top: 2px;
+        .footer-version { font-size: 0.8rem; opacity: 0.8; }
+
+        /* --- STYL DRUKOWANIA (PDF) --- */
+        @media print {
+            body { background-color: white; padding: 0; margin: 0; }
+            .control-panel, .app-footer, .btn, .modal, .bi-map, .memory-counter { display: none !important; }
+            .container { max-width: 100%; width: 100%; margin: 0; padding: 0; }
+            .table-responsive { box-shadow: none; border: none; }
+            table { width: 100% !important; border-collapse: collapse; font-size: 12px; }
+            th, td { border: 1px solid black !important; padding: 4px !important; color: black !important; }
+            th { background-color: #eee !important; -webkit-print-color-adjust: exact; }
+            .row-updated { background-color: white !important; }
+            
+            /* Nagłówek wydruku */
+            #printHeader {
+                display: block !important;
+                margin-bottom: 20px;
+                text-align: center;
+                border-bottom: 2px solid black;
+                padding-bottom: 10px;
+            }
+            /* Ukryj inputy daty, pokaż tekst */
+            input[type="date"] {
+                border: none;
+                background: transparent;
+                padding: 0;
+                font-family: inherit;
+                color: black;
+                width: auto;
+                text-align: right;
+            }
+            /* Usuń ikony kalendarza w druku */
+            input[type="date"]::-webkit-calendar-picker-indicator { display: none; }
         }
-        /* Updated row style based on date presence */
-        .row-updated {
-            background-color: #d1e7dd !important; /* Greenish tint for active routes */
-            transition: background-color 0.5s;
-        }
-        input[type="date"] {
-            width: 100%;
-            max-width: 160px;
-        }
+        
+        #printHeader { display: none; } /* Domyślnie ukryty */
     </style>
 </head>
 <body>
 
 <div class="container mt-4">
-    <header class="mb-4 text-center">
+    <div id="printHeader">
+        <h2>Karta Znajomości Szlaków</h2>
+        <div class="d-flex justify-content-between mt-3 px-5">
+            <span>Imię i Nazwisko: ........................................................</span>
+            <span>Miesiąc: ......................... Rok: .................</span>
+        </div>
+    </div>
+
+    <header class="mb-4 text-center d-print-none">
         <h1>Kontrolka Szlaków</h1>
-        <p class="lead">Narzędzie raportowania znajomości szlaków dla Kierownika Pociągu</p>
+        <p class="lead">Narzędzie raportowania dla Kierownika Pociągu</p>
     </header>
 
-    <div class="control-panel">
+    <div class="control-panel d-print-none">
         <h2 class="h5 mb-3">Rejestracja Przejazdu</h2>
         <div class="row g-3 align-items-end">
-            <div class="col-md-4">
+            <div class="col-md-3">
                 <label for="inputDate" class="form-label">Data przejazdu</label>
-                <input type="date" id="inputDate" class="form-control" aria-label="Wybierz datę przejazdu">
+                <input type="date" id="inputDate" class="form-control">
             </div>
             <div class="col-md-4">
-                <label for="inputTrain" class="form-label">Numer pociągu (np. 1000)</label>
+                <label for="inputTrain" class="form-label">Numer pociągu</label>
                 <div class="input-group">
-                    <span class="input-group-text">Nr</span>
-                    <input type="text" id="inputTrain" class="form-control" placeholder="Wpisz numer..." aria-label="Wpisz numer pociągu">
+                    <span class="input-group-text"><i class="bi bi-train-front"></i></span>
+                    <input type="text" id="inputTrain" class="form-control" placeholder="np. 14000">
                 </div>
             </div>
-            <div class="col-md-4">
+            <div class="col-md-5">
                 <button class="btn btn-primary w-100" id="btnSearchTrain">
-                    <i class="bi bi-search"></i> Wyszukaj i Wybierz Odcinki
+                    <i class="bi bi-search"></i> Znajdź trasę i wybierz odcinki
                 </button>
             </div>
-        </div>
-        <div class="mt-2 text-muted small">
-            * Wpisz numer, wyszukaj, a następnie zaznacz odcinki, które obsługiwałeś.
         </div>
         
         <hr class="my-4">
         
         <div class="d-flex justify-content-between align-items-center">
-            <h2 class="h5 mb-0">Zarządzanie Danymi</h2>
+            <div class="memory-counter" id="memoryUsage">Pamięć: obliczanie...</div>
             <div>
-                <button class="btn btn-outline-danger btn-sm me-2" id="btnClearData">Wyczyść wszystkie dane</button>
-                <button class="btn btn-outline-success btn-sm" id="btnExportPDF" onclick="window.print()">Drukuj / PDF</button>
+                <button class="btn btn-outline-danger btn-sm me-2" id="btnClearData">Wyczyść dane</button>
+                <button class="btn btn-success btn-sm" onclick="window.print()">
+                    <i class="bi bi-printer"></i> Drukuj Raport / PDF
+                </button>
             </div>
-        </div>
-        <div class="memory-counter mt-2 text-end" id="memoryUsage">
-            Zużycie pamięci lokalnej: 0% (0 bajtów)
         </div>
     </div>
 
     <div class="table-responsive">
-        <table class="table table-hover table-bordered align-middle" id="routesTable">
+        <table class="table table-hover table-bordered align-middle mb-0" id="routesTable">
             <thead class="table-dark">
                 <tr>
-                    <th scope="col" style="width: 50px;">LP</th>
-                    <th scope="col">Odcinek (Od - Do)</th>
-                    <th scope="col">Przez (Via)</th>
-                    <th scope="col" style="width: 180px;">Data ost. przejazdu</th>
+                    <th class="text-center" style="width: 50px;">LP</th>
+                    <th>Odcinek (Od - Do)</th>
+                    <th>Przez (Via)</th>
+                    <th class="text-center" style="width: 60px;"><i class="bi bi-geo-alt"></i></th>
+                    <th style="width: 170px;">Data ost. przejazdu</th>
                 </tr>
             </thead>
             <tbody id="routesTableBody">
-                <tr>
-                    <td colspan="4" class="text-center py-4">Ładowanie danych szlaków...</td>
-                </tr>
+                <tr><td colspan="5" class="text-center py-4">Ładowanie danych...</td></tr>
             </tbody>
         </table>
     </div>
 </div>
 
-<div class="modal fade" id="trainSegmentsModal" tabindex="-1" aria-labelledby="modalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
+<div class="modal fade" id="trainSegmentsModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
         <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="modalLabel">Wybierz obsługiwane odcinki</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Zamknij"></button>
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">Wybierz obsługiwane odcinki</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                <p id="modalTrainInfo" class="fw-bold mb-3"></p>
-                <div class="list-group" id="modalSegmentsList">
-                    </div>
+                <div class="alert alert-info py-2" id="modalTrainInfo"></div>
+                <div class="list-group" id="modalSegmentsList"></div>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Anuluj</button>
-                <button type="button" class="btn btn-primary" id="btnConfirmSegments">Zapisz wybrane do Raportu</button>
+                <button type="button" class="btn btn-primary" id="btnConfirmSegments">Zatwierdź Przejazd</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="mapModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="mapModalTitle">Geometria Szlaku</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-0">
+                <div id="map"></div>
             </div>
         </div>
     </div>
@@ -166,249 +202,284 @@
 <footer class="app-footer">
     <div class="container">
         <span>Współautorzy: Gemini oraz Piotr M 🚂</span>
-        <div class="footer-version">Wersja aplikacji: v1.0</div>
+        <div class="footer-version">Wersja aplikacji: v1.1</div>
     </div>
 </footer>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 
 <script>
-    /**
-     * Wersja kodu: 1.0 (2025-12-29)
-     * Author: Gemini & Piotr M
-     */
+    // --- Konfiguracja i Zmienne ---
+    const VERSION = "1.1";
+    const STORAGE_KEY = 'kontrolka_szlakow_v1';
+    let szlakiData = []; // szlaki_master.json
+    let pociagiData = []; // pociagi.json
+    let mapInstance = null; // Instancja mapy Leaflet
 
-    // --- Zmienne globalne ---
-    let szlakiData = [];
-    let pociagiData = [];
-    const STORAGE_KEY = 'kontrolka_szlakow_data_v1';
-    
     // --- Inicjalizacja ---
     document.addEventListener('DOMContentLoaded', async () => {
-        // Ustaw dzisiejszą datę
         document.getElementById('inputDate').valueAsDate = new Date();
         
         try {
-            // Pobieranie danych
             const [szlakiRes, pociagiRes] = await Promise.all([
-                fetch('./szlaki_master.json'),
-                fetch('./pociagi.json')
+                fetch('szlaki_master.json'),
+                fetch('pociagi.json')
             ]);
 
-            if (!szlakiRes.ok || !pociagiRes.ok) throw new Error("Błąd pobierania plików JSON.");
+            if (!szlakiRes.ok || !pociagiRes.ok) throw new Error("Błąd wczytywania plików JSON");
 
             szlakiData = await szlakiRes.json();
             pociagiData = await pociagiRes.json();
-
-            // Sortowanie szlaków po ID
+            
+            // Sortowanie dla porządku
             szlakiData.sort((a, b) => a.id - b.id);
 
             renderTable();
             updateMemoryUsage();
-        } catch (error) {
-            console.error(error);
-            document.getElementById('routesTableBody').innerHTML = 
-                `<tr><td colspan="4" class="text-center text-danger">Błąd: Nie można załadować plików danych (szlaki_master.json, pociagi.json). Upewnij się, że są w tym samym folderze.</td></tr>`;
+        } catch (e) {
+            console.error(e);
+            document.getElementById('routesTableBody').innerHTML = `<tr class="table-danger"><td colspan="5" class="text-center">Błąd: Brak plików JSON (szlaki_master.json, pociagi.json).</td></tr>`;
         }
     });
 
-    // --- Funkcje Renderowania ---
-
+    // --- Renderowanie Tabeli ---
     function renderTable() {
         const tbody = document.getElementById('routesTableBody');
         tbody.innerHTML = '';
-
-        // Pobierz zapisane daty z localStorage
         const savedData = getSavedData();
 
         szlakiData.forEach(route => {
             const tr = document.createElement('tr');
-            tr.dataset.id = route.id; // Przechowujemy ID szlaku w atrybucie
+            tr.dataset.id = route.id;
             
-            // Sprawdź czy mamy zapisaną datę
             const savedDate = savedData[route.id] || '';
             if (savedDate) tr.classList.add('row-updated');
+
+            // Sprawdź czy mamy geometrię do mapy
+            const hasGeo = (route.geometry || route.coordinates || (route.geoJSON)); 
+            // Zakładam różne nazwy pól, dostosuj jeśli w jsonie jest inaczej
+            
+            const mapBtn = `<button class="btn btn-sm btn-outline-secondary border-0" 
+                onclick="showMap(${route.id})" title="Pokaż na mapie">
+                <i class="bi bi-map"></i></button>`;
 
             tr.innerHTML = `
                 <td class="text-center fw-bold">${route.id}</td>
                 <td>${route.start} - ${route.end}</td>
                 <td><small class="text-muted">${route.via !== '-' ? route.via : ''}</small></td>
+                <td class="text-center">${mapBtn}</td>
                 <td>
-                    <input type="date" 
-                           class="form-control form-control-sm date-input" 
+                    <input type="date" class="form-control form-control-sm date-input shadow-none" 
                            value="${savedDate}" 
-                           aria-label="Data przejazdu dla odcinka ${route.id}"
-                           onchange="saveManualEntry(${route.id}, this.value)">
+                           onchange="manualDateUpdate(${route.id}, this.value)">
                 </td>
             `;
             tbody.appendChild(tr);
         });
     }
 
-    // --- Obsługa Zdarzeń ---
-
-    // 1. Wyszukiwanie pociągu
+    // --- Logika: Wyszukiwanie Pociągu ---
     document.getElementById('btnSearchTrain').addEventListener('click', () => {
-        const trainNoInput = document.getElementById('inputTrain').value.trim().toLowerCase();
-        if (!trainNoInput) {
-            alert('Wpisz numer pociągu.');
-            return;
-        }
+        const query = document.getElementById('inputTrain').value.trim().replace(/\s/g, '').toLowerCase();
+        if (!query) return alert('Wpisz numer pociągu.');
 
-        // Szukanie pociągu (partial match na numerze)
-        // Normalizujemy spacje i wielkość liter
-        const train = pociagiData.find(p => p.numer.toLowerCase().replace(/\s/g, '').includes(trainNoInput.replace(/\s/g, '')));
+        // Szukanie pociągu (po numerze lub nazwie)
+        const train = pociagiData.find(p => p.numer.toString().toLowerCase().includes(query));
 
-        if (!train) {
-            alert('Nie znaleziono pociągu o podanym numerze.');
-            return;
-        }
-
-        showSegmentModal(train);
+        if (!train) return alert('Nie znaleziono pociągu o takim numerze.');
+        
+        openSegmentModal(train);
     });
 
-    // 2. Wyświetlanie Modala z odcinkami
-    let currentModalSegments = []; // Tymczasowe przechowanie mapowania
+    function openSegmentModal(train) {
+        const list = document.getElementById('modalSegmentsList');
+        const info = document.getElementById('modalTrainInfo');
+        list.innerHTML = '';
 
-    function showSegmentModal(train) {
-        const modalList = document.getElementById('modalSegmentsList');
-        const modalInfo = document.getElementById('modalTrainInfo');
-        modalList.innerHTML = '';
-        
-        modalInfo.textContent = `Pociąg: ${train.numer} (${train.nazwa}) - ${train.relacja_od} -> ${train.relacja_do}`;
+        info.innerHTML = `<strong>Pociąg ${train.numer}</strong> (${train.relacja_od} &rarr; ${train.relacja_do})`;
         
         if (!train.trasa || train.trasa.length === 0) {
-            modalList.innerHTML = '<div class="alert alert-warning">Brak zdefiniowanej trasy w bazie dla tego pociągu.</div>';
-            return;
+            list.innerHTML = '<div class="text-danger p-3">Ten pociąg nie ma zdefiniowanej trasy w bazie.</div>';
+        } else {
+            train.trasa.forEach((segment, idx) => {
+                // Próbujemy dopasować segment do szlaku master
+                // Jeśli segment.master_id jest tablicą (gdy jeden odcinek pociągu to kilka szlaków), obsłuż to
+                // W tym prostym kodzie zakładamy mapowanie 1:1 lub użycie master_id z pociagi.json
+                
+                const masterId = segment.master_id; 
+                let label = `${segment.od} - ${segment.do}`;
+                let badge = '';
+                let isDisabled = '';
+                let isChecked = 'checked';
+
+                // Walidacja z bazą master
+                const masterRoute = szlakiData.find(m => m.id == masterId);
+                
+                if (masterRoute) {
+                    label = `<strong>[${masterRoute.id}]</strong> ${masterRoute.start} - ${masterRoute.end}`;
+                    if (masterRoute.via && masterRoute.via !== '-') label += ` <small class="text-muted">przez ${masterRoute.via}</small>`;
+                } else {
+                    badge = '<span class="badge bg-warning text-dark ms-2">Brak w Master</span>';
+                    isDisabled = 'disabled';
+                    isChecked = '';
+                }
+
+                const item = document.createElement('label');
+                item.className = `list-group-item d-flex align-items-center gap-3 ${isDisabled ? 'bg-light text-muted' : ''}`;
+                item.innerHTML = `
+                    <input class="form-check-input flex-shrink-0" type="checkbox" value="${masterId}" ${isChecked} ${isDisabled} style="transform: scale(1.3);">
+                    <span>${label} ${badge}</span>
+                `;
+                list.appendChild(item);
+            });
         }
 
-        // Generowanie listy checkboxów
-        currentModalSegments = [];
-
-        train.trasa.forEach((segment, index) => {
-            // Znajdź nazwę szlaku w szlaki_master dla pewności (lub użyj danych z trasy pociągu)
-            // Używamy master_id by powiązać z główną tabelą
-            const masterRoute = szlakiData.find(s => s.id === segment.master_id);
-            const routeName = masterRoute 
-                ? `${masterRoute.start} - ${masterRoute.end} (przez: ${masterRoute.via})`
-                : `${segment.od} - ${segment.do} (przez: ${segment.przez})`;
-
-            const isKnown = !!masterRoute; // Czy szlak istnieje w master
-
-            const item = document.createElement('label');
-            item.className = 'list-group-item d-flex gap-3 align-items-center';
-            // Jeśli nie ma w master, wyłącz checkbox
-            const disabledAttr = isKnown ? '' : 'disabled';
-            const badge = isKnown ? '' : ' <span class="badge bg-danger ms-auto">Brak w Master ID</span>';
-
-            item.innerHTML = `
-                <input class="form-check-input flex-shrink-0" type="checkbox" value="${segment.master_id}" checked ${disabledAttr} style="font-size: 1.3em;">
-                <span class="pt-1 form-checked-content">
-                    <strong>Odcinek ${index + 1}:</strong> ${routeName}
-                    ${badge}
-                </span>
-            `;
-            modalList.appendChild(item);
-        });
-
-        const myModal = new bootstrap.Modal(document.getElementById('trainSegmentsModal'));
-        myModal.show();
+        new bootstrap.Modal(document.getElementById('trainSegmentsModal')).show();
     }
 
-    // 3. Zatwierdzenie Modala
+    // --- Logika: Zatwierdzanie Dat (Ostatni Przejazd) ---
     document.getElementById('btnConfirmSegments').addEventListener('click', () => {
-        const dateVal = document.getElementById('inputDate').value;
-        if (!dateVal) {
-            alert("Wybierz datę przed zapisaniem.");
-            return;
-        }
+        const inputDate = document.getElementById('inputDate').value;
+        if (!inputDate) return alert("Musisz wybrać datę przejazdu.");
 
-        // Pobierz zaznaczone ID
-        const checkboxes = document.querySelectorAll('#modalSegmentsList input[type="checkbox"]:checked');
-        const idsToUpdate = Array.from(checkboxes).map(cb => parseInt(cb.value));
+        const checkboxes = document.querySelectorAll('#modalSegmentsList input:checked');
+        const ids = Array.from(checkboxes).map(cb => parseInt(cb.value)).filter(id => !isNaN(id));
 
-        if (idsToUpdate.length === 0) {
-            alert("Nie zaznaczono żadnych odcinków.");
-            return;
-        }
+        if (ids.length === 0) return alert("Nie zaznaczono żadnych szlaków.");
 
-        // Aktualizuj tabelę i pamięć
         const savedData = getSavedData();
-        let updateCount = 0;
+        let updatedCount = 0;
 
-        idsToUpdate.forEach(id => {
-            savedData[id] = dateVal;
-            // Aktualizacja widoku (znajdź input w tabeli)
-            const row = document.querySelector(`tr[data-id="${id}"]`);
-            if (row) {
-                const input = row.querySelector('.date-input');
-                if (input) input.value = dateVal;
-                row.classList.add('row-updated');
-                updateCount++;
+        ids.forEach(id => {
+            const currentSavedDate = savedData[id];
+            
+            // LOGIKA: Nadpisz tylko jeśli nowa data jest nowsza lub równa
+            // LUB jeśli nie było żadnej daty wcześniej.
+            if (!currentSavedDate || new Date(inputDate) >= new Date(currentSavedDate)) {
+                savedData[id] = inputDate;
+                
+                // Aktualizuj DOM
+                const row = document.querySelector(`tr[data-id="${id}"]`);
+                if (row) {
+                    const input = row.querySelector('.date-input');
+                    input.value = inputDate;
+                    row.classList.add('row-updated');
+                }
+                updatedCount++;
             }
         });
 
-        saveDataToStorage(savedData);
+        saveData(savedData);
+        bootstrap.Modal.getInstance(document.getElementById('trainSegmentsModal')).hide();
         
-        // Zamknij modal
-        const modalEl = document.getElementById('trainSegmentsModal');
-        const modal = bootstrap.Modal.getInstance(modalEl);
-        modal.hide();
-
-        alert(`Zaktualizowano ${updateCount} odcinków na datę: ${dateVal}.`);
+        if (updatedCount > 0) {
+            // Opcjonalne powiadomienie toast lub ciche
+        } else {
+            alert("Nie zaktualizowano danych - wybrane szlaki mają już nowsze daty w systemie.");
+        }
     });
 
-    // 4. Ręczna edycja w tabeli
-    window.saveManualEntry = function(id, date) {
+    // --- Ręczna Edycja Daty ---
+    window.manualDateUpdate = function(id, newDate) {
         const savedData = getSavedData();
-        if (date) {
-            savedData[id] = date;
+        if (newDate) {
+            savedData[id] = newDate;
             document.querySelector(`tr[data-id="${id}"]`).classList.add('row-updated');
         } else {
             delete savedData[id];
             document.querySelector(`tr[data-id="${id}"]`).classList.remove('row-updated');
         }
-        saveDataToStorage(savedData);
+        saveData(savedData);
     };
 
-    // 5. Czyszczenie danych
+    // --- Mapa (Leaflet) ---
+    window.showMap = function(id) {
+        const route = szlakiData.find(r => r.id === id);
+        if (!route) return;
+
+        // Tutaj logika wydobycia geometrii. Zakładam, że w JSON jest pole 'geometry' (GeoJSON) 
+        // lub 'coordinates' (tablica punktów). 
+        // PRZYKŁAD dla 'geometry': { "type": "LineString", "coordinates": [...] }
+        
+        const modalEl = document.getElementById('mapModal');
+        const title = document.getElementById('mapModalTitle');
+        title.textContent = `Szlak ${route.id}: ${route.start} - ${route.end}`;
+        
+        const bsModal = new bootstrap.Modal(modalEl);
+        bsModal.show();
+
+        // Inicjalizacja mapy po otwarciu modala
+        modalEl.addEventListener('shown.bs.modal', () => {
+            if (mapInstance) {
+                mapInstance.remove(); // Usuń starą mapę
+            }
+            mapInstance = L.map('map');
+            
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; OpenStreetMap contributors'
+            }).addTo(mapInstance);
+
+            // Rysowanie linii
+            // Dostosuj to do struktury swojego pliku szlaki_master.json
+            let geoJsonData = null;
+
+            if (route.geometry) {
+                geoJsonData = route.geometry;
+            } else if (route.coordinates) {
+                geoJsonData = {
+                    "type": "LineString",
+                    "coordinates": route.coordinates
+                };
+            }
+
+            if (geoJsonData) {
+                const layer = L.geoJSON(geoJsonData, {
+                    style: { color: 'blue', weight: 5 }
+                }).addTo(mapInstance);
+                
+                // Dopasuj widok do linii
+                mapInstance.fitBounds(layer.getBounds());
+            } else {
+                // Fallback, jeśli brak geometrii
+                mapInstance.setView([52.0, 19.0], 6); // Środek Polski
+                L.popup()
+                    .setLatLng([52.0, 19.0])
+                    .setContent("Brak danych geometrycznych dla tego szlaku w pliku JSON.")
+                    .openOn(mapInstance);
+            }
+        }, { once: true });
+    };
+
+    // --- Pamięć i Narzędzia ---
+    function getSavedData() {
+        return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+    }
+
+    function saveData(data) {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+        updateMemoryUsage();
+    }
+
     document.getElementById('btnClearData').addEventListener('click', () => {
-        if(confirm("Czy na pewno chcesz usunąć wszystkie zapisane daty? Tej operacji nie można cofnąć.")) {
+        if(confirm("Czy na pewno usunąć historię?")) {
             localStorage.removeItem(STORAGE_KEY);
-            renderTable(); // Przeładuj tabelę (wyczyści inputy)
+            renderTable();
             updateMemoryUsage();
         }
     });
 
-    // --- Zarządzanie Pamięcią ---
-
-    function getSavedData() {
-        const raw = localStorage.getItem(STORAGE_KEY);
-        return raw ? JSON.parse(raw) : {};
-    }
-
-    function saveDataToStorage(data) {
-        try {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-            updateMemoryUsage();
-        } catch (e) {
-            alert("Błąd zapisu! Prawdopodobnie pamięć przeglądarki jest pełna.");
-            console.error(e);
-        }
-    }
-
     function updateMemoryUsage() {
-        const total = 5 * 1024 * 1024; // Typowo 5MB dla localStorage
-        let used = 0;
-        for (let x in localStorage) {
-            if (localStorage.hasOwnProperty(x)) {
-                used += ((localStorage[x].length + x.length) * 2);
+        let total = 0;
+        for(let key in localStorage) {
+            if(localStorage.hasOwnProperty(key)) {
+                total += (localStorage[key].length + key.length) * 2;
             }
         }
-        const percent = ((used / total) * 100).toFixed(2);
-        document.getElementById('memoryUsage').textContent = `Zużycie pamięci lokalnej: ${percent}% (${(used/1024).toFixed(2)} KB)`;
+        const kb = (total / 1024).toFixed(2);
+        document.getElementById('memoryUsage').innerText = `Pamięć LocalStorage: ${kb} KB`;
     }
-
 </script>
+
 </body>
 </html>
