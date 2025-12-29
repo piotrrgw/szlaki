@@ -1,6 +1,10 @@
 <!DOCTYPE html>
 <html lang="pl">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TRAIN MANAGER v8.0</title>
+    
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-W05T4L1HFD"></script>
     <script>
       window.dataLayer = window.dataLayer || [];
@@ -8,10 +12,6 @@
       gtag('js', new Date());
       gtag('config', 'G-W05T4L1HFD');
     </script>
-
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TRAIN MANAGER v7.5 (Reverse & Fix)</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -21,28 +21,15 @@
     <style>
         body { font-family: 'Inter', sans-serif; background-color: #f8fafc; color: #0f172a; }
         .font-mono { font-family: 'JetBrains Mono', monospace; }
-        
-        /* Custom Scrollbar */
         ::-webkit-scrollbar { width: 5px; height: 5px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
         ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
-
-        /* Calendar Styles */
         .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; background: #e2e8f0; border: 1px solid #e2e8f0; }
         .calendar-day { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; cursor: pointer; background: white; transition: all 0.1s; }
-        
         .day-active { background: #3b82f6; color: white; font-weight: 600; }
         .day-inactive { background: #f8fafc; color: #cbd5e1; }
-        .day-added { background: #22c55e; color: white; position: relative; } 
-        .day-cancelled { background: #ef4444; color: white; position: relative; }
-        .day-cancelled::after { content: '✕'; font-size: 10px; }
-
-        /* Map Fixes */
         #map { z-index: 1; isolation: isolate; }
-        .z-modal { z-index: 9999 !important; }
-        
-        .active-train { border-left: 4px solid #3b82f6; background-color: #eff6ff; }
     </style>
     
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
@@ -54,778 +41,236 @@
             <div class="bg-blue-600 w-8 h-8 rounded flex items-center justify-center font-bold shadow-lg shadow-blue-500/30">
                 <i class="fa-solid fa-train-track"></i>
             </div>
-            <h1 class="font-bold text-lg tracking-wide">TRAIN MANAGER</h1>
+            <h1 class="font-bold text-lg tracking-wide">TRAIN MANAGER <span class="text-slate-500 text-xs font-normal">v8.0</span></h1>
             <div class="h-6 w-px bg-slate-700 mx-2"></div>
             <div class="text-xs text-slate-400 flex gap-3 font-mono">
-                <span id="stat-szlaki" class="text-red-400"><i class="fa-solid fa-database mr-1"></i>Szlaki: 0</span>
-                <span id="stat-pociagi" class="text-blue-400"><i class="fa-solid fa-list mr-1"></i>Pociągi: 0</span>
+                <span id="stat-szlaki" class="text-red-400"><i class="fa-solid fa-database mr-1"></i>Szlaki: <span id="count-segments">0</span></span>
+                <span id="stat-pociagi" class="text-blue-400"><i class="fa-solid fa-list mr-1"></i>Pociągi: <span id="count-trains">0</span></span>
             </div>
         </div>
-
         <div class="flex items-center gap-2">
-            <button onclick="toggleSettings()" class="flex items-center gap-2 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 rounded text-xs border border-slate-700 transition mr-2">
-                <i class="fa-solid fa-sliders"></i>
-                <span class="hidden md:inline">Ustawienia</span>
+            <button onclick="document.getElementById('file-input-szlaki').click()" class="bg-slate-800 hover:bg-slate-700 text-xs px-3 py-1.5 rounded transition border border-slate-700 text-red-300">
+                <i class="fa-solid fa-upload mr-1"></i> Szlaki
             </button>
-            <div class="h-6 w-px bg-slate-700 mx-1"></div>
-            <button onclick="toggleJsonPreview()" class="w-8 h-8 flex items-center justify-center bg-slate-800 hover:bg-slate-700 rounded text-slate-300 transition" title="Podgląd JSON">
-                <i class="fa-solid fa-code"></i>
+            <button onclick="document.getElementById('file-input-pociagi').click()" class="bg-slate-800 hover:bg-slate-700 text-xs px-3 py-1.5 rounded transition border border-slate-700 text-blue-300">
+                <i class="fa-solid fa-upload mr-1"></i> Pociągi
             </button>
-            <button onclick="downloadPociagi()" class="w-8 h-8 flex items-center justify-center bg-green-600 hover:bg-green-500 rounded text-white transition shadow-lg shadow-green-900/20" title="Pobierz plik">
+            <button onclick="downloadData()" class="w-8 h-8 flex items-center justify-center bg-green-600 hover:bg-green-500 rounded text-white transition shadow-lg shadow-green-900/20" title="Pobierz Pociągi">
                 <i class="fa-solid fa-download"></i>
             </button>
         </div>
     </header>
 
     <div class="flex flex-1 overflow-hidden">
-        
         <aside class="w-72 bg-white border-r border-slate-200 flex flex-col shrink-0 z-20 shadow-sm relative">
             <div class="p-3 border-b border-slate-100 bg-white z-10">
                 <button onclick="addNewTrain()" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded shadow-sm shadow-blue-200 text-sm font-semibold transition flex items-center justify-center gap-2">
                     <i class="fa-solid fa-plus"></i> Nowy Pociąg
                 </button>
-                <div class="mt-2 relative">
-                    <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-slate-400 text-xs"></i>
-                    <input type="text" id="search-input" placeholder="Szukaj pociągu..." class="w-full bg-slate-50 border border-slate-200 rounded-full py-1.5 pl-8 pr-3 text-xs outline-none focus:border-blue-400">
-                </div>
+                <input type="text" id="search-input" onkeyup="renderTrainList()" placeholder="Szukaj pociągu..." class="mt-2 w-full bg-slate-50 border border-slate-200 rounded py-1.5 px-3 text-xs outline-none focus:border-blue-400">
             </div>
 
             <div id="train-list" class="flex-1 overflow-y-auto p-0">
                 </div>
             
-            <div class="p-2 border-t border-slate-100 text-center text-[10px] text-slate-400 bg-slate-50">
-                v7.5 &bull; OpenRailwayMap &bull; Piotr M 🚂 & Gemini
-                <div id="memory-usage" class="mt-1 text-blue-400 font-mono">Mem: 0KB</div>
+            <div class="p-2 border-t border-slate-100 text-center text-[10px] text-slate-400 bg-slate-50 flex flex-col gap-1">
+                <span>Wersja aplikacji: v8.0</span>
+                <span>Autorzy: Piotr M 🚂 & Gemini</span>
+                <span>&bull; OpenRailwayMap &bull;</span>
+                <div id="memory-usage" class="mt-1 text-blue-400 font-mono">Mem: OK</div>
             </div>
         </aside>
 
         <main class="flex-1 bg-slate-50 flex flex-col relative overflow-hidden">
-            
-            <div id="editor-empty" class="absolute inset-0 flex flex-col items-center justify-center text-slate-300 pointer-events-none z-0">
-                <i class="fa-solid fa-train text-6xl mb-4 opacity-50"></i>
-                <p class="text-slate-400 font-medium">Wybierz pociąg lub dodaj nowy</p>
-            </div>
+            <div id="map" class="h-1/2 w-full border-b border-slate-200"></div>
 
-            <div id="editor-panel" class="flex flex-col h-full hidden w-full bg-white z-10">
-                
-                <div class="border-b border-slate-200 px-6 flex items-center justify-between shrink-0 h-12 bg-white">
-                    <div class="flex gap-1 h-full pt-1">
-                        <button onclick="switchTab('info')" id="tab-btn-info" class="h-full border-b-2 border-blue-600 text-blue-600 font-bold text-xs uppercase px-4 transition">Dane</button>
-                        <button onclick="switchTab('route')" id="tab-btn-route" class="h-full border-b-2 border-transparent text-slate-500 hover:text-slate-800 font-bold text-xs uppercase px-4 transition">Trasa</button>
-                    </div>
-                    
-                    <div class="flex items-center gap-2">
-                        <button onclick="reverseRoute()" class="text-purple-600 hover:text-purple-800 text-[10px] font-bold uppercase tracking-wide border border-purple-100 hover:bg-purple-50 px-2 py-1 rounded transition" title="Odwróć trasę (Powrót)">
-                            <i class="fa-solid fa-arrow-right-arrow-left mr-1"></i> Obróć
-                        </button>
-                        <div class="h-4 w-px bg-slate-200 mx-1"></div>
-                        <button onclick="duplicateCurrentTrain()" class="text-blue-500 hover:text-blue-700 text-[10px] font-bold uppercase tracking-wide border border-blue-100 hover:bg-blue-50 px-2 py-1 rounded transition" title="Duplikuj pociąg">
-                            <i class="fa-regular fa-copy mr-1"></i> Duplikuj
-                        </button>
-                        <button onclick="deleteCurrentTrain()" class="text-red-500 hover:text-red-700 text-[10px] font-bold uppercase tracking-wide border border-red-100 hover:bg-red-50 px-2 py-1 rounded transition">
-                            <i class="fa-regular fa-trash-can mr-1"></i> Usuń
-                        </button>
-                    </div>
+            <div id="editor-panel" class="flex-1 bg-white flex flex-col overflow-hidden">
+                <div class="border-b border-slate-200 px-4 h-10 flex items-center justify-between bg-slate-50">
+                    <span class="text-xs font-bold text-slate-500 uppercase">Edytor Danych</span>
+                    <button onclick="saveCurrentTrain()" class="text-xs text-blue-600 font-bold hover:underline">Zapisz zmiany (lokalne)</button>
                 </div>
-
-                <div class="flex-1 relative overflow-hidden bg-slate-50/50">
-                    
-                    <div id="tab-info" class="absolute inset-0 overflow-y-auto p-6 md:p-10 fade-in">
-                        <div class="max-w-5xl mx-auto space-y-6 pb-20">
-                            
-                            <div class="bg-white rounded border border-slate-200 p-5 shadow-sm">
-                                <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4">Identyfikacja</h3>
-                                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                                    <div class="md:col-span-1">
-                                        <label class="block text-[10px] uppercase text-slate-500 font-bold mb-1">Numer</label>
-                                        <input type="text" id="inp-no" class="w-full bg-slate-50 border border-slate-300 rounded px-3 py-2 text-sm font-mono focus:border-blue-500 outline-none uppercase font-bold text-slate-700" placeholder="EIC 100">
-                                    </div>
-                                    <div class="md:col-span-2">
-                                        <label class="block text-[10px] uppercase text-slate-500 font-bold mb-1">Nazwa Handlowa</label>
-                                        <input type="text" id="inp-name" class="w-full bg-slate-50 border border-slate-300 rounded px-3 py-2 text-sm focus:border-blue-500 outline-none text-slate-700" placeholder="BERLIN-WARSZAWA EXPRESS">
-                                    </div>
-                                    <div class="md:col-span-1">
-                                        <label class="block text-[10px] uppercase text-slate-500 font-bold mb-1">Tabor</label>
-                                        <select id="inp-stock" class="w-full bg-slate-50 border border-slate-300 rounded px-3 py-2 text-sm focus:border-blue-500 outline-none text-slate-700">
-                                            <option value="">-- Wybierz --</option>
-                                            <option value="SKŁAD WAGONOWY">SKŁAD WAGONOWY</option>
-                                            <option value="ED250">ED250 (Pendolino)</option>
-                                            <option value="ED160">ED160 (Flirt)</option>
-                                            <option value="ED161">ED161 (Dart)</option>
-                                            <option value="ED74">ED74</option>
-                                            <option value="SN84">SN84</option>
-                                            <option value="SD85">SD85</option>
-                                            <option value="SA133">SA133</option>
-                                        </select>
-                                    </div>
-                                </div>
-                                <div class="grid grid-cols-2 gap-4 mt-4">
-                                    <div>
-                                        <label class="block text-[10px] uppercase text-slate-500 font-bold mb-1">Relacja Od (Tablica)</label>
-                                        <input type="text" id="inp-rel-from" class="w-full bg-slate-50 border border-slate-300 rounded px-3 py-2 text-sm outline-none text-slate-700">
-                                    </div>
-                                    <div>
-                                        <label class="block text-[10px] uppercase text-slate-500 font-bold mb-1">Relacja Do (Tablica)</label>
-                                        <input type="text" id="inp-rel-to" class="w-full bg-slate-50 border border-slate-300 rounded px-3 py-2 text-sm outline-none text-slate-700">
-                                    </div>
-                                </div>
-                                
-                                <div class="mt-4 pt-4 border-t border-slate-100">
-                                    <label class="block text-[10px] uppercase text-slate-400 font-bold mb-1">Edytor (Metadata)</label>
-                                    <input type="text" id="inp-meta-editor" class="w-full md:w-1/3 bg-slate-50 border border-slate-200 rounded px-2 py-1 text-xs text-slate-500 outline-none focus:border-blue-300">
-                                </div>
-                            </div>
-
-                            <div class="bg-white rounded border border-slate-200 p-5 shadow-sm">
-                                <div class="flex flex-col md:flex-row justify-between items-end mb-4 gap-2">
-                                    <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider">Kalendarz Kursowania</h3>
-                                    <div class="flex gap-2 text-[10px] uppercase font-bold">
-                                        <span class="px-2 py-0.5 rounded bg-blue-100 text-blue-600">Kursuje</span>
-                                        <span class="px-2 py-0.5 rounded bg-green-100 text-green-600">Dodatkowy</span>
-                                        <span class="px-2 py-0.5 rounded bg-red-100 text-red-600">Odwołany</span>
-                                    </div>
-                                </div>
-
-                                <div class="flex flex-wrap items-end gap-4 mb-4 bg-slate-50 p-3 rounded border border-slate-100">
-                                    <div>
-                                        <label class="block text-[10px] text-slate-500 font-bold mb-1">Ważny od</label>
-                                        <input type="date" id="cal-from" class="bg-white border border-slate-300 rounded px-2 py-1 text-sm outline-none focus:border-blue-500">
-                                    </div>
-                                    <div>
-                                        <label class="block text-[10px] text-slate-500 font-bold mb-1">Ważny do</label>
-                                        <input type="date" id="cal-to" class="bg-white border border-slate-300 rounded px-2 py-1 text-sm outline-none focus:border-blue-500">
-                                    </div>
-                                    
-                                    <div class="min-w-[180px]">
-                                        <label class="block text-[10px] text-blue-600 font-bold mb-1"><i class="fa-solid fa-calendar-week mr-1"></i>Szybki wybór (ZRJ)</label>
-                                        <select id="zrj-select" class="w-full bg-white border border-blue-200 text-blue-800 rounded px-2 py-1 text-xs outline-none focus:border-blue-500" onchange="applyZRJ(this.value)">
-                                            <option value="">-- Wybierz cykl --</option>
-                                        </select>
-                                    </div>
-
-                                    <div class="flex-1 flex justify-end items-end gap-1">
-                                        <button class="day-btn w-8 h-8 rounded border text-xs font-bold transition" data-day="1">Pn</button>
-                                        <button class="day-btn w-8 h-8 rounded border text-xs font-bold transition" data-day="2">Wt</button>
-                                        <button class="day-btn w-8 h-8 rounded border text-xs font-bold transition" data-day="3">Śr</button>
-                                        <button class="day-btn w-8 h-8 rounded border text-xs font-bold transition" data-day="4">Cz</button>
-                                        <button class="day-btn w-8 h-8 rounded border text-xs font-bold transition" data-day="5">Pt</button>
-                                        <button class="day-btn w-8 h-8 rounded border text-xs font-bold transition" data-day="6">Sb</button>
-                                        <button class="day-btn w-8 h-8 rounded border text-xs font-bold transition text-red-500" data-day="0">Nd</button>
-                                    </div>
-                                </div>
-
-                                <div id="calendar-grid-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                                    </div>
-                            </div>
+                
+                <div class="p-6 overflow-y-auto grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-[10px] uppercase font-bold text-slate-400">Numer</label>
+                            <input type="text" id="inp-numer" class="w-full border border-slate-300 rounded p-2 text-sm font-mono font-bold">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] uppercase font-bold text-slate-400">Nazwa</label>
+                            <input type="text" id="inp-nazwa" class="w-full border border-slate-300 rounded p-2 text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] uppercase font-bold text-slate-400">Tabor</label>
+                            <select id="inp-tabor" class="w-full border border-slate-300 rounded p-2 text-sm">
+                                <option value="ED160">ED160</option>
+                                <option value="ED161">ED161</option>
+                                <option value="ED250">ED250</option>
+                                <option value="Wagonowy">Skład Wagonowy</option>
+                            </select>
                         </div>
                     </div>
 
-                    <div id="tab-route" class="absolute inset-0 flex flex-col md:flex-row hidden">
-                        <div class="w-full md:w-80 md:shrink-0 border-r border-slate-200 flex flex-col h-1/2 md:h-full bg-white z-10 shadow-lg transition-all">
-                            <div class="p-3 border-b border-slate-100 bg-white">
-                                <h4 class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Edytor Trasy</h4>
-                                
-                                <div id="route-start-ui" class="flex gap-1">
-                                    <select id="route-start-select" class="flex-1 bg-slate-50 border border-slate-300 rounded text-xs h-8 px-2 outline-none focus:border-blue-500">
-                                        <option value="">Baza niezaładowana...</option>
-                                    </select>
-                                    <button onclick="setRouteStart()" class="bg-blue-600 text-white px-3 rounded text-xs font-bold h-8 hover:bg-blue-500">START</button>
-                                </div>
-
-                                <div id="route-next-ui" class="hidden flex flex-col gap-2">
-                                    <div class="flex justify-between items-center text-xs border-b border-slate-100 pb-1">
-                                        <span class="text-slate-400 font-mono">OBECNIE:</span>
-                                        <div class="flex gap-2">
-                                            <button onclick="reverseRoute()" class="text-purple-600 hover:text-purple-800 font-bold text-[10px] uppercase" title="Odwróć całą trasę"><i class="fa-solid fa-arrow-right-arrow-left"></i> Obróć</button>
-                                            <button onclick="resetRoute()" class="text-red-500 hover:text-red-700 font-bold text-[10px] uppercase">Reset</button>
-                                        </div>
-                                    </div>
-                                    <div class="font-bold text-slate-800 flex items-center gap-2 truncate bg-blue-50 p-1.5 rounded text-sm border border-blue-100">
-                                        <i class="fa-solid fa-location-dot text-blue-500"></i>
-                                        <span id="curr-station" class="truncate">---</span>
-                                    </div>
-                                    <div class="flex gap-1 mt-1">
-                                        <select id="next-segment-select" class="flex-1 bg-white border border-slate-300 rounded text-xs h-8 px-2 outline-none focus:border-blue-500">
-                                            <option>...</option>
-                                        </select>
-                                        <button onclick="addSegment()" class="bg-green-600 text-white w-8 h-8 rounded flex items-center justify-center hover:bg-green-500 shadow-sm">
-                                            <i class="fa-solid fa-plus"></i>
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div id="route-list" class="flex-1 overflow-y-auto p-0 bg-slate-50">
-                                </div>
-                        </div>
-
-                        <div class="flex-1 relative bg-slate-100 min-w-0">
-                            <div id="map" class="absolute inset-0 z-0"></div>
-                            <div class="absolute bottom-2 left-2 z-[5] bg-white/90 backdrop-blur px-2 py-1 text-[10px] rounded shadow border border-slate-200 text-slate-600">
-                                Warstwa: OpenRailwayMap
-                            </div>
-                        </div>
+                    <div class="flex flex-col h-full">
+                        <label class="block text-[10px] uppercase font-bold text-slate-400 mb-1">Struktura Trasy (JSON)</label>
+                        <textarea id="inp-trasa-json" class="w-full flex-1 border border-slate-300 rounded p-2 text-xs font-mono bg-slate-50" placeholder='[{"master_id": 1}, ...]'></textarea>
+                        <button onclick="parseRouteJson()" class="mt-2 text-xs bg-slate-200 hover:bg-slate-300 px-3 py-1 rounded">Odśwież Mapę z JSON</button>
                     </div>
                 </div>
             </div>
         </main>
     </div>
 
-    <div id="settings-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-modal hidden flex items-center justify-center fade-in">
-        <div class="bg-white w-[500px] rounded-lg shadow-2xl border border-slate-200 overflow-hidden">
-            <div class="bg-slate-900 text-white p-4 flex justify-between items-center">
-                <h3 class="font-bold text-sm uppercase tracking-wide"><i class="fa-solid fa-sliders mr-2"></i>Ustawienia Globalne</h3>
-                <button onclick="toggleSettings()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
-            </div>
-            
-            <div class="p-6 space-y-6">
-                <div>
-                    <h4 class="text-xs font-bold text-blue-600 uppercase mb-3 border-b border-blue-100 pb-1">Domyślne Metadane</h4>
-                    <div class="space-y-3">
-                        <div>
-                            <label class="block text-xs font-bold text-slate-500 mb-1">Domyślny Edytor</label>
-                            <input type="text" id="g-editor" class="w-full border border-slate-300 rounded p-2 text-sm" placeholder="np. Jan Kowalski">
-                        </div>
-                    </div>
-                </div>
-
-                <div>
-                    <h4 class="text-xs font-bold text-blue-600 uppercase mb-3 border-b border-blue-100 pb-1">Domyślny Rozkład</h4>
-                    <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-xs font-bold text-slate-500 mb-1">Domyślne OD</label>
-                            <input type="date" id="g-valid-from" class="w-full border border-slate-300 rounded p-2 text-sm">
-                        </div>
-                        <div>
-                            <label class="block text-xs font-bold text-slate-500 mb-1">Domyślne DO</label>
-                            <input type="date" id="g-valid-to" class="w-full border border-slate-300 rounded p-2 text-sm">
-                        </div>
-                    </div>
-                </div>
-
-                <div>
-                    <h4 class="text-xs font-bold text-green-600 uppercase mb-3 border-b border-green-100 pb-1">Baza Danych (Wgraj Ręcznie)</h4>
-                    <div class="grid grid-cols-2 gap-4">
-                        <label class="block cursor-pointer bg-slate-50 border border-slate-300 border-dashed rounded p-3 text-center hover:bg-blue-50 hover:border-blue-400 transition">
-                            <input type="file" class="hidden" onchange="loadSzlakiManual(this)" accept=".json">
-                            <div class="text-xs font-bold text-slate-600">szlaki.json</div>
-                            <div class="text-[10px] text-slate-400">Geometria i odcinki</div>
-                        </label>
-                        <label class="block cursor-pointer bg-slate-50 border border-slate-300 border-dashed rounded p-3 text-center hover:bg-blue-50 hover:border-blue-400 transition">
-                            <input type="file" class="hidden" onchange="loadTrainsManual(this)" accept=".json">
-                            <div class="text-xs font-bold text-slate-600">pociagi.json</div>
-                            <div class="text-[10px] text-slate-400">Lista pociągów</div>
-                        </label>
-                    </div>
-                </div>
-            </div>
-
-            <div class="bg-slate-50 p-4 border-t border-slate-200 flex justify-end gap-2">
-                <button onclick="hardReset()" class="text-red-500 text-xs font-bold px-3 py-2 hover:bg-red-50 rounded">Reset App</button>
-                <button onclick="saveGlobalSettings(); toggleSettings()" class="bg-blue-600 text-white px-6 py-2 rounded text-sm font-bold hover:bg-blue-500 shadow-sm">Zapisz</button>
-            </div>
-        </div>
-    </div>
-
-    <div id="json-modal" class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-modal hidden flex items-center justify-center">
-        <div class="bg-white w-4/5 h-4/5 rounded-lg shadow-2xl border border-slate-200 flex flex-col overflow-hidden">
-            <div class="p-4 border-b border-slate-200 flex justify-between items-center bg-slate-50">
-                <h3 class="font-bold text-slate-700 font-mono">pociagi.json</h3>
-                <button onclick="toggleJsonPreview()" class="text-slate-400 hover:text-slate-700"><i class="fa-solid fa-xmark text-xl"></i></button>
-            </div>
-            <textarea id="json-output" class="flex-1 p-4 font-mono text-xs text-slate-600 bg-white resize-none outline-none" readonly></textarea>
-            <div class="p-3 bg-slate-50 border-t border-slate-200 flex justify-end">
-                <button onclick="copyToClipboard()" class="text-blue-600 text-xs font-bold px-3">Kopiuj</button>
-            </div>
-        </div>
-    </div>
-
-    <footer class="fixed bottom-0 w-full bg-slate-900 text-white text-[10px] text-center py-1 z-50">
-        Wersja aplikacji: v7.5 | Współautorzy: Gemini oraz Piotr M 🚂
-    </footer>
+    <input type="file" id="file-input-szlaki" accept=".json" class="hidden" onchange="loadSzlaki(this)">
+    <input type="file" id="file-input-pociagi" accept=".json" class="hidden" onchange="loadPociagi(this)">
 
     <script>
-        // --- ZRJ CONFIGURATION (FIXED DATES) ---
-        // Zgodnie z prośbą, daty są "włącznie" (do końca dnia)
-        const ZRJ_PERIODS = [
-            { label: "--- 2024/2025 ---", from: "", to: "" },
-            { label: "Roczny (15.12.24 - 13.12.25)", from: "2024-12-15", to: "2025-12-13" },
-            { label: "1) ZRJ (15.12 - 08.03.2025)", from: "2024-12-15", to: "2025-03-08" },
-            { label: "2) ZRJ (09.03 - 14.06.2025)", from: "2025-03-09", to: "2025-06-14" },
-            { label: "3) ZRJ (15.06 - 30.08.2025)", from: "2025-06-15", to: "2025-08-30" },
-            { label: "4) ZRJ (31.08 - 08.11.2025)", from: "2025-08-31", to: "2025-11-08" },
-            { label: "5) ZRJ (09.11 - 13.12.2025)", from: "2025-11-09", to: "2025-12-13" },
-            
-            { label: "--- 2025/2026 ---", from: "", to: "" },
-            { label: "Roczny (14.12.25 - 12.12.26)", from: "2025-12-14", to: "2026-12-12" },
-            // Tutaj wprowadzono poprawkę wskazaną przez użytkownika (do 07.03.2026)
-            { label: "1) ZRJ (14.12 - 07.03.2026)", from: "2025-12-14", to: "2026-03-07" },
-            { label: "2) ZRJ (08.03 - 13.06.2026)", from: "2026-03-08", to: "2026-06-13" } 
-        ];
+        // --- ZMIENNE GLOBALNE ---
+        let map;
+        let routeLayer;
+        let trainsData = [];
+        let szlakiData = []; // Baza geometrii
+        let activeTrainId = null;
 
-        // --- GLOBAL VARIABLES ---
-        let trains = [];
-        let szlakiDB = [];
-        let currentTrainIndex = -1;
-        let map = null;
-        let routeLayer = null;
-
-        let globalSettings = {
-            editor: "User",
-            validFrom: new Date().toISOString().split('T')[0],
-            validTo: new Date(new Date().getFullYear(), 11, 31).toISOString().split('T')[0]
-        };
-
-        // --- INIT ---
-        window.onload = async () => {
-            const savedGlobals = localStorage.getItem('global_settings');
-            if(savedGlobals) {
-                globalSettings = JSON.parse(savedGlobals);
-                document.getElementById('g-editor').value = globalSettings.editor;
-                document.getElementById('g-valid-from').value = globalSettings.validFrom;
-                document.getElementById('g-valid-to').value = globalSettings.validTo;
-            } else {
-                document.getElementById('g-editor').value = globalSettings.editor;
-                document.getElementById('g-valid-from').value = globalSettings.validFrom;
-                document.getElementById('g-valid-to').value = globalSettings.validTo;
-            }
-
-            const zrjSel = document.getElementById('zrj-select');
-            ZRJ_PERIODS.forEach(z => {
-                const opt = document.createElement('option');
-                opt.text = z.label;
-                if(z.from && z.to) {
-                    opt.value = JSON.stringify({f:z.from, t:z.to});
-                } else {
-                    opt.disabled = true;
-                    opt.style.fontWeight = "bold";
-                    opt.style.color = "#ccc";
-                }
-                zrjSel.add(opt);
-            });
-
-            initMap();
-            
-            try {
-                const r = await fetch('szlaki_master.json');
-                if(r.ok) {
-                    szlakiDB = await r.json();
-                    updateStatus('szlaki', true, szlakiDB.length);
-                }
-            } catch(e) {}
-
-            try {
-                const r2 = await fetch('pociagi.json');
-                if(r2.ok) {
-                    const loaded = await r2.json();
-                    if(loaded.length > 0) {
-                        trains = loaded;
-                        updateStatus('pociagi', true, trains.length);
-                        renderTrainList();
-                    }
-                }
-            } catch(e) {}
-
-            const lsTrains = localStorage.getItem('trains_v7');
-            if(lsTrains) {
-                trains = JSON.parse(lsTrains);
-                renderTrainList();
-                updateStatus('pociagi', true, trains.length);
-            }
-            updateMemoryUsage();
-        };
-
-        function updateStatus(type, ok, count) {
-            const el = document.getElementById(`stat-${type}`);
-            el.innerHTML = ok 
-                ? `<i class="fa-solid fa-check mr-1"></i>${type === 'szlaki' ? 'Szlaki' : 'Pociągi'}: ${count}`
-                : `<i class="fa-solid fa-xmark mr-1"></i>${type === 'szlaki' ? 'Szlaki' : 'Pociągi'}: 0`;
-            el.className = ok ? "text-green-500 font-bold" : "text-slate-400";
-        }
-
-        function toggleSettings() { document.getElementById('settings-modal').classList.toggle('hidden'); }
-
-        function saveGlobalSettings() {
-            globalSettings.editor = document.getElementById('g-editor').value;
-            globalSettings.validFrom = document.getElementById('g-valid-from').value;
-            globalSettings.validTo = document.getElementById('g-valid-to').value;
-            localStorage.setItem('global_settings', JSON.stringify(globalSettings));
-            alert("Ustawienia zapisane!");
-        }
-
-        function applyZRJ(val) {
-            if(!val || currentTrainIndex < 0) return;
-            const range = JSON.parse(val);
-            const t = trains[currentTrainIndex];
-            t.valid_from = range.f;
-            t.valid_to = range.t;
-            document.getElementById('cal-from').value = range.f;
-            document.getElementById('cal-to').value = range.t;
-            save(); renderCalendar(); renderTrainList();
-        }
-
-        // --- MAP ENGINE & AUTO HEALING ---
-        function initMap() {
+        // --- INICJALIZACJA ---
+        window.onload = function() {
             map = L.map('map').setView([52.0, 19.0], 6);
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: 'OSM' }).addTo(map);
-            L.tileLayer('https://{s}.tiles.openrailwaymap.org/standard/{z}/{x}/{y}.png', { maxZoom: 19, attribution: 'OpenRailwayMap' }).addTo(map);
-            routeLayer = L.layerGroup().addTo(map);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; OpenStreetMap contributors'
+            }).addTo(map);
+            routeLayer = L.featureGroup().addTo(map);
+        };
+
+        // --- OBSŁUGA PLIKÓW ---
+        function loadSzlaki(input) {
+            const file = input.files[0];
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    szlakiData = JSON.parse(e.target.result);
+                    document.getElementById('count-segments').innerText = szlakiData.length;
+                    alert(`Załadowano ${szlakiData.length} odcinków tras.`);
+                    if(activeTrainId !== null) drawRoute(); // Odśwież mapę jeśli pociąg wybrany
+                } catch(err) { alert("Błąd pliku szlaków: " + err); }
+            };
+            reader.readAsText(file);
         }
 
-        function drawRoute() {
-            if(!map || currentTrainIndex < 0) return;
-            routeLayer.clearLayers();
-            const t = trains[currentTrainIndex];
-            const bounds = [];
-            let needsSave = false;
-
-            t.trasa.forEach((seg, i) => {
-                // 1. SMART MATCH: Szukaj po nazwach stacji
-                let track = szlakiDB.find(x => 
-                    (x.start === seg.od && x.end === seg.do) || 
-                    (x.start === seg.do && x.end === seg.od)
-                );
-
-                // 2. Fallback: Jeśli nie znaleziono po nazwie, sprawdź ID (ale tylko jeśli poprawne)
-                if (!track && seg.master_id !== undefined) {
-                    track = szlakiDB.find(x => x.id == seg.master_id);
-                }
-
-                if(track) {
-                    // AUTO-HEALING: Jeśli znaleźliśmy szlak po nazwie, ale ID w pociągu było złe/brakujące, napraw to.
-                    // "nie stosował szlaku o id" -> czyli nadpisujemy błędne ID poprawnym z bazy Master.
-                    if (seg.master_id !== track.id) {
-                        console.log(`Auto-Healing: Poprawiono ID dla odcinka ${seg.od}-${seg.do} z ${seg.master_id} na ${track.id}`);
-                        seg.master_id = track.id;
-                        needsSave = true;
-                    }
-
-                    const geo = track.geometry || track.geometria;
-                    if(geo && geo.coordinates) {
-                        const path = geo.coordinates.map(c => [c[1], c[0]]);
-                        L.polyline(path, { color: '#ef4444', weight: 4 }).addTo(routeLayer);
-                        path.forEach(p => bounds.push(p));
-                        if(i===0) L.circleMarker(path[0], {radius:5, color:'green', fillOpacity:1}).addTo(routeLayer);
-                        L.circleMarker(path[path.length-1], {radius:4, color:'blue', fillOpacity:1}).addTo(routeLayer);
-                    }
-                }
-            });
-            
-            if(bounds.length > 0) map.fitBounds(bounds, {padding:[50,50]});
-            if(needsSave) save(); // Zapisz naprawione ID
+        function loadPociagi(input) {
+            const file = input.files[0];
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    trainsData = JSON.parse(e.target.result);
+                    document.getElementById('count-trains').innerText = trainsData.length;
+                    renderTrainList();
+                } catch(err) { alert("Błąd pliku pociągów: " + err); }
+            };
+            reader.readAsText(file);
         }
 
-        // --- CORE LOGIC ---
-        function addNewTrain() {
-            trains.push({
-                id: Date.now().toString(36),
-                numer: "NOWY",
-                nazwa: "",
-                tabor: "",
-                relacja_od: "",
-                relacja_do: "",
-                editor: globalSettings.editor,
-                valid_from: globalSettings.validFrom,
-                valid_to: globalSettings.validTo,
-                days: [1,2,3,4,5],
-                exceptions: [],
-                trasa: [],
-                temp_start: null
-            });
-            save(); renderTrainList(); selectTrain(trains.length-1);
-        }
-
-        function duplicateCurrentTrain() {
-            if(currentTrainIndex < 0) return;
-            const source = trains[currentTrainIndex];
-            const copy = JSON.parse(JSON.stringify(source));
-            copy.id = Date.now().toString(36);
-            copy.numer = (copy.numer || "") + " (KOPIA)";
-            trains.push(copy);
-            save(); renderTrainList(); selectTrain(trains.length - 1);
-        }
-
-        // --- REVERSE ROUTE LOGIC ---
-        function reverseRoute() {
-            if(currentTrainIndex < 0) return;
-            const t = trains[currentTrainIndex];
-            
-            if(!confirm(`Czy na pewno chcesz odwrócić trasę pociągu ${t.numer}?\nRelacja oraz wszystkie odcinki zostaną zamienione miejscami.`)) return;
-
-            // 1. Zamień Relację
-            const tempRel = t.relacja_od;
-            t.relacja_od = t.relacja_do;
-            t.relacja_do = tempRel;
-
-            // 2. Odwróć Trasę
-            if(t.trasa && t.trasa.length > 0) {
-                t.trasa.reverse(); // Odwróć kolejność tablicy
-                
-                // Dla każdego odcinka zamień 'od' z 'do'
-                t.trasa.forEach(seg => {
-                    const tempOd = seg.od;
-                    seg.od = seg.do;
-                    seg.do = tempOd;
-                    // master_id zostaje to samo (szlak fizyczny się nie zmienia, tylko kierunek)
-                });
-
-                // Reset temp_start, bo trasa jest pełna
-                t.temp_start = null;
-            } else if (t.temp_start) {
-                // Jeśli jest tylko temp_start, nie da się odwrócić bez kontekstu, czyścimy
-                t.temp_start = null;
-            }
-
-            // Aktualizuj inputy
-            document.getElementById('inp-rel-from').value = t.relacja_od || "";
-            document.getElementById('inp-rel-to').value = t.relacja_do || "";
-
-            save();
-            renderRouteUI();
-            renderTrainList(); // Żeby odświeżyć ewentualne zmiany
-            alert("Trasa została odwrócona!");
-        }
-
-        function selectTrain(idx) {
-            currentTrainIndex = idx;
-            const t = trains[idx];
-            
-            document.getElementById('editor-empty').classList.add('hidden');
-            document.getElementById('editor-panel').classList.remove('hidden');
-
-            document.getElementById('inp-no').value = t.numer || "";
-            document.getElementById('inp-name').value = t.nazwa || "";
-            document.getElementById('inp-stock').value = t.tabor || "";
-            document.getElementById('inp-rel-from').value = t.relacja_od || "";
-            document.getElementById('inp-rel-to').value = t.relacja_do || "";
-            document.getElementById('inp-meta-editor').value = t.editor || "";
-            document.getElementById('cal-from').value = t.valid_from || "";
-            document.getElementById('cal-to').value = t.valid_to || "";
-            document.getElementById('zrj-select').value = "";
-
-            document.querySelectorAll('.day-btn').forEach(btn => {
-                const d = parseInt(btn.dataset.day);
-                styleDayBtn(btn, t.days.includes(d));
-            });
-
-            renderTrainList();
-            renderCalendar();
-            renderRouteUI();
-            
-            if(!document.getElementById('tab-route').classList.contains('hidden')) {
-                setTimeout(() => { map.invalidateSize(); drawRoute(); }, 100);
-            }
-        }
-
+        // --- UI LOGIKA ---
         function renderTrainList() {
             const list = document.getElementById('train-list');
-            list.innerHTML = '';
-            const filter = document.getElementById('search-input').value.toLowerCase();
-
-            trains.forEach((t, i) => {
-                if(filter && !JSON.stringify(t).toLowerCase().includes(filter)) return;
-                const el = document.createElement('div');
-                const active = i === currentTrainIndex;
-                el.className = `p-3 border-b border-slate-100 cursor-pointer hover:bg-slate-50 transition relative group ${active ? 'active-train' : 'bg-white'}`;
-                el.onclick = () => selectTrain(i);
-                
-                const dateRange = (t.valid_from && t.valid_to) 
-                    ? `<div class="text-[10px] text-slate-400 mt-0.5"><i class="fa-regular fa-calendar mr-1"></i>${t.valid_from} &rarr; ${t.valid_to}</div>` 
-                    : '';
-
-                el.innerHTML = `
-                    <div class="flex justify-between items-center mb-1">
-                        <span class="font-bold text-sm text-slate-800 font-mono">${t.numer || '---'}</span>
-                        ${t.trasa.length > 0 ? '<i class="fa-solid fa-route text-green-500 text-[10px]"></i>' : ''}
-                    </div>
-                    <div class="text-[11px] text-slate-500 truncate">${t.nazwa || '(bez nazwy)'}</div>
-                    ${dateRange}
-                `;
-                list.appendChild(el);
-            });
-        }
-        
-        document.getElementById('search-input').addEventListener('input', renderTrainList);
-
-        // --- CALENDAR ---
-        function renderCalendar() {
-            if(currentTrainIndex < 0) return;
-            const t = trains[currentTrainIndex];
-            const cont = document.getElementById('calendar-grid-container');
-            cont.innerHTML = '';
-
-            const start = new Date(t.valid_from);
-            const end = new Date(t.valid_to);
-            if(isNaN(start) || isNaN(end)) return;
-
-            let curr = new Date(start.getFullYear(), start.getMonth(), 1);
-            let limit = 0;
-            while(curr <= end && limit < 24) {
-                const mWrap = document.createElement('div');
-                mWrap.className = "bg-white border border-slate-200 rounded p-2";
-                mWrap.innerHTML = `<div class="text-center text-[10px] font-bold text-slate-400 mb-2 capitalize">${curr.toLocaleString('pl-PL', {month:'long', year:'numeric'})}</div>`;
-                
-                const grid = document.createElement('div');
-                grid.className = "calendar-grid";
-                ['P','W','Ś','C','P','S','N'].forEach(h => grid.innerHTML += `<div class="text-[8px] text-center text-slate-400 py-1">${h}</div>`);
-                
-                let fd = curr.getDay(); fd = fd===0?6:fd-1;
-                for(let k=0; k<fd; k++) grid.innerHTML += `<div class="bg-slate-100"></div>`;
-                
-                const dim = new Date(curr.getFullYear(), curr.getMonth()+1, 0).getDate();
-                for(let d=1; d<=dim; d++) {
-                    const z = new Date(curr.getFullYear(), curr.getMonth(), d, 12,0,0);
-                    const iso = z.toISOString().split('T')[0];
-                    const cell = document.createElement('div');
-                    cell.className = "calendar-day"; cell.innerText = d;
-                    
-                    if(z>=start && z<=end) {
-                        const s = t.days.includes(z.getDay());
-                        const ex = t.exceptions.includes(iso);
-                        if(s) { if(ex) cell.classList.add('day-cancelled'); else cell.classList.add('day-active'); }
-                        else { if(ex) cell.classList.add('day-added'); else cell.classList.add('day-inactive'); }
-                        
-                        cell.onclick = () => {
-                            if(t.exceptions.includes(iso)) t.exceptions = t.exceptions.filter(x=>x!==iso);
-                            else t.exceptions.push(iso);
-                            save(); renderCalendar();
-                        };
-                    } else { cell.style.opacity = '0.3'; }
-                    grid.appendChild(cell);
-                }
-                mWrap.appendChild(grid);
-                cont.appendChild(mWrap);
-                curr.setMonth(curr.getMonth()+1);
-                limit++;
-            }
-        }
-        
-        document.querySelectorAll('.day-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                if(currentTrainIndex<0)return;
-                const d=parseInt(btn.dataset.day); const t=trains[currentTrainIndex];
-                if(t.days.includes(d)) t.days=t.days.filter(x=>x!==d); else t.days.push(d);
-                save(); selectTrain(currentTrainIndex);
-            });
-        });
-        function styleDayBtn(btn, active) {
-            btn.className = `day-btn w-8 h-8 rounded border text-xs font-bold transition ${active ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-slate-600 border-slate-200'}`;
-        }
-
-        // --- ROUTE UI ---
-        function renderRouteUI() {
-            const t = trains[currentTrainIndex];
-            const list = document.getElementById('route-list');
+            const search = document.getElementById('search-input').value.toLowerCase();
             list.innerHTML = '';
             
-            const startUI = document.getElementById('route-start-ui');
-            const nextUI = document.getElementById('route-next-ui');
-            
-            let head = t.trasa.length > 0 ? t.trasa[t.trasa.length-1].do : t.temp_start;
-            
-            if(!head) {
-                startUI.classList.remove('hidden'); nextUI.classList.add('hidden');
-                const sel = document.getElementById('route-start-select');
-                if(sel.options.length<=1 && szlakiDB.length>0) {
-                    const s = new Set(); szlakiDB.forEach(x=>{s.add(x.start);s.add(x.end)});
-                    Array.from(s).sort().forEach(x=>sel.innerHTML+=`<option value="${x}">${x}</option>`);
+            trainsData.forEach((t, index) => {
+                if(t.numer.toLowerCase().includes(search) || t.nazwa.toLowerCase().includes(search)) {
+                    const div = document.createElement('div');
+                    div.className = "p-3 border-b border-slate-100 hover:bg-blue-50 cursor-pointer transition text-sm";
+                    div.innerHTML = `<strong>${t.numer}</strong> <span class="text-slate-500 text-xs">${t.nazwa}</span>`;
+                    div.onclick = () => loadTrainToEditor(index);
+                    list.appendChild(div);
                 }
-            } else {
-                startUI.classList.add('hidden'); nextUI.classList.remove('hidden');
-                document.getElementById('curr-station').innerText = head;
-                const sel = document.getElementById('next-segment-select');
-                sel.innerHTML = '<option value="">...</option>';
-                szlakiDB.filter(x=>x.start===head||x.end===head).forEach(x=>{
-                    const isFwd = x.start===head; const dest=isFwd?x.end:x.start;
-                    
-                    // KEY FIX: Always use x.id (Master ID), never index
-                    const val = JSON.stringify({
-                        master_id: x.id, 
-                        od: head, 
-                        do: dest, 
-                        przez: x.via||null
-                    });
-                    
-                    sel.innerHTML+=`<option value='${val}'>-> ${dest} ${x.via?'('+x.via+')':''}</option>`;
-                });
-            }
-
-            if(head) {
-                 list.innerHTML += `<div class="pl-4 pb-4 border-l-2 border-slate-200 relative"><div class="absolute -left-[5px] top-0 w-2.5 h-2.5 bg-green-500 rounded-full"></div><span class="text-xs font-bold text-slate-700">${t.trasa.length>0?t.trasa[0].od:t.temp_start}</span></div>`;
-            }
-            t.trasa.forEach((seg, i) => {
-                 list.innerHTML += `
-                    <div class="pl-4 pb-4 border-l-2 border-slate-200 relative group">
-                        <div class="absolute -left-[5px] top-1 w-2.5 h-2.5 bg-slate-300 rounded-full border-2 border-white group-hover:bg-blue-500"></div>
-                        <div class="bg-white border border-slate-200 rounded p-2 flex justify-between items-center shadow-sm">
-                            <div><div class="text-xs font-bold text-slate-700">${seg.do}</div><div class="text-[10px] text-slate-400">${seg.przez||''}</div></div>
-                            ${i===t.trasa.length-1 ? `<button onclick="trains[currentTrainIndex].trasa.pop();if(trains[currentTrainIndex].trasa.length==0)trains[currentTrainIndex].temp_start=null;save();renderRouteUI();drawRoute()" class="text-slate-400 hover:text-red-500"><i class="fa-solid fa-times"></i></button>`:''}
-                        </div>
-                    </div>`;
             });
+        }
+
+        function loadTrainToEditor(index) {
+            activeTrainId = index;
+            const t = trainsData[index];
+            
+            document.getElementById('inp-numer').value = t.numer || "";
+            document.getElementById('inp-nazwa').value = t.nazwa || "";
+            document.getElementById('inp-tabor').value = t.tabor || "ED160";
+            document.getElementById('inp-trasa-json').value = JSON.stringify(t.trasa || [], null, 2);
+            
             drawRoute();
         }
 
-        function setRouteStart() { const v=document.getElementById('route-start-select').value; if(v){trains[currentTrainIndex].temp_start=v;save();renderRouteUI();} }
-        function addSegment() { const v=document.getElementById('next-segment-select').value; if(v){trains[currentTrainIndex].trasa.push(JSON.parse(v));trains[currentTrainIndex].temp_start=null;save();renderRouteUI();} }
-        function resetRoute() { if(confirm("Czy zresetować trasę?")){trains[currentTrainIndex].trasa=[];trains[currentTrainIndex].temp_start=null;save();renderRouteUI();} }
+        function addNewTrain() {
+            const newTrain = { numer: "NOWY", nazwa: "Pociąg", trasa: [] };
+            trainsData.unshift(newTrain);
+            renderTrainList();
+            loadTrainToEditor(0);
+        }
 
-        // --- IO & UTILS ---
-        function loadSzlakiManual(i) {
-            const f=i.files[0]; if(!f)return; const r=new FileReader();
-            r.onload=e=>{szlakiDB=JSON.parse(e.target.result);updateStatus('szlaki',true,szlakiDB.length);if(currentTrainIndex>=0)renderRouteUI();}; r.readAsText(f);
-        }
-        function loadTrainsManual(i) {
-            const f=i.files[0]; if(!f)return; const r=new FileReader();
-            r.onload=e=>{trains=JSON.parse(e.target.result);updateStatus('pociagi',true,trains.length);save();renderTrainList();}; r.readAsText(f);
-        }
-        function downloadPociagi() {
-            const b=new Blob([JSON.stringify(trains,null,2)],{type:'application/json'});
-            const a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download='pociagi.json'; a.click();
-        }
-        function toggleJsonPreview() {
-            const m=document.getElementById('json-modal');
-            const area=document.getElementById('json-output');
-            if(m.classList.contains('hidden')) { area.value=JSON.stringify(trains,null,2); m.classList.remove('hidden'); }
-            else m.classList.add('hidden');
-        }
-        function copyToClipboard() { document.getElementById('json-output').select(); document.execCommand('copy'); }
-
-        function save() { 
-            localStorage.setItem('trains_v7', JSON.stringify(trains)); 
-            updateMemoryUsage();
-        }
-        
-        function updateMemoryUsage() {
-            let total = 0;
-            for(let key in localStorage) {
-                if(localStorage.hasOwnProperty(key)) total += (localStorage[key].length + key.length) * 2;
+        function parseRouteJson() {
+            if (activeTrainId === null) return;
+            try {
+                const newRoute = JSON.parse(document.getElementById('inp-trasa-json').value);
+                trainsData[activeTrainId].trasa = newRoute;
+                drawRoute();
+            } catch (e) {
+                alert("Błąd składni JSON trasy!");
             }
-            document.getElementById('memory-usage').innerText = `Mem: ${(total/1024).toFixed(2)} KB`;
         }
 
-        function deleteCurrentTrain() { if(confirm("Usunąć?")){trains.splice(currentTrainIndex,1);currentTrainIndex=-1;document.getElementById('editor-panel').classList.add('hidden');document.getElementById('editor-empty').classList.remove('hidden');save();renderTrainList();} }
-        function hardReset() { if(confirm("Reset?")){localStorage.clear();location.reload();} }
-        function switchTab(n) {
-            document.getElementById('tab-info').classList.add('hidden'); document.getElementById('tab-route').classList.add('hidden');
-            document.getElementById('tab-'+n).classList.remove('hidden');
-            document.getElementById('tab-btn-info').className = `h-full border-b-2 ${n==='info'?'border-blue-600 text-blue-600':'border-transparent text-slate-500'} font-bold text-xs uppercase px-4 transition`;
-            document.getElementById('tab-btn-route').className = `h-full border-b-2 ${n==='route'?'border-blue-600 text-blue-600':'border-transparent text-slate-500'} font-bold text-xs uppercase px-4 transition`;
-            if(n==='route') setTimeout(()=>{map.invalidateSize();drawRoute()},100);
-        }
+        // --- POPRAWIONA FUNKCJA RYSOWANIA (v8.0 FIX) ---
+        function drawRoute() {
+            routeLayer.clearLayers();
+            if (activeTrainId === null || !trainsData[activeTrainId].trasa) return;
 
-        // Inputs
-        ['inp-no','inp-name','inp-stock','inp-rel-from','inp-rel-to','inp-meta-editor','cal-from','cal-to'].forEach(id=>{
-            document.getElementById(id).addEventListener('input', e=>{
-                if(currentTrainIndex<0)return; const t=trains[currentTrainIndex];
-                if(id=='inp-no')t.numer=e.target.value; if(id=='inp-name')t.nazwa=e.target.value;
-                if(id=='inp-stock')t.tabor=e.target.value; if(id=='inp-rel-from')t.relacja_od=e.target.value;
-                if(id=='inp-rel-to')t.relacja_do=e.target.value; if(id=='inp-meta-editor')t.editor=e.target.value;
-                if(id=='cal-from'){t.valid_from=e.target.value;renderCalendar();}
-                if(id=='cal-to'){t.valid_to=e.target.value;renderCalendar();}
-                save(); if(id=='inp-no'||id=='inp-name'||id=='cal-from'||id=='cal-to')renderTrainList();
+            const trasa = trainsData[activeTrainId].trasa;
+            const latlngs = [];
+            let missingSegments = 0;
+
+            trasa.forEach((item, index) => {
+                // Szukanie geometrii po ID w bazie szlaków
+                // Obsługuje zarówno string ID jak i number ID
+                const segment = szlakiData.find(s => s.id == item.master_id);
+
+                if (segment && segment.geometry && segment.geometry.coordinates) {
+                    // Konwersja GeoJSON [lon, lat] -> Leaflet [lat, lon]
+                    const segmentLatLngs = segment.geometry.coordinates.map(coord => [coord[1], coord[0]]);
+                    
+                    L.polyline(segmentLatLngs, { color: '#2563eb', weight: 4, opacity: 0.8 }).addTo(routeLayer);
+                    latlngs.push(...segmentLatLngs);
+                } else {
+                    console.warn(`Brakujący segment ID: ${item.master_id} w pozycji ${index}`);
+                    missingSegments++;
+                }
             });
-        });
+
+            if (latlngs.length > 0) {
+                map.fitBounds(latlngs, { padding: [50, 50] });
+            }
+
+            if (missingSegments > 0) {
+                console.error(`Pociąg ma ${missingSegments} brakujących odcinków w bazie szlaków.`);
+            }
+        }
+
+        function saveCurrentTrain() {
+            if(activeTrainId !== null) {
+                trainsData[activeTrainId].numer = document.getElementById('inp-numer').value;
+                trainsData[activeTrainId].nazwa = document.getElementById('inp-nazwa').value;
+                trainsData[activeTrainId].tabor = document.getElementById('inp-tabor').value;
+                parseRouteJson(); // Zapisuje też JSON trasy
+                renderTrainList();
+                alert("Zapisano zmiany w pamięci lokalnej (nie zapomnij pobrać pliku!)");
+            }
+        }
+
+        function downloadData() {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(trainsData, null, 2));
+            const downloadAnchorNode = document.createElement('a');
+            downloadAnchorNode.setAttribute("href", dataStr);
+            downloadAnchorNode.setAttribute("download", "pociagi_v8.json");
+            document.body.appendChild(downloadAnchorNode);
+            downloadAnchorNode.click();
+            downloadAnchorNode.remove();
+        }
     </script>
 </body>
 </html>
