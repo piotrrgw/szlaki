@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Edytor Bazy Szlaków v3.1</title>
+    <title>Edytor Bazy Szlaków v3.2</title>
     
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-W05T4L1HFD"></script> 
     <script> window.dataLayer = window.dataLayer || []; function gtag(){dataLayer.push(arguments);} gtag('js', new Date()); gtag('config', 'G-W05T4L1HFD'); </script>
@@ -127,7 +127,7 @@
 <div id="app">
     <div id="sidebar">
         <div class="header">
-            <h2>Baza Szlaków (Edytor v3.1)</h2>
+            <h2>Baza Szlaków (Edytor v3.2)</h2>
             <div class="data-source">Źródło: <span id="source-display" class="source-tag">Ładowanie...</span></div>
             <div style="font-size: 0.8rem; margin-top:5px;">Postęp geometrii: <span id="stats-counter">0/0</span></div>
         </div>
@@ -137,6 +137,11 @@
                 <button class="btn btn-blue" onclick="addNewSegment()" style="width: 50%">+ Dodaj</button>
                 <button class="btn btn-orange" onclick="fixIds()" style="width: 50%" title="Numeruje ID kolejno od 1">🔧 Napraw ID</button>
             </div>
+
+            <button id="btn-filter-geo" class="btn btn-grey" onclick="toggleGeoFilter()" style="margin-bottom: 2px; font-size: 0.75rem;">
+                <i class="fa-regular fa-square"></i> Pokaż tylko bez mapy
+            </button>
+
             <input type="text" id="search-box" placeholder="Szukaj (np. Kalisz)..." onkeyup="renderList()">
         </div>
 
@@ -168,18 +173,15 @@
                 <button class="btn btn-grey" onclick="viewJSON()" style="width: 50%">👀 Podgląd</button>
                 <button class="btn btn-green" onclick="exportJSON()" style="width: 50%">📥 Pobierz</button>
             </div>
-            
             <hr style="margin: 8px 0; border: 0; border-top: 1px solid #ddd;">
-            
             <input type="file" id="file-input" accept=".json" style="display: none;" onchange="importFromFile(this)">
-            
             <button class="btn btn-blue" onclick="document.getElementById('file-input').click()">
                 <i class="fa-solid fa-folder-open"></i> Wczytaj z pliku (Offline)
             </button>
         </div>
 
         <div class="footer">
-            Wersja aplikacji: v3.1 | Współautorzy: Gemini & Piotr M 🚂
+            Wersja aplikacji: v3.2 | Współautorzy: Gemini & Piotr M 🚂
         </div>
     </div>
 
@@ -204,6 +206,7 @@
     // --- 1. ZMIENNE GLOBALNE ---
     let db = [];
     let selectedId = null;
+    let filterMissingOnly = false; // Nowa zmienna stanu filtra
 
     // --- MAPA ---
     var map = L.map('map').setView([52.0, 19.2], 6);
@@ -229,7 +232,7 @@
     async function initData() {
         const statusEl = document.getElementById('source-display');
         
-        // 1. Najpierw sprawdź pamięć lokalną
+        // 1. Pamięć lokalna
         const local = localStorage.getItem('szlakiDB');
         if (local) {
             try {
@@ -241,7 +244,7 @@
             } catch (e) { console.error("Błąd pamięci lokalnej", e); }
         }
 
-        // 2. Jeśli pamięć pusta, spróbuj pobrać plik z serwera
+        // 2. Serwer
         try {
             const response = await fetch('szlaki_master.json?t=' + new Date().getTime());
             if (response.ok) {
@@ -268,7 +271,7 @@
             resetBtn.style.cssText = "float:right; margin-top:-20px; background:#dc3545; color:white; width:auto; padding:2px 8px; border:none;";
             resetBtn.innerText = "Wyczyść pamięć";
             resetBtn.onclick = () => {
-                if(confirm("Czy na pewno usunąć zmiany z pamięci przeglądarki i spróbować wczytać plik z serwera?")) {
+                if(confirm("Czy na pewno usunąć zmiany z pamięci przeglądarki?")) {
                     localStorage.removeItem('szlakiDB');
                     location.reload();
                 }
@@ -277,58 +280,72 @@
         }
     }
 
-    // --- IMPORT Z PLIKU (OFFLINE) ---
+    // --- IMPORT Z PLIKU ---
     function importFromFile(input) {
         const file = input.files[0];
         if (!file) return;
-
         const reader = new FileReader();
         reader.onload = function(e) {
             try {
                 const json = JSON.parse(e.target.result);
                 if (Array.isArray(json)) {
-                    if(confirm(`Wczytano plik zawierający ${json.length} szlaków. Czy chcesz ZASTĄPIĆ obecną bazę tymi danymi?`)) {
+                    if(confirm(`Wczytano ${json.length} szlaków. ZASTĄPIĆ bazę?`)) {
                         db = json;
-                        saveAll(); // Zapis do LocalStorage
+                        saveAll();
                         renderList();
-                        
-                        // Aktualizacja statusu
-                        const statusEl = document.getElementById('source-display');
-                        statusEl.innerHTML = '<span style="color:blue"><i class="fa-solid fa-file-import"></i> Wczytano z pliku</span>';
+                        document.getElementById('source-display').innerHTML = '<span style="color:blue"><i class="fa-solid fa-file-import"></i> Wczytano z pliku</span>';
                         addResetButton();
-                        
-                        alert("Baza została zaktualizowana!");
+                        alert("Baza zaktualizowana!");
                     }
-                } else {
-                    alert("Błąd: Wybrany plik nie zawiera poprawnej struktury (nie jest tablicą JSON).");
-                }
-            } catch (err) {
-                alert("Błąd parsowania JSON: " + err.message);
-            }
+                } else { alert("Błąd: Niepoprawny format JSON."); }
+            } catch (err) { alert("Błąd parsowania: " + err.message); }
         };
         reader.readAsText(file);
-        // Reset inputa, żeby można było wczytać ten sam plik ponownie w razie potrzeby
         input.value = '';
     }
 
+    // --- FILTR GEOMETRII (NOWOŚĆ) ---
+    function toggleGeoFilter() {
+        filterMissingOnly = !filterMissingOnly;
+        const btn = document.getElementById('btn-filter-geo');
+        if(filterMissingOnly) {
+            btn.className = 'btn btn-orange';
+            btn.innerHTML = '<i class="fa-solid fa-check-square"></i> Tylko bez mapy';
+        } else {
+            btn.className = 'btn btn-grey';
+            btn.innerHTML = '<i class="fa-regular fa-square"></i> Pokaż tylko bez mapy';
+        }
+        renderList();
+    }
 
-    // --- LOGIKA UI ---
+    // --- RENDEROWANIE LISTY ---
     function renderList() {
         const list = document.getElementById('list-container');
         const filter = document.getElementById('search-box').value.toLowerCase();
         list.innerHTML = '';
         
         let done = 0;
+        let visibleCount = 0;
+
         db.forEach((item, index) => {
             const hasGeo = item.geometry && item.geometry.coordinates && item.geometry.coordinates.length > 0;
             if(hasGeo) done++;
 
+            // 1. Filtr Tekstowy
             const txt = `${item.id} ${item.start} ${item.end} ${item.via || ''}`.toLowerCase();
-            if (txt.includes(filter)) {
+            const textMatch = txt.includes(filter);
+
+            // 2. Filtr "Bez Mapy" (NOWOŚĆ)
+            // Jeśli filtr jest włączony (filterMissingOnly=true), pokazujemy tylko gdy hasGeo=false
+            // Jeśli filtr wyłączony, pokazujemy wszystko.
+            const geoMatch = !filterMissingOnly || (filterMissingOnly && !hasGeo);
+
+            if (textMatch && geoMatch) {
+                visibleCount++;
                 const div = document.createElement('div');
                 div.className = `segment-item ${selectedId === item.id ? 'active' : ''}`;
                 
-                // 1. Panel Przycisków
+                // Panel Przycisków
                 const btns = document.createElement('div');
                 btns.className = 'order-controls';
                 
@@ -355,7 +372,7 @@
                 insert.onclick = (e) => { e.stopPropagation(); moveAfter(index); };
                 btns.appendChild(insert);
                 
-                // 2. Treść
+                // Treść
                 const content = document.createElement('div');
                 content.className = 'segment-content';
                 content.onclick = () => selectSegment(item.id);
@@ -373,9 +390,14 @@
             }
         });
         document.getElementById('stats-counter').innerText = `${done} / ${db.length}`;
+        
+        // Jeśli lista pusta z powodu filtru
+        if(visibleCount === 0 && filterMissingOnly) {
+            list.innerHTML = '<div style="text-align:center; padding:20px; color:#888;">Wszystkie szlaki mają już geometrię! 🎉<br>Lub nie pasują do wyszukiwania.</div>';
+        }
     }
 
-    // --- ZMIANA KOLEJNOŚCI ---
+    // --- OBSŁUGA DANYCH ---
     function moveItem(index, direction) {
         const newIndex = index + direction;
         if (newIndex < 0 || newIndex >= db.length) return;
@@ -398,21 +420,18 @@
         db.splice(currentIndex, 1);
         const newTargetIndex = db.findIndex(x => x.id === targetId);
         db.splice(newTargetIndex + 1, 0, itemToMove);
-        
         saveAll();
         renderList();
     }
 
     function fixIds() {
-        if (!confirm("UWAGA: Czy chcesz przenumerować wszystkie szlaki od 1 do N?")) return;
+        if (!confirm("Przenumerować ID od 1 do N?")) return;
         db.forEach((item, index) => { item.id = index + 1; });
         saveAll();
         renderList();
         if(selectedId) selectSegment(selectedId);
-        alert("ID naprawione.");
     }
 
-    // --- EDYCJA ---
     function selectSegment(id) {
         selectedId = id;
         renderList();
@@ -450,15 +469,13 @@
         if(!selectedId) return;
         const layers = drawnItems.getLayers();
         const item = db.find(x => x.id === selectedId);
-        
-        if(layers.length === 0) {
-            item.geometry = null;
-        } else {
-            item.geometry = layers[0].toGeoJSON().geometry;
-        }
+        if(layers.length === 0) item.geometry = null;
+        else item.geometry = layers[0].toGeoJSON().geometry;
         saveAll();
         renderList();
-        alert("Zapisano geometrię!");
+        // Opcjonalnie przełącz na następny brakujący, jeśli filtr aktywny?
+        // Na razie zostawiamy, aby nie mylić użytkownika.
+        alert("Zapisano!");
     }
 
     function addNewSegment() {
@@ -466,7 +483,6 @@
         db.push({ id: maxId + 1, start: "Nowy", end: "Szlak", via: "-", geometry: null });
         saveAll();
         renderList();
-        // Scroll to bottom
         const list = document.getElementById('list-container');
         list.scrollTop = list.scrollHeight;
     }
@@ -514,7 +530,7 @@
                     });
                     map.fitBounds(line.getBounds(), {padding:[50,50]});
                     alert(`Znaleziono ${validLocs.length} stacji.`);
-                } else { alert("Za mało znalezionych stacji."); }
+                } else { alert("Za mało stacji."); }
             } catch(e) { alert("Błąd API: " + e.message); }
         }
     }
@@ -526,7 +542,7 @@
         } catch(e) { return null; }
     }
 
-    // --- IMPORT/EXPORT JSON ---
+    // --- EXPORT/IMPORT ---
     function viewJSON() {
         document.getElementById('json-output').textContent = JSON.stringify(db, null, 2);
         document.getElementById('json-modal').style.display = 'flex';
@@ -549,7 +565,7 @@
         a.remove();
     }
 
-    // Fix ikon
+    // Fix icon
     const style = document.createElement('style');
     style.innerHTML = `.leaflet-draw-toolbar a { background-image: url('https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/images/spritesheet.png'); }`;
     document.head.appendChild(style);
