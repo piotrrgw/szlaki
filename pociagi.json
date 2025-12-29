@@ -580,5 +580,263 @@
       }
     ],
     "temp_start": null
+  },
+  {
+    "id": "mjr5nvhv",
+    "numer": "IC 5114/5",
+    "nazwa": "ŻEGLARZ",
+    "tabor": "SKŁAD WAGONOWY",
+    "relacja_od": "GDYNIA GŁÓWNA",
+    "relacja_do": "ŁÓDŹ FABRYCZNA",
+    "editor": "Piotr M",
+    "valid_from": "2025-12-14",
+    "valid_to": "2026-03-07",
+    "days": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      0
+    ],
+    "exceptions": [],
+    "trasa": [
+      {
+        "master_id": 40,
+        "od": "Gdynia Główna",
+        "do": "Tczew",
+        "przez": "Pszczółki, Pruszcz Gdański, Gdańsk Główny, Sopot"
+      },
+      {
+        "master_id": 39,
+        "od": "Tczew",
+        "do": "Iława Główna",
+        "przez": "Susz, Prabuty, Mleczewo, Malbork"
+      },
+      {
+        "master_id": 38,
+        "od": "Iława Główna",
+        "do": "Działdowo",
+        "przez": "Gralewo, Rybno Pomorskie, Rakowice"
+      },
+      {
+        "master_id": 36,
+        "od": "Działdowo",
+        "do": "Warszawa Wschodnia",
+        "przez": "Legionowo, Nowy Dwór Mazowiecki, Nasielsk, Ciechanów, Mława"
+      },
+      {
+        "master_id": 23,
+        "od": "Warszawa Wschodnia",
+        "do": "Warszawa Zachodnia",
+        "przez": "Warszawa Centralna"
+      },
+      {
+        "master_id": 17,
+        "od": "Warszawa Zachodnia",
+        "do": "Grodzisk Mazowiecki",
+        "przez": "Józefinów, Warszawa Włochy"
+      },
+      {
+        "master_id": 12,
+        "od": "Grodzisk Mazowiecki",
+        "do": "Koluszki",
+        "przez": "Skierniewice"
+      },
+      {
+        "master_id": 11,
+        "od": "Koluszki",
+        "do": "Łódź Widzew",
+        "przez": "-"
+      },
+      {
+        "master_id": 0,
+        "od": "Łódź Widzew",
+        "do": "Łódź Fabryczna",
+        "przez": "-"
+      }
+    ],
+    "temp_start": null
+  },
+  {
+    "id": "mjr5q1o9",
+    "numer": "IC 2820/1",
+    "nazwa": "KOZIOŁEK",
+    "tabor": "ED160",
+    "relacja_od": "LUBLIN GŁOWNY",
+    "relacja_do": "SZCZECIN GŁÓWNY",
+    "editor": "Piotr M",
+    "valid_from": "2025-12-14",
+    "valid_to": "2026-03-07",
+    "days": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      0
+    ],
+    "exceptions": [],
+    "trasa": [
+      {
+        "master_id": 99,
+        "od": "Lublin Główny",
+        "do": "Radom Główny",
+        "przez": "Pionki, Nałęczów"
+      },
+      {
+        "master_id": 98,
+        "od": "Radom Główny",
+        "do": "Tomaszów Mazowiecki",
+        "przez": "Drzewica, Przysucha"
+      },
+      {
+        "master_id": 91,
+        "od": "Tomaszów Mazowiecki",
+        "do": "Łódź Widzew",
+        "przez": "Gałkówek"
+      },
+      {
+        "master_id": 1,
+        "od": "Łódź Widzew",
+        "do": "Łódź Chojny",
+        "przez": "Łódź Dąbrowa"
+      },
+      {
+        "master_id": 3,
+        "od": "Łódź Chojny",
+        "do": "Łódź Lublinek",
+        "przez": "-"
+      },
+      {
+        "master_id": 43,
+        "od": "Łódź Lublinek",
+        "do": "Gajewniki",
+        "przez": "Pabianice"
+      },
+      {
+        "master_id": 44,
+        "od": "Gajewniki",
+        "do": "Kalisz",
+        "przez": "Zduńska Wola, Sieradz, Błaszki, Opatówek"
+      },
+      {
+        "master_id": 49,
+        "od": "Kalisz",
+        "do": "Jarocin",
+        "przez": "Czekanów, Pleszew"
+      },
+      {
+        "master_id": 51,
+        "od": "Jarocin",
+        "do": "Poznań Główny",
+        "przez": "Środa Wielkopolska"
+      },
+      {
+        "master_id": 61,
+        "od": "Poznań Główny",
+        "do": "Krzyż",
+        "przez": "Poznań Wola, Szamotuły"
+      },
+      {
+        "master_id": 62,
+        "od": "Krzyż",
+        "do": "Szczecin Dąbie",
+        "przez": "Choszczno"
+      },
+      {
+        "master_id": 63,
+        "od": "Szczecin Dąbie",
+        "do": "Szczecin Główny",
+        "przez": "Dziewoklicz"
+      }
+    ],
+    "temp_start": null
+  },
+  {
+    "id": "mjr5u03h",
+    "numer": "IC 8120/1",
+    "nazwa": "WŁÓKNIARZ",
+    "tabor": "ED160",
+    "relacja_od": "SZCZECIN GŁÓWNY",
+    "relacja_do": "ŁÓDŹ FABRYCZNA",
+    "editor": "Piotr M",
+    "valid_from": "2025-12-14",
+    "valid_to": "2026-03-07",
+    "days": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      0
+    ],
+    "exceptions": [],
+    "trasa": [
+      {
+        "master_id": 63,
+        "od": "Szczecin Główny",
+        "do": "Szczecin Dąbie",
+        "przez": "Dziewoklicz"
+      },
+      {
+        "master_id": 62,
+        "od": "Szczecin Dąbie",
+        "do": "Krzyż",
+        "przez": "Choszczno"
+      },
+      {
+        "master_id": 61,
+        "od": "Krzyż",
+        "do": "Poznań Główny",
+        "przez": "Poznań Wola, Szamotuły"
+      },
+      {
+        "master_id": 51,
+        "od": "Poznań Główny",
+        "do": "Jarocin",
+        "przez": "Środa Wielkopolska"
+      },
+      {
+        "master_id": 49,
+        "od": "Jarocin",
+        "do": "Kalisz",
+        "przez": "Czekanów, Pleszew"
+      },
+      {
+        "master_id": 44,
+        "od": "Kalisz",
+        "do": "Gajewniki",
+        "przez": "Zduńska Wola, Sieradz, Błaszki, Opatówek"
+      },
+      {
+        "master_id": 43,
+        "od": "Gajewniki",
+        "do": "Łódź Lublinek",
+        "przez": "Pabianice"
+      },
+      {
+        "master_id": 3,
+        "od": "Łódź Lublinek",
+        "do": "Łódź Chojny",
+        "przez": "-"
+      },
+      {
+        "master_id": 2,
+        "od": "Łódź Chojny",
+        "do": "Łódź Widzew",
+        "przez": "Łódź Olechów Wschód"
+      },
+      {
+        "master_id": 0,
+        "od": "Łódź Widzew",
+        "do": "Łódź Fabryczna",
+        "przez": "-"
+      }
+    ],
+    "temp_start": null
   }
 ]
