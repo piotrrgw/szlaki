@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Generator Tras Pociągów v1.4</title>
+    <title>Generator Tras Pociągów v1.5</title>
     
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-W05T4L1HFD"></script>
     <script>
@@ -288,7 +288,7 @@
 
 <header>
     <h1>Generator Tras Pociągów</h1>
-    <div class="version">v1.4</div>
+    <div class="version">v1.5</div>
 </header>
 
 <main>
@@ -442,7 +442,7 @@
 
 <footer>
     Współautorzy: Gemini, Piotr M 🚂 <br>
-    Wersja aplikacji: v1.4
+    Wersja aplikacji: v1.5
 </footer>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
@@ -451,8 +451,8 @@ crossorigin=""></script>
 
 <script>
     /**
-     * Wersja aplikacji: v1.4
-     * Changes: OpenRailwayMap overlay, Duplicate Train, Reverse Route, Edit Train.
+     * Wersja aplikacji: v1.5
+     * Changes: Fixed Reverse Route editor sync, Version bump.
      */
 
     // --- Zmienne Globalne ---
@@ -934,7 +934,32 @@ crossorigin=""></script>
         train.route.segments = newSegments;
         
         saveAndUpdate();
-        showStatus("Trasa odwrócona.", "success");
+        
+        // FIX: Jeśli edytujemy TEN pociąg, musimy odświeżyć edytor!
+        if (editingId === train.id) {
+            // Aktualizacja stanu edytora
+            currentRoute = [...train.route.segments];
+            currentStation = train.route.end;
+            
+            // Odśwież widok mapy
+            routeLayerGroup.clearLayers();
+            currentRoute.forEach(seg => {
+                if (graph[seg.from]) {
+                    const conn = graph[seg.from].find(c => c.target === seg.to && c.via === seg.via);
+                    if (conn && conn.geometry) {
+                        L.geoJSON(conn.geometry, { style: { color: 'blue', weight: 4 } }).addTo(routeLayerGroup);
+                    }
+                }
+            });
+            
+            // Odśwież UI
+            document.getElementById('startStation').value = train.route.start;
+            updateCurrentRouteUI();
+            updateNextOptions();
+            showStatus("Trasa odwrócona i zaktualizowana w edytorze.", "success");
+        } else {
+            showStatus("Trasa odwrócona.", "success");
+        }
     }
 
     window.editTrain = function(index) {
