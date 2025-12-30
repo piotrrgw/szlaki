@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Generator Tras Pociągów v1.3</title>
+    <title>Generator Tras Pociągów v1.4</title>
     
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-W05T4L1HFD"></script>
     <script>
@@ -25,6 +25,8 @@
             --text-color: #333;
             --border-radius: 8px;
             --success-color: #28a745;
+            --warning-color: #ffc107;
+            --danger-color: #dc3545;
         }
 
         body {
@@ -125,7 +127,7 @@
             display: grid;
             grid-template-columns: repeat(7, 1fr);
             gap: 1px;
-            background: #ddd; /* kolor linii siatki */
+            background: #ddd;
         }
 
         .calendar-day-header {
@@ -151,20 +153,11 @@
         }
 
         .calendar-day:hover { background-color: #f0f8ff; }
-        
         .calendar-day.empty { background-color: #fafafa; cursor: default; }
-        
-        .calendar-day.selected {
-            background-color: var(--success-color);
-            color: white;
-            font-weight: bold;
-        }
+        .calendar-day.selected { background-color: var(--success-color); color: white; font-weight: bold; }
+        .calendar-day.today { border: 2px solid var(--accent-color); }
 
-        .calendar-day.today {
-            border: 2px solid var(--accent-color);
-        }
-
-        /* Sekcja Generatora Zakresowego (nad kalendarzem) */
+        /* Generator Zakresowy */
         .dates-generator {
             background: #f8f9fa;
             padding: 10px;
@@ -196,7 +189,6 @@
         }
         .checkbox-label input { width: auto; margin: 0; }
 
-
         /* Przyciski */
         button {
             background-color: var(--primary-color);
@@ -215,7 +207,7 @@
         button.accent { background-color: var(--accent-color); color: #fff; }
         button.accent:hover { background-color: #e68900; }
 
-        button.danger { background-color: #dc3545; }
+        button.danger { background-color: var(--danger-color); }
         button.danger:hover { background-color: #c82333; }
 
         /* Mapa i Listy */
@@ -224,21 +216,33 @@
         .scrollable-list {
             list-style: none;
             padding: 0;
-            max-height: 250px;
+            max-height: 400px;
             overflow-y: auto;
             border: 1px solid #eee;
             border-radius: 4px;
         }
         .list-item {
-            padding: 8px;
+            padding: 10px;
             border-bottom: 1px solid #eee;
             display: flex;
             justify-content: space-between;
             align-items: center;
             font-size: 0.9rem;
+            flex-wrap: wrap;
         }
         .list-item:last-child { border-bottom: none; }
         .list-item:hover { background-color: #f9f9f9; }
+
+        .train-actions {
+            display: flex;
+            gap: 5px;
+            margin-top: 5px;
+        }
+        .train-actions button {
+            width: auto;
+            padding: 4px 8px;
+            font-size: 0.8rem;
+        }
 
         /* Sekcja JSON Preview */
         .json-preview-container {
@@ -248,7 +252,7 @@
         textarea#jsonOutput {
             font-family: monospace;
             font-size: 0.8rem;
-            height: 200px;
+            height: 150px;
             background: #2d2d2d;
             color: #50fa7b;
             resize: vertical;
@@ -284,7 +288,7 @@
 
 <header>
     <h1>Generator Tras Pociągów</h1>
-    <div class="version">v1.3</div>
+    <div class="version">v1.4</div>
 </header>
 
 <main>
@@ -311,6 +315,8 @@
                     <option value="SKA">SKA</option>
                     <option value="KM">KM</option>
                     <option value="LKA">LKA</option>
+                    <option value="KD">KD</option>
+                    <option value="KŚ">KŚ</option>
                 </select>
             </div>
             <div class="form-group" style="flex: 1;">
@@ -413,7 +419,7 @@
     </div>
 
     <div class="panel">
-        <h2>Podgląd Mapy</h2>
+        <h2>Podgląd Mapy (OpenRailwayMap)</h2>
         <div id="map"></div>
 
         <h2>3. Baza Pociągów (Pamięć)</h2>
@@ -436,7 +442,7 @@
 
 <footer>
     Współautorzy: Gemini, Piotr M 🚂 <br>
-    Wersja aplikacji: v1.3
+    Wersja aplikacji: v1.4
 </footer>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
@@ -445,8 +451,8 @@ crossorigin=""></script>
 
 <script>
     /**
-     * Wersja aplikacji: v1.3
-     * Changes: Visual interactive calendar.
+     * Wersja aplikacji: v1.4
+     * Changes: OpenRailwayMap overlay, Duplicate Train, Reverse Route, Edit Train.
      */
 
     // --- Zmienne Globalne ---
@@ -455,9 +461,10 @@ crossorigin=""></script>
     let allStations = new Set();
     
     // Stan edycji
+    let editingId = null; // Jeśli edytujemy istniejący pociąg
     let currentRoute = []; 
     let currentStation = null;
-    let selectedDates = new Set(); // Przechowujemy jako Set stringów "YYYY-MM-DD"
+    let selectedDates = new Set(); 
     
     // Stan kalendarza
     let currentCalMonth = new Date().getMonth();
@@ -473,7 +480,7 @@ crossorigin=""></script>
         loadSzlakiData();   
         updateJSONPreview();
         setDefaultDates();
-        renderCalendar(); // Rysuj kalendarz
+        renderCalendar();
     });
 
     function setDefaultDates() {
@@ -482,11 +489,22 @@ crossorigin=""></script>
     }
 
     function initMap() {
-        map = L.map('map').setView([51.9194, 19.1451], 6); // Centrum Polski
+        // Inicjalizacja mapy
+        map = L.map('map').setView([51.9194, 19.1451], 6);
+
+        // Warstwa bazowa: OpenStreetMap
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             maxZoom: 19,
-            attribution: '© OpenStreetMap'
+            attribution: '© OpenStreetMap contributors'
         }).addTo(map);
+
+        // Nakładka: OpenRailwayMap
+        L.tileLayer('https://{s}.tiles.openrailwaymap.org/standard/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: 'Style: © OpenRailwayMap'
+        }).addTo(map);
+
+        // Warstwa dla naszej trasy
         routeLayerGroup = L.featureGroup().addTo(map);
     }
 
@@ -545,6 +563,7 @@ crossorigin=""></script>
 
     function populateStartDropdown() {
         const select = document.getElementById('startStation');
+        const currentVal = select.value;
         select.innerHTML = '<option value="">Wybierz stację początkową...</option>';
         Array.from(allStations).sort().forEach(st => {
             const opt = document.createElement('option');
@@ -552,11 +571,10 @@ crossorigin=""></script>
             opt.textContent = st;
             select.appendChild(opt);
         });
+        if(currentVal) select.value = currentVal;
     }
 
     // --- KALENDARZ (LOGIKA) ---
-    
-    // Nazwy dni i miesięcy
     const monthNames = ["Styczeń", "Luty", "Marzec", "Kwiecień", "Maj", "Czerwiec", 
                         "Lipiec", "Sierpień", "Wrzesień", "Październik", "Listopad", "Grudzień"];
     const dayNames = ["Pn", "Wt", "Śr", "Cz", "Pt", "Sb", "Nd"];
@@ -568,7 +586,6 @@ crossorigin=""></script>
         grid.innerHTML = "";
         title.textContent = `${monthNames[currentCalMonth]} ${currentCalYear}`;
 
-        // Nagłówki dni tygodnia
         dayNames.forEach(name => {
             const cell = document.createElement('div');
             cell.className = 'calendar-day-header';
@@ -576,13 +593,11 @@ crossorigin=""></script>
             grid.appendChild(cell);
         });
 
-        // Obliczenia dni
         const firstDayOfMonth = new Date(currentCalYear, currentCalMonth, 1);
         const daysInMonth = new Date(currentCalYear, currentCalMonth + 1, 0).getDate();
         
-        // Puste pola przed 1. dniem miesiąca (uwaga: getDay() zwraca 0 dla Nd, my chcemy 0 dla Pn)
         let startDay = firstDayOfMonth.getDay() - 1; 
-        if (startDay === -1) startDay = 6; // Niedziela
+        if (startDay === -1) startDay = 6;
 
         for (let i = 0; i < startDay; i++) {
             const emptyCell = document.createElement('div');
@@ -590,7 +605,6 @@ crossorigin=""></script>
             grid.appendChild(emptyCell);
         }
 
-        // Dni miesiąca
         const todayStr = new Date().toISOString().split('T')[0];
 
         for (let day = 1; day <= daysInMonth; day++) {
@@ -600,19 +614,10 @@ crossorigin=""></script>
             cell.className = 'calendar-day';
             cell.textContent = day;
             
-            // Oznacz dzisiejszy
-            if (dateStr === todayStr) {
-                cell.classList.add('today');
-            }
+            if (dateStr === todayStr) cell.classList.add('today');
+            if (selectedDates.has(dateStr)) cell.classList.add('selected');
 
-            // Oznacz wybrany
-            if (selectedDates.has(dateStr)) {
-                cell.classList.add('selected');
-            }
-
-            // Obsługa kliknięcia
             cell.onclick = () => toggleDate(dateStr);
-
             grid.appendChild(cell);
         }
     }
@@ -624,49 +629,36 @@ crossorigin=""></script>
     }
 
     function toggleDate(dateStr) {
-        if (selectedDates.has(dateStr)) {
-            selectedDates.delete(dateStr);
-        } else {
-            selectedDates.add(dateStr);
-        }
+        if (selectedDates.has(dateStr)) selectedDates.delete(dateStr);
+        else selectedDates.add(dateStr);
         updateSelectedCount();
-        renderCalendar(); // Odśwież widok
+        renderCalendar();
     }
 
     function updateSelectedCount() {
         document.getElementById('selectedCount').textContent = selectedDates.size;
     }
 
-    // Nawigacja kalendarza
     document.getElementById('prevMonth').addEventListener('click', () => {
         currentCalMonth--;
-        if (currentCalMonth < 0) {
-            currentCalMonth = 11;
-            currentCalYear--;
-        }
+        if (currentCalMonth < 0) { currentCalMonth = 11; currentCalYear--; }
         renderCalendar();
     });
 
     document.getElementById('nextMonth').addEventListener('click', () => {
         currentCalMonth++;
-        if (currentCalMonth > 11) {
-            currentCalMonth = 0;
-            currentCalYear++;
-        }
+        if (currentCalMonth > 11) { currentCalMonth = 0; currentCalYear++; }
         renderCalendar();
     });
 
-    // --- GENERATOR ZAKRESOWY ---
     document.getElementById('btnGenerateDates').addEventListener('click', () => {
         const dFrom = document.getElementById('dateFrom').value;
         const dTo = document.getElementById('dateTo').value;
-        
         if (!dFrom || !dTo) return alert("Wybierz datę początkową i końcową.");
         if (dFrom > dTo) return alert("Data 'Do' musi być późniejsza niż 'Od'.");
 
         const checkboxes = document.querySelectorAll('input[name="wd"]:checked');
         if (checkboxes.length === 0) return alert("Zaznacz przynajmniej jeden dzień tygodnia.");
-
         const allowedDays = Array.from(checkboxes).map(cb => parseInt(cb.value));
         
         let currentDate = new Date(dFrom);
@@ -674,7 +666,7 @@ crossorigin=""></script>
         let addedCount = 0;
 
         while (currentDate <= endDate) {
-            const dayOfWeek = currentDate.getDay(); // 0 = Sun
+            const dayOfWeek = currentDate.getDay(); 
             if (allowedDays.includes(dayOfWeek)) {
                 const dateStr = currentDate.toISOString().split('T')[0];
                 if (!selectedDates.has(dateStr)) {
@@ -685,7 +677,6 @@ crossorigin=""></script>
             currentDate.setDate(currentDate.getDate() + 1);
         }
 
-        // Przełącz kalendarz na miesiąc startowy zakresu, aby user widział efekt
         const startDateObj = new Date(dFrom);
         currentCalMonth = startDateObj.getMonth();
         currentCalYear = startDateObj.getFullYear();
@@ -708,21 +699,26 @@ crossorigin=""></script>
     document.getElementById('btnStartRoute').addEventListener('click', () => {
         const start = document.getElementById('startStation').value;
         if (!start) return alert("Wybierz stację startową!");
+        startRouteEditing(start);
+    });
 
+    function startRouteEditing(startStationName) {
         document.getElementById('btnStartRoute').disabled = true;
         document.getElementById('startStation').disabled = true;
+        document.getElementById('startStation').value = startStationName;
         document.getElementById('active-route-controls').style.display = 'block';
 
-        currentStation = start;
-        currentRoute = [];
-        routeLayerGroup.clearLayers();
+        currentStation = startStationName;
+        if (currentRoute.length === 0) {
+             routeLayerGroup.clearLayers();
+        }
         
         updateCurrentRouteUI();
         updateNextOptions();
-    });
+    }
 
     document.getElementById('btnCancelRoute').addEventListener('click', () => {
-        if(confirm("Anulować tworzenie tej trasy?")) resetRouteEditor();
+        if(confirm("Anulować edycję? Postęp zostanie utracony.")) resetRouteEditor();
     });
 
     function updateNextOptions() {
@@ -790,7 +786,6 @@ crossorigin=""></script>
 
     function updateCurrentRouteUI() {
         document.getElementById('currentStationLabel').textContent = currentStation;
-        
         const ul = document.getElementById('currentRouteList');
         ul.innerHTML = '';
         
@@ -807,12 +802,20 @@ crossorigin=""></script>
     function resetRouteEditor() {
         currentRoute = [];
         currentStation = null;
+        editingId = null;
+        selectedDates.clear();
         routeLayerGroup.clearLayers();
         
         document.getElementById('active-route-controls').style.display = 'none';
         document.getElementById('btnStartRoute').disabled = false;
         document.getElementById('startStation').disabled = false;
         document.getElementById('startStation').value = "";
+        
+        document.getElementById('trainNumber').value = "";
+        document.getElementById('trainName').value = "";
+        
+        renderCalendar();
+        updateSelectedCount();
     }
 
     // --- Zapis do Bazy ---
@@ -826,32 +829,33 @@ crossorigin=""></script>
         if (selectedDates.size === 0) return alert("Wybierz daty kursowania w kalendarzu!");
 
         const newTrain = {
-            id: Date.now(),
+            id: editingId ? editingId : Date.now(),
             category: cat,
             number: num,
             name: name,
-            dates: Array.from(selectedDates).sort(), // Konwersja Set na posortowaną tablicę
+            dates: Array.from(selectedDates).sort(),
             route: {
                 start: currentRoute[0].from,
                 end: currentRoute[currentRoute.length-1].to,
-                segments: currentRoute
+                segments: [...currentRoute]
             }
         };
 
-        trainsDB.push(newTrain);
+        if (editingId) {
+            // Aktualizacja istniejącego
+            const idx = trainsDB.findIndex(t => t.id === editingId);
+            if (idx !== -1) trainsDB[idx] = newTrain;
+            else trainsDB.push(newTrain);
+        } else {
+            // Nowy wpis
+            trainsDB.push(newTrain);
+        }
+
         saveLocalStorage();
         renderTrainDBList();
         updateJSONPreview();
-        
-        // Reset formularza
         resetRouteEditor();
-        document.getElementById('trainNumber').value = '';
-        document.getElementById('trainName').value = '';
-        selectedDates.clear();
-        renderCalendar();
-        updateSelectedCount();
-        
-        showStatus(`Pociąg ${cat} ${num} zapisany do bazy!`, 'success');
+        showStatus(`Zapisano pociąg ${cat} ${num}!`, 'success');
     });
 
     function renderTrainDBList() {
@@ -866,38 +870,135 @@ crossorigin=""></script>
             const li = document.createElement('li');
             li.className = 'list-item';
             const datesInfo = train.dates.length > 5 
-                              ? `${train.dates.length} dni kursowania` 
+                              ? `${train.dates.length} dni` 
                               : train.dates.join(', ');
                               
             li.innerHTML = `
-                <div>
+                <div style="flex:1;">
                     <strong>${train.category} ${train.number}</strong> "${train.name}"<br>
-                    <small>${train.route.start} -> ${train.route.end}</small><br>
+                    <small>${train.route.start} &#8594; ${train.route.end}</small><br>
                     <small style="color:#666; font-size:0.8em;">${datesInfo}</small>
                 </div>
-                <button class="danger" onclick="deleteTrain(${index})" style="width:auto; padding: 2px 5px; font-size:0.7rem;">X</button>
+                <div class="train-actions">
+                    <button class="accent" onclick="editTrain(${index})" title="Edytuj">✎</button>
+                    <button class="secondary" onclick="duplicateTrain(${index})" title="Kopiuj">📋</button>
+                    <button class="warning" onclick="reverseTrain(${index})" title="Odwróć trasę">⇄</button>
+                    <button class="danger" onclick="deleteTrain(${index})" title="Usuń">✕</button>
+                </div>
             `;
             ul.appendChild(li);
         });
     }
 
+    // --- Funkcje Operacyjne na Pociągach ---
+
     window.deleteTrain = function(index) {
         if(confirm("Usunąć ten pociąg?")) {
             trainsDB.splice(index, 1);
-            saveLocalStorage();
-            renderTrainDBList();
-            updateJSONPreview();
+            saveAndUpdate();
         }
+    }
+
+    window.duplicateTrain = function(index) {
+        const original = trainsDB[index];
+        // Głęboka kopia
+        const copy = JSON.parse(JSON.stringify(original));
+        copy.id = Date.now();
+        copy.name += " (KOPIA)";
+        trainsDB.push(copy);
+        saveAndUpdate();
+        showStatus("Duplikat utworzony.", "success");
+    }
+
+    window.reverseTrain = function(index) {
+        if(!confirm("Czy na pewno odwrócić trasę dla tego pociągu?")) return;
+        
+        const train = trainsDB[index];
+        const oldSegments = train.route.segments;
+        let newSegments = [];
+
+        // Odwracamy kolejność i kierunki
+        for (let i = oldSegments.length - 1; i >= 0; i--) {
+            const seg = oldSegments[i];
+            newSegments.push({
+                from: seg.to,
+                to: seg.from,
+                via: seg.via
+            });
+        }
+
+        // Zamieniamy start i end
+        const oldStart = train.route.start;
+        train.route.start = train.route.end;
+        train.route.end = oldStart;
+        train.route.segments = newSegments;
+        
+        saveAndUpdate();
+        showStatus("Trasa odwrócona.", "success");
+    }
+
+    window.editTrain = function(index) {
+        if (currentRoute.length > 0) {
+            if(!confirm("Aktualnie tworzysz trasę. Czy porzucić zmiany i załadować pociąg do edycji?")) return;
+        }
+
+        const train = trainsDB[index];
+        
+        // Wypełnij formularz
+        document.getElementById('trainCategory').value = train.category;
+        document.getElementById('trainNumber').value = train.number;
+        document.getElementById('trainName').value = train.name;
+        
+        editingId = train.id;
+        
+        // Wypełnij kalendarz
+        selectedDates = new Set(train.dates);
+        renderCalendar();
+        updateSelectedCount();
+
+        // Odtwórz trasę
+        currentRoute = [...train.route.segments];
+        // Ustaw start
+        const startStation = train.route.start;
+        document.getElementById('startStation').value = startStation;
+        document.getElementById('startStation').disabled = true;
+        document.getElementById('btnStartRoute').disabled = true;
+        document.getElementById('active-route-controls').style.display = 'block';
+
+        currentStation = train.route.end; // Ostatnia stacja to ta, gdzie jesteśmy
+        
+        // Przerysuj mapę
+        routeLayerGroup.clearLayers();
+        currentRoute.forEach(seg => {
+            // Szukamy geometrii
+            if (graph[seg.from]) {
+                const conn = graph[seg.from].find(c => c.target === seg.to && c.via === seg.via);
+                if (conn && conn.geometry) {
+                    L.geoJSON(conn.geometry, { style: { color: 'blue', weight: 4 } }).addTo(routeLayerGroup);
+                }
+            }
+        });
+
+        updateCurrentRouteUI();
+        updateNextOptions();
+        
+        // Przewiń do góry
+        document.querySelector('.panel').scrollIntoView({behavior: 'smooth'});
+        showStatus("Załadowano pociąg do edycji.", "success");
     }
 
     document.getElementById('btnClearDB').addEventListener('click', () => {
         if(confirm("Usunąć WSZYSTKIE pociągi?")) {
             trainsDB = [];
-            saveLocalStorage();
-            renderTrainDBList();
-            updateJSONPreview();
+            saveAndUpdate();
         }
     });
+
+    function saveAndUpdate() {
+        saveLocalStorage();
+        renderTrainDBList();
+        updateJSONPreview();
+    }
 
     function saveLocalStorage() { localStorage.setItem('savedTrains', JSON.stringify(trainsDB)); }
     function loadLocalStorage() {
