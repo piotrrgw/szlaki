@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kontrolka Szlaków - Raport Miesięczny</title>
+    
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-W05T4L1HFD"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-W05T4L1HFD');
+    </script>
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    
+    <style>
+        :root {
+            --primary-color: #2c3e50;
+            --accent-color: #3498db;
+        }
+
+        body {
+            background-color: #f8f9fa;
+            color: #212529;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            padding-bottom: 60px; /* Space for footer */
+        }
+
+        .container { max-width: 1100px; }
+
+        /* Panel Sterowania */
+        .control-panel {
+            background-color: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.08);
+            padding: 20px;
+            margin-bottom: 20px;
+            border: 1px solid #e9ecef;
+        }
+
+        /* Tabela */
+        .table-container {
+            background-color: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            overflow: hidden;
+        }
+
+        th {
+            background-color: var(--primary-color) !important;
+            color: #ffffff !important;
+            font-weight: 500;
+            text-transform: uppercase;
+            font-size: 0.85rem;
+            letter-spacing: 0.5px;
+        }
+
+        /* Aktywny wiersz (z datą) */
+        .row-active {
+            background-color: #e8f5e9 !important; /* Jasny zielony */
+            transition: background-color 0.3s ease;
+        }
+        
+        .row-active:hover {
+            background-color: #c8e6c9 !important;
+        }
+
+        /* Mapa w modalu */
+        #map { height: 450px; width: 100%; border-radius: 4px; border: 1px solid #ccc; }
+
+        /* Stopka */
+        .app-footer {
+            position: fixed;
+            bottom: 0;
+            width: 100%;
+            background-color: var(--primary-color);
+            color: #ffffff;
+            text-align: center;
+            padding: 8px 0;
+            font-size: 0.85rem;
+            z-index: 1000;
+        }
+        .footer-version { font-size: 0.75rem; opacity: 0.7; }
+
+        /* --- STYL DRUKOWANIA (PDF) --- */
+        @media print {
+            @page { size: A4; margin: 1cm; }
+            body { background-color: white; padding: 0; margin: 0; font-size: 10pt; }
+            
+            /* Ukryj elementy interfejsu */
+            .control-panel, .app-footer, .btn, .modal, .bi-map, .memory-counter, .no-print { 
+                display: none !important; 
+            }
+            
+            .container { max-width: 100%; width: 100%; margin: 0; padding: 0; }
+            .table-container { box-shadow: none; border: none; }
+            
+            /* Nagłówek Raportu (widoczny tylko w druku) */
+            #printHeader {
+                display: block !important;
+                margin-bottom: 20px;
+                text-align: center;
+                border-bottom: 2px solid black;
+                padding-bottom: 10px;
+            }
+            .print-meta {
+                display: flex;
+                justify-content: space-between;
+                margin-top: 20px;
+                font-weight: bold;
+            }
+
+            /* Formatowanie tabeli pod druk */
+            table { width: 100% !important; border-collapse: collapse; }
+            th, td { 
+                border: 1px solid black !important; 
+                padding: 4px !important; 
+                color: black !important; 
+            }
+            th { background-color: #ddd !important; -webkit-print-color-adjust: exact; }
+            
+            /* Inputy jako czysty tekst */
+            input[type="date"] {
+                border: none;
+                background: transparent;
+                padding: 0;
+                font-family: inherit;
+                font-weight: bold;
+                color: black;
+                width: auto;
+                text-align: right;
+                display: block;
+            }
+            /* Ukrycie ikony kalendarza w druku */
+            input[type="date"]::-webkit-calendar-picker-indicator { display: none; }
+            
+            .row-active { background-color: white !important; }
+        }
+        
+        #printHeader { display: none; } /* Domyślnie ukryty na ekranie */
+    </style>
+</head>
+<body>
+
+<div class="container mt-4">
+    
+    <div id="printHeader">
+        <h2>WYKAZ ZNAJOMOŚCI SZLAKÓW</h2>
+        <div class="print-meta px-4">
+            <span>Imię i Nazwisko: ........................................................</span>
+            <span>Miesiąc: ......................... Rok: .................</span>
+        </div>
+    </div>
+
+    <header class="mb-4 text-center no-print">
+        <h1 class="display-6 fw-bold text-secondary"><i class="bi bi-file-earmark-spreadsheet"></i> Kontrolka Szlaków</h1>
+        <p class="text-muted">Elektroniczna Karta Znajomości Szlaków (Smart Match)</p>
+    </header>
+
+    <div class="control-panel no-print">
+        <h5 class="border-bottom pb-2 mb-3">Rejestracja Przejazdu</h5>
+        
+        <div class="row g-3 align-items-end">
+            <div class="col-md-3">
+                <label for="inputDate" class="form-label fw-bold small text-muted">Data przejazdu</label>
+                <input type="date" id="inputDate" class="form-control">
+            </div>
+            
+            <div class="col-md-5">
+                <label for="inputTrain" class="form-label fw-bold small text-muted">Numer pociągu</label>
+                <div class="input-group">
+                    <span class="input-group-text bg-light"><i class="bi bi-train-front-fill"></i></span>
+                    <input type="text" id="inputTrain" class="form-control" placeholder="np. 14000 lub EIC..." aria-label="Numer pociągu">
+                    <button class="btn btn-primary" id="btnSearchTrain">
+                        <i class="bi bi-search"></i> Szukaj Trasy
+                    </button>
+                </div>
+            </div>
+
+            <div class="col-md-4 text-end">
+                <div class="btn-group w-100">
+                    <button class="btn btn-outline-danger" id="btnClearData" title="Wyczyść wszystkie daty">
+                        <i class="bi bi-trash"></i> Reset
+                    </button>
+                    <button class="btn btn-success" onclick="window.print()" title="Drukuj lub Zapisz jako PDF">
+                        <i class="bi bi-printer"></i> Drukuj / PDF
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="d-flex justify-content-between align-items-center mt-3 pt-2 border-top">
+            <small class="text-muted fst-italic memory-counter" id="memoryUsage">Pamięć lokalna: obliczanie...</small>
+            <small class="text-muted">Dane są zapisywane automatycznie w przeglądarce.</small>
+        </div>
+    </div>
+
+    <div class="table-container table-responsive">
+        <table class="table table-hover table-bordered align-middle mb-0" id="routesTable">
+            <thead>
+                <tr>
+                    <th class="text-center" style="width: 50px;">LP</th>
+                    <th>Odcinek (Od - Do)</th>
+                    <th>Przez (Via)</th>
+                    <th class="text-center no-print" style="width: 50px;">Mapa</th>
+                    <th style="width: 160px;" class="text-end">Data ost. przejazdu</th>
+                </tr>
+            </thead>
+            <tbody id="routesTableBody">
+                <tr><td colspan="5" class="text-center py-5 text-muted">Wczytywanie bazy danych szlaków...</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="modal fade" id="segmentModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title"><i class="bi bi-check2-square"></i> Potwierdź przebieg trasy</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-light border mb-3" id="modalTrainInfo"></div>
+                <div class="list-group list-group-flush border rounded" id="modalSegmentsList" style="max-height: 400px; overflow-y: auto;">
+                    </div>
+                <div class="mt-2 text-muted small">
+                    <i class="bi bi-info-circle"></i> System dopasował szlaki na podstawie nazw stacji (Smart Match).
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Anuluj</button>
+                <button type="button" class="btn btn-primary" id="btnConfirmSegments">
+                    <i class="bi bi-save"></i> Zapisz do Raportu
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="mapModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="mapModalTitle">Podgląd Geometrii</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-0">
+                <div id="map"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<footer class="app-footer">
+    <div class="container">
+        <span>Współautorzy: Gemini oraz Piotr M 🚂</span>
+        <div class="footer-version">Wersja aplikacji: v1.0</div>
+    </div>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
+<script>
+    /**
+     * KONTROLKA SZLAKÓW v1.0
+     * Logic: Smart Match (Name based), LocalStorage persistence, Print View.
+     */
+
+    const STORAGE_KEY = 'kontrolka_szlakow_data_v1';
+    let szlakiData = [];
+    let pociagiData = [];
+    let mapInstance = null;
+
+    // --- Inicjalizacja ---
+    document.addEventListener('DOMContentLoaded', async () => {
+        // Ustaw domyślnie dzisiejszą datę
+        document.getElementById('inputDate').valueAsDate = new Date();
+        
+        try {
+            // Pobieranie danych
+            const [szlakiRes, pociagiRes] = await Promise.all([
+                fetch('szlaki_master.json'),
+                fetch('pociagi.json')
+            ]);
+
+            if (!szlakiRes.ok || !pociagiRes.ok) throw new Error("Błąd pobierania plików JSON");
+
+            szlakiData = await szlakiRes.json();
+            pociagiData = await pociagiRes.json();
+
+            // Sortowanie po ID (dla porządku w tabeli)
+            szlakiData.sort((a, b) => a.id - b.id);
+
+            renderTable();
+            updateMemoryUsage();
+
+        } catch (error) {
+            console.error(error);
+            document.getElementById('routesTableBody').innerHTML = `
+                <tr><td colspan="5" class="text-center text-danger fw-bold py-4">
+                    <i class="bi bi-exclamation-triangle"></i> Błąd wczytywania danych JSON.<br>
+                    Upewnij się, że pliki 'szlaki_master.json' i 'pociagi.json' są w tym samym katalogu.
+                </td></tr>`;
+        }
+    });
+
+    // --- Renderowanie Głównej Tabeli ---
+    function renderTable() {
+        const tbody = document.getElementById('routesTableBody');
+        tbody.innerHTML = '';
+        const savedData = getSavedData();
+
+        szlakiData.forEach(route => {
+            const tr = document.createElement('tr');
+            tr.dataset.id = route.id; // Przechowujemy ID wiersza
+            
+            const savedDate = savedData[route.id] || '';
+            if (savedDate) tr.classList.add('row-active');
+
+            // Przycisk mapy (tylko jeśli są dane geo)
+            const hasGeo = (route.geometry || route.coordinates || route.geometria);
+            const mapBtn = `<button class="btn btn-sm btn-link text-secondary no-print" 
+                onclick="showMap(${route.id})" ${hasGeo ? '' : 'disabled'} title="Pokaż na mapie">
+                <i class="bi bi-map"></i></button>`;
+
+            tr.innerHTML = `
+                <td class="text-center fw-bold text-muted small">${route.id}</td>
+                <td>${route.start} - ${route.end}</td>
+                <td class="small text-muted">${route.via !== '-' ? route.via : ''}</td>
+                <td class="text-center">${mapBtn}</td>
+                <td>
+                    <input type="date" class="form-control form-control-sm date-input shadow-none border-0 bg-transparent" 
+                           value="${savedDate}" 
+                           onchange="manualUpdate(${route.id}, this.value)">
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    // --- Wyszukiwanie Pociągu (SMART MATCH) ---
+    document.getElementById('btnSearchTrain').addEventListener('click', () => {
+        const query = document.getElementById('inputTrain').value.trim().toLowerCase().replace(/\s/g, '');
+        if (!query) return alert("Wpisz numer pociągu.");
+
+        // Szukaj pociągu (numer zawiera frazę)
+        const train = pociagiData.find(p => p.numer.toString().toLowerCase().replace(/\s/g, '').includes(query));
+
+        if (!train) return alert("Nie znaleziono pociągu o podanym numerze w bazie.");
+
+        showSegmentModal(train);
+    });
+
+    function showSegmentModal(train) {
+        const list = document.getElementById('modalSegmentsList');
+        const info = document.getElementById('modalTrainInfo');
+        list.innerHTML = '';
+
+        info.innerHTML = `<strong>Pociąg: ${train.numer}</strong><br>Relacja: ${train.relacja_od} &rarr; ${train.relacja_do}`;
+        
+        if (!train.trasa || train.trasa.length === 0) {
+            list.innerHTML = '<div class="p-3 text-danger">Ten pociąg nie ma zdefiniowanej trasy.</div>';
+            new bootstrap.Modal(document.getElementById('segmentModal')).show();
+            return;
+        }
+
+        // Iteracja po trasie pociągu i szukanie odpowiedników w Masterze
+        train.trasa.forEach((seg, idx) => {
+            // SMART MATCHING LOGIC:
+            // Ignorujemy seg.master_id z pociagi.json, bo może być błędne.
+            // Szukamy w szlakiData po nazwach stacji.
+            
+            const sOd = seg.od.trim();
+            const sDo = seg.do.trim();
+
+            const matchedRoute = szlakiData.find(m => {
+                return (m.start === sOd && m.end === sDo) || (m.start === sDo && m.end === sOd);
+            });
+
+            let label = `${seg.od} - ${seg.do}`;
+            let value = ""; // master ID
+            let isDisabled = false;
+            let isChecked = true;
+            let badge = "";
+
+            if (matchedRoute) {
+                value = matchedRoute.id;
+                label = `<strong>[${matchedRoute.id}]</strong> ${matchedRoute.start} - ${matchedRoute.end}`;
+                if(matchedRoute.via && matchedRoute.via !== '-') label += ` <small class="text-muted">(${matchedRoute.via})</small>`;
+            } else {
+                badge = '<span class="badge bg-warning text-dark ms-2">Brak w Bazie Szlaków</span>';
+                isDisabled = true;
+                isChecked = false;
+                label += " (Nie rozpoznano)";
+            }
+
+            const div = document.createElement('div');
+            div.className = "list-group-item";
+            if(isDisabled) div.classList.add('bg-light', 'text-muted');
+
+            div.innerHTML = `
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" value="${value}" id="segCheck${idx}" ${isChecked ? 'checked' : ''} ${isDisabled ? 'disabled' : ''}>
+                    <label class="form-check-label w-100" for="segCheck${idx}">
+                        ${label} ${badge}
+                    </label>
+                </div>
+            `;
+            list.appendChild(div);
+        });
+
+        new bootstrap.Modal(document.getElementById('segmentModal')).show();
+    }
+
+    // --- Zatwierdzanie Wyboru ---
+    document.getElementById('btnConfirmSegments').addEventListener('click', () => {
+        const dateInput = document.getElementById('inputDate').value;
+        if (!dateInput) return alert("Wybierz datę przejazdu przed zapisaniem.");
+
+        const checkboxes = document.querySelectorAll('#modalSegmentsList input:checked');
+        const idsToUpdate = Array.from(checkboxes).map(cb => parseInt(cb.value));
+
+        if (idsToUpdate.length === 0) return alert("Nie zaznaczono żadnych poprawnych szlaków.");
+
+        const savedData = getSavedData();
+        let updateCount = 0;
+
+        idsToUpdate.forEach(id => {
+            const currentSaved = savedData[id];
+            
+            // LOGIKA: Nadpisz, jeśli nie było daty LUB nowa data jest nowsza/równa obecnej.
+            if (!currentSaved || new Date(dateInput) >= new Date(currentSaved)) {
+                savedData[id] = dateInput;
+                
+                // Aktualizuj widok DOM
+                const row = document.querySelector(`tr[data-id="${id}"]`);
+                if (row) {
+                    row.querySelector('input').value = dateInput;
+                    row.classList.add('row-active');
+                }
+                updateCount++;
+            }
+        });
+
+        saveData(savedData);
+        bootstrap.Modal.getInstance(document.getElementById('segmentModal')).hide();
+
+        if (updateCount > 0) {
+            // Opcjonalny feedback, np. zmiana koloru przycisku na chwilę
+        } else {
+            alert("Nie zaktualizowano danych. Istniejące wpisy są nowsze niż wybrana data.");
+        }
+    });
+
+    // --- Ręczna Edycja w Tabeli ---
+    window.manualUpdate = function(id, value) {
+        const savedData = getSavedData();
+        const row = document.querySelector(`tr[data-id="${id}"]`);
+        
+        if (value) {
+            savedData[id] = value;
+            row.classList.add('row-active');
+        } else {
+            delete savedData[id];
+            row.classList.remove('row-active');
+        }
+        saveData(savedData);
+    };
+
+    // --- Mapa (Leaflet) ---
+    window.showMap = function(id) {
+        const route = szlakiData.find(r => r.id === id);
+        if (!route) return;
+
+        // Obsługa różnych nazw pól geometrii (zależnie od wersji JSON)
+        const geo = route.geometry || route.geometria || route.coordinates;
+        
+        const modalEl = document.getElementById('mapModal');
+        const title = document.getElementById('mapModalTitle');
+        title.innerText = `Szlak ${route.id}: ${route.start} - ${route.end}`;
+
+        const bsModal = new bootstrap.Modal(modalEl);
+        bsModal.show();
+
+        modalEl.addEventListener('shown.bs.modal', () => {
+            if (mapInstance) mapInstance.remove();
+            mapInstance = L.map('map');
+            
+            // Warstwa mapy (OSM)
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; OpenStreetMap'
+            }).addTo(mapInstance);
+
+            // Rysowanie linii
+            if (geo) {
+                // Jeśli geo to czysta tablica współrzędnych
+                let geoJSON = geo;
+                if(Array.isArray(geo)) {
+                     geoJSON = { "type": "LineString", "coordinates": geo };
+                }
+                
+                const layer = L.geoJSON(geoJSON, {
+                    style: { color: '#e74c3c', weight: 6, opacity: 0.8 }
+                }).addTo(mapInstance);
+                
+                try {
+                    mapInstance.fitBounds(layer.getBounds(), { padding: [50, 50] });
+                } catch(e) { console.log("Błąd fitBounds", e); }
+            }
+        }, { once: true });
+    };
+
+    // --- Pamięć LocalStorage ---
+    function getSavedData() {
+        try {
+            return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+        } catch (e) { return {}; }
+    }
+
+    function saveData(data) {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+        updateMemoryUsage();
+    }
+
+    document.getElementById('btnClearData').addEventListener('click', () => {
+        if (confirm("Czy na pewno chcesz usunąć WSZYSTKIE wprowadzone daty? Operacja jest nieodwracalna.")) {
+            localStorage.removeItem(STORAGE_KEY);
+            renderTable();
+            updateMemoryUsage();
+        }
+    });
+
+    function updateMemoryUsage() {
+        let total = 0;
+        for (let key in localStorage) {
+            if (localStorage.hasOwnProperty(key)) {
+                total += (localStorage[key].length + key.length) * 2;
+            }
+        }
+        const kb = (total / 1024).toFixed(2);
+        document.getElementById('memoryUsage').innerText = `Pamięć lokalna: ${kb} KB`;
+    }
+
+</script>
+</body>
+</html>
