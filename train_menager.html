@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Rozkład Jazdy - Edycja Trasy v1.1</title>
+    <title>Generator Tras Pociągów v1.4</title>
     
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-W05T4L1HFD"></script>
     <script>
@@ -13,20 +13,27 @@
       gtag('config', 'G-W05T4L1HFD');
     </script>
 
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+     integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+     crossorigin=""/>
+
     <style>
         :root {
             --primary-color: #0056b3;
-            --secondary-color: #f1f1f1;
+            --accent-color: #ff9800;
+            --bg-color: #f4f4f9;
             --text-color: #333;
-            --accent-color: #d9534f;
-            --border-color: #ddd;
+            --border-radius: 8px;
+            --success-color: #28a745;
+            --warning-color: #ffc107;
+            --danger-color: #dc3545;
         }
 
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             margin: 0;
             padding: 0;
-            background-color: #fff;
+            background-color: var(--bg-color);
             color: var(--text-color);
             display: flex;
             flex-direction: column;
@@ -38,94 +45,241 @@
             color: white;
             padding: 1rem;
             text-align: center;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
+        
+        header h1 { margin: 0; padding-left: 20px; font-size: 1.5rem; }
+        header .version { padding-right: 20px; font-size: 0.8rem; opacity: 0.8; }
 
         main {
             flex: 1;
-            padding: 1rem;
-            max-width: 800px;
+            padding: 20px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            max-width: 1600px;
             margin: 0 auto;
             width: 100%;
             box-sizing: border-box;
         }
 
-        .route-header {
+        @media (max-width: 1024px) {
+            main { grid-template-columns: 1fr; }
+        }
+
+        .panel {
+            background: white;
+            padding: 20px;
+            border-radius: var(--border-radius);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+        }
+
+        h2 { margin-top: 0; border-bottom: 2px solid #eee; padding-bottom: 10px; color: var(--primary-color); }
+        h3 { margin-bottom: 10px; color: #555; }
+
+        .form-row { display: flex; gap: 10px; margin-bottom: 15px; align-items: flex-end; }
+        .form-group { margin-bottom: 15px; flex: 1; }
+
+        label { display: block; margin-bottom: 5px; font-weight: bold; font-size: 0.9rem; }
+
+        input, select, button, textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 1rem;
+            box-sizing: border-box;
+        }
+
+        /* --- STYL KALENDARZA --- */
+        .calendar-container {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            overflow: hidden;
+            margin-top: 10px;
+            background: #fff;
+        }
+
+        .calendar-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            background-color: var(--secondary-color);
-            padding: 1rem;
-            border-radius: 8px;
-            margin-bottom: 1rem;
-            flex-wrap: wrap;
-            gap: 10px;
-        }
-
-        .station-label {
-            font-size: 1.2rem;
+            background: #f1f1f1;
+            padding: 10px;
             font-weight: bold;
         }
 
-        .arrow-icon {
-            font-size: 1.5rem;
-            color: var(--primary-color);
+        .calendar-header button {
+            width: auto;
+            padding: 5px 10px;
+            font-size: 1rem;
+            background: white;
+            color: #333;
+            border: 1px solid #ccc;
+        }
+        .calendar-header button:hover { background: #e9ecef; }
+
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 1px;
+            background: #ddd;
         }
 
-        button.action-btn {
+        .calendar-day-header {
+            background: #f8f9fa;
+            text-align: center;
+            padding: 5px;
+            font-size: 0.8rem;
+            font-weight: bold;
+            color: #666;
+        }
+
+        .calendar-day {
+            background: white;
+            min-height: 40px;
+            padding: 5px;
+            cursor: pointer;
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 0.9rem;
+            transition: background 0.2s;
+        }
+
+        .calendar-day:hover { background-color: #f0f8ff; }
+        .calendar-day.empty { background-color: #fafafa; cursor: default; }
+        .calendar-day.selected { background-color: var(--success-color); color: white; font-weight: bold; }
+        .calendar-day.today { border: 2px solid var(--accent-color); }
+
+        /* Generator Zakresowy */
+        .dates-generator {
+            background: #f8f9fa;
+            padding: 10px;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            margin-bottom: 10px;
+        }
+
+        .weekdays-fieldset {
+            border: none;
+            padding: 0;
+            margin: 5px 0 10px 0;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+        }
+
+        .checkbox-label {
+            font-weight: normal;
+            font-size: 0.8rem;
+            display: flex;
+            align-items: center;
+            gap: 3px;
+            cursor: pointer;
+            background: white;
+            padding: 3px 8px;
+            border: 1px solid #ddd;
+            border-radius: 12px;
+        }
+        .checkbox-label input { width: auto; margin: 0; }
+
+        /* Przyciski */
+        button {
             background-color: var(--primary-color);
             color: white;
             border: none;
-            padding: 10px 20px;
-            border-radius: 5px;
             cursor: pointer;
-            font-size: 1rem;
-            transition: background 0.3s;
+            font-weight: bold;
+            transition: background 0.2s;
+        }
+        button:hover { background-color: #004494; }
+        button:disabled { background-color: #ccc; cursor: not-allowed; }
+
+        button.secondary { background-color: #6c757d; }
+        button.secondary:hover { background-color: #5a6268; }
+        
+        button.accent { background-color: var(--accent-color); color: #fff; }
+        button.accent:hover { background-color: #e68900; }
+
+        button.danger { background-color: var(--danger-color); }
+        button.danger:hover { background-color: #c82333; }
+
+        /* Mapa i Listy */
+        #map { height: 400px; width: 100%; border-radius: var(--border-radius); z-index: 1; margin-bottom: 20px; }
+
+        .scrollable-list {
+            list-style: none;
+            padding: 0;
+            max-height: 400px;
+            overflow-y: auto;
+            border: 1px solid #eee;
+            border-radius: 4px;
+        }
+        .list-item {
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.9rem;
+            flex-wrap: wrap;
+        }
+        .list-item:last-child { border-bottom: none; }
+        .list-item:hover { background-color: #f9f9f9; }
+
+        .train-actions {
+            display: flex;
+            gap: 5px;
+            margin-top: 5px;
+        }
+        .train-actions button {
+            width: auto;
+            padding: 4px 8px;
+            font-size: 0.8rem;
         }
 
-        button.action-btn:hover {
-            background-color: #004494;
+        /* Sekcja JSON Preview */
+        .json-preview-container {
+            position: relative;
+            margin-top: 20px;
+        }
+        textarea#jsonOutput {
+            font-family: monospace;
+            font-size: 0.8rem;
+            height: 150px;
+            background: #2d2d2d;
+            color: #50fa7b;
+            resize: vertical;
+        }
+        .copy-btn {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            width: auto;
+            padding: 5px 10px;
+            font-size: 0.8rem;
+            background: rgba(255,255,255,0.2);
+            border: 1px solid rgba(255,255,255,0.4);
         }
 
-        button.action-btn:focus {
-            outline: 3px solid var(--accent-color);
-            outline-offset: 2px;
+        .status-msg {
+            padding: 10px; margin-bottom: 10px; border-radius: 4px; display: none; font-size: 0.9rem;
         }
-
-        .timetable {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 1rem;
-        }
-
-        .timetable th, .timetable td {
-            padding: 12px;
-            text-align: left;
-            border-bottom: 1px solid var(--border-color);
-        }
-
-        .timetable th {
-            background-color: #f8f9fa;
-        }
-
-        /* Mobile adjustments */
-        @media (max-width: 600px) {
-            .route-header {
-                flex-direction: column;
-                text-align: center;
-            }
-            
-            .timetable th, .timetable td {
-                font-size: 0.9rem;
-                padding: 8px;
-            }
-        }
+        .status-error { background-color: #f8d7da; color: #721c24; }
+        .status-success { background-color: #d4edda; color: #155724; }
 
         footer {
             background-color: #333;
             color: white;
             text-align: center;
-            padding: 1rem;
-            font-size: 0.9rem;
+            padding: 15px;
+            font-size: 0.8rem;
             margin-top: auto;
         }
     </style>
@@ -133,92 +287,761 @@
 <body>
 
 <header>
-    <h1>Planer Podróży</h1>
+    <h1>Generator Tras Pociągów</h1>
+    <div class="version">v1.4</div>
 </header>
 
 <main>
-    <section class="route-header" aria-label="Nagłówek trasy">
-        <div class="station-label" id="startStation">Warszawa Centralna</div>
-        <span class="arrow-icon" aria-hidden="true">↔</span>
-        <div class="station-label" id="endStation">Kraków Główny</div>
-        <button class="action-btn" onclick="reverseRoute()" aria-label="Odwróć kierunek trasy">
-            Odwróć relację 🔄
-        </button>
-    </section>
+    <div class="panel">
+        <h2>1. Dane Pociągu</h2>
+        <div id="status" class="status-msg"></div>
 
-    <section aria-label="Lista przystanków">
-        <table class="timetable">
-            <thead>
-                <tr>
-                    <th scope="col">Stacja</th>
-                    <th scope="col">Planowy przyjazd</th>
-                    <th scope="col">Peron</th>
-                </tr>
-            </thead>
-            <tbody id="routeBody">
-                </tbody>
-        </table>
-    </section>
+        <div id="file-upload-section" class="form-group">
+             <label for="jsonFile" style="cursor:pointer; text-decoration: underline; font-size: 0.8rem; color: #666;">
+                 (Opcjonalnie) Wgraj szlaki_master.json ręcznie
+             </label>
+            <input type="file" id="jsonFile" accept=".json" style="display:none;">
+        </div>
+
+        <div class="form-row">
+            <div class="form-group" style="flex: 1;">
+                <label for="trainCategory">Kategoria:</label>
+                <select id="trainCategory">
+                    <option value="TLK">TLK</option>
+                    <option value="IC">IC</option>
+                    <option value="EIC">EIC</option>
+                    <option value="EIP">EIP</option>
+                    <option value="REG">REG</option>
+                    <option value="SKA">SKA</option>
+                    <option value="KM">KM</option>
+                    <option value="LKA">LKA</option>
+                    <option value="KD">KD</option>
+                    <option value="KŚ">KŚ</option>
+                </select>
+            </div>
+            <div class="form-group" style="flex: 1;">
+                <label for="trainNumber">Numer:</label>
+                <input type="text" id="trainNumber" placeholder="np. 12102">
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label for="trainName">Nazwa Pociągu:</label>
+            <input type="text" id="trainName" placeholder="np. CHEŁMOŃSKI">
+        </div>
+
+        <div class="form-group">
+            <label>Terminy kursowania:</label>
+            
+            <div class="dates-generator">
+                <div class="form-row" style="margin-bottom: 5px;">
+                    <div style="flex:1;">
+                        <label style="font-weight:normal; font-size:0.8rem;">Od:</label>
+                        <input type="date" id="dateFrom">
+                    </div>
+                    <div style="flex:1;">
+                        <label style="font-weight:normal; font-size:0.8rem;">Do:</label>
+                        <input type="date" id="dateTo">
+                    </div>
+                </div>
+                
+                <fieldset class="weekdays-fieldset">
+                    <label class="checkbox-label"><input type="checkbox" name="wd" value="1" checked> Pn</label>
+                    <label class="checkbox-label"><input type="checkbox" name="wd" value="2" checked> Wt</label>
+                    <label class="checkbox-label"><input type="checkbox" name="wd" value="3" checked> Śr</label>
+                    <label class="checkbox-label"><input type="checkbox" name="wd" value="4" checked> Czw</label>
+                    <label class="checkbox-label"><input type="checkbox" name="wd" value="5" checked> Pt</label>
+                    <label class="checkbox-label"><input type="checkbox" name="wd" value="6" checked> Sb</label>
+                    <label class="checkbox-label"><input type="checkbox" name="wd" value="0" checked> Nd</label>
+                </fieldset>
+
+                <button type="button" id="btnGenerateDates" class="secondary" style="font-size: 0.85rem; width:100%;">
+                    Dodaj zakres do kalendarza
+                </button>
+            </div>
+
+            <div class="calendar-container">
+                <div class="calendar-header">
+                    <button type="button" id="prevMonth">&lt;</button>
+                    <span id="calendarTitle">Styczeń 2025</span>
+                    <button type="button" id="nextMonth">&gt;</button>
+                </div>
+                <div class="calendar-grid" id="calendarGrid">
+                    </div>
+            </div>
+            
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:5px;">
+                <span style="font-size:0.85rem;">Zaznaczone dni: <strong id="selectedCount">0</strong></span>
+                <button type="button" id="btnClearDates" class="danger" style="width: auto; font-size: 0.7rem; padding: 2px 5px;">
+                    Wyczyść wszystko
+                </button>
+            </div>
+        </div>
+
+        <h2>2. Konstruktor Trasy</h2>
+        
+        <div id="route-builder">
+            <div class="form-group">
+                <label for="startStation">Stacja Początkowa:</label>
+                <select id="startStation" disabled>
+                    <option value="">Wczytywanie danych...</option>
+                </select>
+            </div>
+            
+            <button id="btnStartRoute" disabled>Rozpocznij Trasę</button>
+
+            <div id="active-route-controls" style="display:none; margin-top: 20px; border-top: 1px dashed #ccc; padding-top: 10px;">
+                <p>Aktualna stacja: <strong id="currentStationLabel" style="color: var(--primary-color);"></strong></p>
+                
+                <div class="form-group">
+                    <label for="nextSegment">Następny przystanek:</label>
+                    <select id="nextSegment">
+                        <option value="">Wybierz...</option>
+                    </select>
+                </div>
+                
+                <div class="form-row">
+                    <button id="btnAddSegment">Dodaj</button>
+                    <button id="btnUndo" class="secondary">Cofnij</button>
+                </div>
+
+                <h3>Aktualny przebieg:</h3>
+                <ul id="currentRouteList" class="scrollable-list" style="height: 150px;">
+                    <li class="list-item" style="color: #777; justify-content: center;">Trasa pusta</li>
+                </ul>
+                
+                <div style="margin-top: 15px;">
+                    <button id="btnSaveToDB" class="accent">Zapisz pociąg do bazy</button>
+                    <button id="btnCancelRoute" class="danger" style="margin-top:5px;">Anuluj edycję</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="panel">
+        <h2>Podgląd Mapy (OpenRailwayMap)</h2>
+        <div id="map"></div>
+
+        <h2>3. Baza Pociągów (Pamięć)</h2>
+        <div style="display:flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+            <span style="font-size: 0.85rem; color: #666;">Zapisane w pamięci przeglądarki</span>
+            <button id="btnClearDB" class="danger" style="width: auto; padding: 2px 8px; font-size: 0.7rem;">Wyczyść bazę</button>
+        </div>
+        <ul id="dbTrainList" class="scrollable-list">
+            <li class="list-item" style="justify-content: center; color: #777;">Brak pociągów w bazie</li>
+        </ul>
+
+        <div class="json-preview-container">
+            <label for="jsonOutput">Podgląd pliku trains.json:</label>
+            <button id="btnCopyJSON" class="copy-btn">Kopiuj Kod</button>
+            <textarea id="jsonOutput" readonly></textarea>
+        </div>
+        <button id="btnDownloadJSON" class="secondary" style="margin-top: 10px;">Pobierz trains.json</button>
+    </div>
 </main>
 
 <footer>
-    <p>Współautorzy: Gemini & Piotr M 🚂</p>
-    <p>Wersja aplikacji: v1.1</p>
+    Współautorzy: Gemini, Piotr M 🚂 <br>
+    Wersja aplikacji: v1.4
 </footer>
 
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+crossorigin=""></script>
+
 <script>
-    // Wersja skryptu: v1.1
-    // Dane początkowe trasy
-    let routeData = [
-        { name: "Warszawa Centralna", time: "08:00", platform: "3" },
-        { name: "Warszawa Zachodnia", time: "08:05", platform: "6" },
-        { name: "Opoczno Południe",   time: "09:10", platform: "1" },
-        { name: "Miechów",            time: "10:15", platform: "2" },
-        { name: "Kraków Główny",      time: "10:45", platform: "4" }
-    ];
+    /**
+     * Wersja aplikacji: v1.4
+     * Changes: OpenRailwayMap overlay, Duplicate Train, Reverse Route, Edit Train.
+     */
 
-    // Funkcja renderująca tabelę na podstawie aktualnych danych w routeData
-    function renderRoute() {
-        const tbody = document.getElementById('routeBody');
-        tbody.innerHTML = ''; // Czyścimy obecną zawartość
+    // --- Zmienne Globalne ---
+    let map, routeLayerGroup;
+    let graph = {};   
+    let allStations = new Set();
+    
+    // Stan edycji
+    let editingId = null; // Jeśli edytujemy istniejący pociąg
+    let currentRoute = []; 
+    let currentStation = null;
+    let selectedDates = new Set(); 
+    
+    // Stan kalendarza
+    let currentCalMonth = new Date().getMonth();
+    let currentCalYear = new Date().getFullYear();
 
-        // Aktualizacja nagłówków relacji (zawsze bierzemy pierwszy i ostatni element tablicy)
-        if (routeData.length > 0) {
-            document.getElementById('startStation').innerText = routeData[0].name;
-            document.getElementById('endStation').innerText = routeData[routeData.length - 1].name;
+    // Stan bazy danych
+    let trainsDB = [];
+
+    // --- Inicjalizacja ---
+    document.addEventListener('DOMContentLoaded', () => {
+        initMap();
+        loadLocalStorage(); 
+        loadSzlakiData();   
+        updateJSONPreview();
+        setDefaultDates();
+        renderCalendar();
+    });
+
+    function setDefaultDates() {
+        const today = new Date().toISOString().split('T')[0];
+        document.getElementById('dateFrom').value = today;
+    }
+
+    function initMap() {
+        // Inicjalizacja mapy
+        map = L.map('map').setView([51.9194, 19.1451], 6);
+
+        // Warstwa bazowa: OpenStreetMap
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
+
+        // Nakładka: OpenRailwayMap
+        L.tileLayer('https://{s}.tiles.openrailwaymap.org/standard/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: 'Style: © OpenRailwayMap'
+        }).addTo(map);
+
+        // Warstwa dla naszej trasy
+        routeLayerGroup = L.featureGroup().addTo(map);
+    }
+
+    // --- Obsługa Danych (Szlaki) ---
+    async function loadSzlakiData() {
+        try {
+            const response = await fetch('./szlaki_master.json');
+            if (response.ok) {
+                const data = await response.json();
+                buildGraph(data);
+            } else {
+                throw new Error("Błąd sieci");
+            }
+        } catch (e) {
+            showStatus("Nie znaleziono pliku szlaki_master.json automatycznie.", 'error');
+            document.getElementById('file-upload-section').querySelector('input').style.display = 'block';
+        }
+    }
+
+    document.getElementById('jsonFile').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const data = JSON.parse(e.target.result);
+                buildGraph(data);
+                showStatus("Wczytano plik ręcznie.", 'success');
+            } catch (err) {
+                showStatus("Błąd pliku JSON!", 'error');
+            }
+        };
+        reader.readAsText(file);
+    });
+
+    function buildGraph(data) {
+        graph = {};
+        allStations = new Set();
+        
+        data.forEach(segment => {
+            const { start, end, via, geometry } = segment;
+            allStations.add(start);
+            allStations.add(end);
+
+            if (!graph[start]) graph[start] = [];
+            if (!graph[end]) graph[end] = [];
+
+            graph[start].push({ target: end, via: via, geometry: geometry });
+            graph[end].push({ target: start, via: via, geometry: geometry }); 
+        });
+
+        populateStartDropdown();
+        document.getElementById('btnStartRoute').disabled = false;
+        document.getElementById('startStation').disabled = false;
+    }
+
+    function populateStartDropdown() {
+        const select = document.getElementById('startStation');
+        const currentVal = select.value;
+        select.innerHTML = '<option value="">Wybierz stację początkową...</option>';
+        Array.from(allStations).sort().forEach(st => {
+            const opt = document.createElement('option');
+            opt.value = st;
+            opt.textContent = st;
+            select.appendChild(opt);
+        });
+        if(currentVal) select.value = currentVal;
+    }
+
+    // --- KALENDARZ (LOGIKA) ---
+    const monthNames = ["Styczeń", "Luty", "Marzec", "Kwiecień", "Maj", "Czerwiec", 
+                        "Lipiec", "Sierpień", "Wrzesień", "Październik", "Listopad", "Grudzień"];
+    const dayNames = ["Pn", "Wt", "Śr", "Cz", "Pt", "Sb", "Nd"];
+
+    function renderCalendar() {
+        const grid = document.getElementById('calendarGrid');
+        const title = document.getElementById('calendarTitle');
+        
+        grid.innerHTML = "";
+        title.textContent = `${monthNames[currentCalMonth]} ${currentCalYear}`;
+
+        dayNames.forEach(name => {
+            const cell = document.createElement('div');
+            cell.className = 'calendar-day-header';
+            cell.textContent = name;
+            grid.appendChild(cell);
+        });
+
+        const firstDayOfMonth = new Date(currentCalYear, currentCalMonth, 1);
+        const daysInMonth = new Date(currentCalYear, currentCalMonth + 1, 0).getDate();
+        
+        let startDay = firstDayOfMonth.getDay() - 1; 
+        if (startDay === -1) startDay = 6;
+
+        for (let i = 0; i < startDay; i++) {
+            const emptyCell = document.createElement('div');
+            emptyCell.className = 'calendar-day empty';
+            grid.appendChild(emptyCell);
         }
 
-        // Generowanie wierszy
-        routeData.forEach(station => {
-            const tr = document.createElement('tr');
+        const todayStr = new Date().toISOString().split('T')[0];
+
+        for (let day = 1; day <= daysInMonth; day++) {
+            const cell = document.createElement('div');
+            const dateStr = formatDate(currentCalYear, currentCalMonth, day);
             
-            // Dla celów demo, czas jest statyczny. W pełnej aplikacji należałoby przeliczać czas 
-            // w zależności od kierunku (np. dodawać czas przejazdu do czasu startu).
-            // Tutaj po odwróceniu zachowujemy oryginalne "etykiety" czasu dla uproszczenia,
-            // ale kolejność stacji jest fizycznie odwrócona.
+            cell.className = 'calendar-day';
+            cell.textContent = day;
             
-            tr.innerHTML = `
-                <td><strong>${station.name}</strong></td>
-                <td>${station.time} <small>(symulacja)</small></td>
-                <td>${station.platform}</td>
-            `;
-            tbody.appendChild(tr);
+            if (dateStr === todayStr) cell.classList.add('today');
+            if (selectedDates.has(dateStr)) cell.classList.add('selected');
+
+            cell.onclick = () => toggleDate(dateStr);
+            grid.appendChild(cell);
+        }
+    }
+
+    function formatDate(year, month, day) {
+        const m = (month + 1).toString().padStart(2, '0');
+        const d = day.toString().padStart(2, '0');
+        return `${year}-${m}-${d}`;
+    }
+
+    function toggleDate(dateStr) {
+        if (selectedDates.has(dateStr)) selectedDates.delete(dateStr);
+        else selectedDates.add(dateStr);
+        updateSelectedCount();
+        renderCalendar();
+    }
+
+    function updateSelectedCount() {
+        document.getElementById('selectedCount').textContent = selectedDates.size;
+    }
+
+    document.getElementById('prevMonth').addEventListener('click', () => {
+        currentCalMonth--;
+        if (currentCalMonth < 0) { currentCalMonth = 11; currentCalYear--; }
+        renderCalendar();
+    });
+
+    document.getElementById('nextMonth').addEventListener('click', () => {
+        currentCalMonth++;
+        if (currentCalMonth > 11) { currentCalMonth = 0; currentCalYear++; }
+        renderCalendar();
+    });
+
+    document.getElementById('btnGenerateDates').addEventListener('click', () => {
+        const dFrom = document.getElementById('dateFrom').value;
+        const dTo = document.getElementById('dateTo').value;
+        if (!dFrom || !dTo) return alert("Wybierz datę początkową i końcową.");
+        if (dFrom > dTo) return alert("Data 'Do' musi być późniejsza niż 'Od'.");
+
+        const checkboxes = document.querySelectorAll('input[name="wd"]:checked');
+        if (checkboxes.length === 0) return alert("Zaznacz przynajmniej jeden dzień tygodnia.");
+        const allowedDays = Array.from(checkboxes).map(cb => parseInt(cb.value));
+        
+        let currentDate = new Date(dFrom);
+        const endDate = new Date(dTo);
+        let addedCount = 0;
+
+        while (currentDate <= endDate) {
+            const dayOfWeek = currentDate.getDay(); 
+            if (allowedDays.includes(dayOfWeek)) {
+                const dateStr = currentDate.toISOString().split('T')[0];
+                if (!selectedDates.has(dateStr)) {
+                    selectedDates.add(dateStr);
+                    addedCount++;
+                }
+            }
+            currentDate.setDate(currentDate.getDate() + 1);
+        }
+
+        const startDateObj = new Date(dFrom);
+        currentCalMonth = startDateObj.getMonth();
+        currentCalYear = startDateObj.getFullYear();
+        
+        renderCalendar();
+        updateSelectedCount();
+        showStatus(`Dodano ${addedCount} dat do kalendarza.`, 'success');
+    });
+
+    document.getElementById('btnClearDates').addEventListener('click', () => {
+        if(confirm("Czy na pewno wyczyścić wszystkie zaznaczone daty?")) {
+            selectedDates.clear();
+            renderCalendar();
+            updateSelectedCount();
+        }
+    });
+
+
+    // --- Logika Tworzenia Trasy ---
+    document.getElementById('btnStartRoute').addEventListener('click', () => {
+        const start = document.getElementById('startStation').value;
+        if (!start) return alert("Wybierz stację startową!");
+        startRouteEditing(start);
+    });
+
+    function startRouteEditing(startStationName) {
+        document.getElementById('btnStartRoute').disabled = true;
+        document.getElementById('startStation').disabled = true;
+        document.getElementById('startStation').value = startStationName;
+        document.getElementById('active-route-controls').style.display = 'block';
+
+        currentStation = startStationName;
+        if (currentRoute.length === 0) {
+             routeLayerGroup.clearLayers();
+        }
+        
+        updateCurrentRouteUI();
+        updateNextOptions();
+    }
+
+    document.getElementById('btnCancelRoute').addEventListener('click', () => {
+        if(confirm("Anulować edycję? Postęp zostanie utracony.")) resetRouteEditor();
+    });
+
+    function updateNextOptions() {
+        const select = document.getElementById('nextSegment');
+        select.innerHTML = '<option value="">Wybierz kolejną stację...</option>';
+        
+        const opts = graph[currentStation] || [];
+        if (opts.length === 0) {
+            const opt = document.createElement('option');
+            opt.text = "Koniec toru (brak połączeń)";
+            select.add(opt);
+            return;
+        }
+
+        opts.forEach((conn, idx) => {
+            const viaTxt = conn.via !== '-' ? ` p. ${conn.via}` : '';
+            const opt = document.createElement('option');
+            opt.value = idx; 
+            opt.text = `${conn.target}${viaTxt}`;
+            select.add(opt);
         });
     }
 
-    // Funkcja odwracająca logikę
-    function reverseRoute() {
-        // 1. Fizyczne odwrócenie tablicy danych
-        routeData.reverse();
+    document.getElementById('btnAddSegment').addEventListener('click', () => {
+        const selIdx = document.getElementById('nextSegment').value;
+        if (selIdx === "") return;
+
+        const connection = graph[currentStation][selIdx];
         
-        // 2. Ponowne wyrenderowanie widoku
-        renderRoute();
+        currentRoute.push({
+            from: currentStation,
+            to: connection.target,
+            via: connection.via
+        });
+
+        if (connection.geometry) {
+            L.geoJSON(connection.geometry, {
+                style: { color: 'blue', weight: 4 }
+            }).addTo(routeLayerGroup);
+        }
+
+        currentStation = connection.target;
+        updateNextOptions();
+        updateCurrentRouteUI();
+    });
+
+    document.getElementById('btnUndo').addEventListener('click', () => {
+        if (currentRoute.length === 0) return;
+        
+        const removed = currentRoute.pop();
+        currentStation = removed.from;
+        
+        routeLayerGroup.clearLayers();
+        currentRoute.forEach(seg => {
+            const conns = graph[seg.from];
+            const conn = conns.find(c => c.target === seg.to && c.via === seg.via);
+            if (conn && conn.geometry) {
+                L.geoJSON(conn.geometry, { style: { color: 'blue', weight: 4 } }).addTo(routeLayerGroup);
+            }
+        });
+
+        updateNextOptions();
+        updateCurrentRouteUI();
+    });
+
+    function updateCurrentRouteUI() {
+        document.getElementById('currentStationLabel').textContent = currentStation;
+        const ul = document.getElementById('currentRouteList');
+        ul.innerHTML = '';
+        
+        if (currentRoute.length === 0) {
+            ul.innerHTML = `<li class="list-item">Start: <b>${currentStation}</b></li>`;
+        } else {
+            ul.innerHTML = `<li class="list-item">Start: <b>${currentRoute[0].from}</b></li>`;
+            currentRoute.forEach(seg => {
+                ul.innerHTML += `<li class="list-item">&#8595; ${seg.to} <small>(${seg.via})</small></li>`;
+            });
+        }
     }
 
-    // Inicjalizacja przy załadowaniu strony
-    document.addEventListener('DOMContentLoaded', renderRoute);
+    function resetRouteEditor() {
+        currentRoute = [];
+        currentStation = null;
+        editingId = null;
+        selectedDates.clear();
+        routeLayerGroup.clearLayers();
+        
+        document.getElementById('active-route-controls').style.display = 'none';
+        document.getElementById('btnStartRoute').disabled = false;
+        document.getElementById('startStation').disabled = false;
+        document.getElementById('startStation').value = "";
+        
+        document.getElementById('trainNumber').value = "";
+        document.getElementById('trainName').value = "";
+        
+        renderCalendar();
+        updateSelectedCount();
+    }
+
+    // --- Zapis do Bazy ---
+    document.getElementById('btnSaveToDB').addEventListener('click', () => {
+        const cat = document.getElementById('trainCategory').value;
+        const num = document.getElementById('trainNumber').value;
+        const name = document.getElementById('trainName').value;
+
+        if (!num || !name) return alert("Podaj numer i nazwę pociągu!");
+        if (currentRoute.length === 0) return alert("Trasa jest pusta!");
+        if (selectedDates.size === 0) return alert("Wybierz daty kursowania w kalendarzu!");
+
+        const newTrain = {
+            id: editingId ? editingId : Date.now(),
+            category: cat,
+            number: num,
+            name: name,
+            dates: Array.from(selectedDates).sort(),
+            route: {
+                start: currentRoute[0].from,
+                end: currentRoute[currentRoute.length-1].to,
+                segments: [...currentRoute]
+            }
+        };
+
+        if (editingId) {
+            // Aktualizacja istniejącego
+            const idx = trainsDB.findIndex(t => t.id === editingId);
+            if (idx !== -1) trainsDB[idx] = newTrain;
+            else trainsDB.push(newTrain);
+        } else {
+            // Nowy wpis
+            trainsDB.push(newTrain);
+        }
+
+        saveLocalStorage();
+        renderTrainDBList();
+        updateJSONPreview();
+        resetRouteEditor();
+        showStatus(`Zapisano pociąg ${cat} ${num}!`, 'success');
+    });
+
+    function renderTrainDBList() {
+        const ul = document.getElementById('dbTrainList');
+        ul.innerHTML = '';
+        if (trainsDB.length === 0) {
+            ul.innerHTML = '<li class="list-item" style="color:#777;">Brak pociągów</li>';
+            return;
+        }
+
+        trainsDB.forEach((train, index) => {
+            const li = document.createElement('li');
+            li.className = 'list-item';
+            const datesInfo = train.dates.length > 5 
+                              ? `${train.dates.length} dni` 
+                              : train.dates.join(', ');
+                              
+            li.innerHTML = `
+                <div style="flex:1;">
+                    <strong>${train.category} ${train.number}</strong> "${train.name}"<br>
+                    <small>${train.route.start} &#8594; ${train.route.end}</small><br>
+                    <small style="color:#666; font-size:0.8em;">${datesInfo}</small>
+                </div>
+                <div class="train-actions">
+                    <button class="accent" onclick="editTrain(${index})" title="Edytuj">✎</button>
+                    <button class="secondary" onclick="duplicateTrain(${index})" title="Kopiuj">📋</button>
+                    <button class="warning" onclick="reverseTrain(${index})" title="Odwróć trasę">⇄</button>
+                    <button class="danger" onclick="deleteTrain(${index})" title="Usuń">✕</button>
+                </div>
+            `;
+            ul.appendChild(li);
+        });
+    }
+
+    // --- Funkcje Operacyjne na Pociągach ---
+
+    window.deleteTrain = function(index) {
+        if(confirm("Usunąć ten pociąg?")) {
+            trainsDB.splice(index, 1);
+            saveAndUpdate();
+        }
+    }
+
+    window.duplicateTrain = function(index) {
+        const original = trainsDB[index];
+        // Głęboka kopia
+        const copy = JSON.parse(JSON.stringify(original));
+        copy.id = Date.now();
+        copy.name += " (KOPIA)";
+        trainsDB.push(copy);
+        saveAndUpdate();
+        showStatus("Duplikat utworzony.", "success");
+    }
+
+    window.reverseTrain = function(index) {
+        if(!confirm("Czy na pewno odwrócić trasę dla tego pociągu?")) return;
+        
+        const train = trainsDB[index];
+        const oldSegments = train.route.segments;
+        let newSegments = [];
+
+        // Odwracamy kolejność i kierunki
+        for (let i = oldSegments.length - 1; i >= 0; i--) {
+            const seg = oldSegments[i];
+            newSegments.push({
+                from: seg.to,
+                to: seg.from,
+                via: seg.via
+            });
+        }
+
+        // Zamieniamy start i end
+        const oldStart = train.route.start;
+        train.route.start = train.route.end;
+        train.route.end = oldStart;
+        train.route.segments = newSegments;
+        
+        saveAndUpdate();
+        showStatus("Trasa odwrócona.", "success");
+    }
+
+    window.editTrain = function(index) {
+        if (currentRoute.length > 0) {
+            if(!confirm("Aktualnie tworzysz trasę. Czy porzucić zmiany i załadować pociąg do edycji?")) return;
+        }
+
+        const train = trainsDB[index];
+        
+        // Wypełnij formularz
+        document.getElementById('trainCategory').value = train.category;
+        document.getElementById('trainNumber').value = train.number;
+        document.getElementById('trainName').value = train.name;
+        
+        editingId = train.id;
+        
+        // Wypełnij kalendarz
+        selectedDates = new Set(train.dates);
+        renderCalendar();
+        updateSelectedCount();
+
+        // Odtwórz trasę
+        currentRoute = [...train.route.segments];
+        // Ustaw start
+        const startStation = train.route.start;
+        document.getElementById('startStation').value = startStation;
+        document.getElementById('startStation').disabled = true;
+        document.getElementById('btnStartRoute').disabled = true;
+        document.getElementById('active-route-controls').style.display = 'block';
+
+        currentStation = train.route.end; // Ostatnia stacja to ta, gdzie jesteśmy
+        
+        // Przerysuj mapę
+        routeLayerGroup.clearLayers();
+        currentRoute.forEach(seg => {
+            // Szukamy geometrii
+            if (graph[seg.from]) {
+                const conn = graph[seg.from].find(c => c.target === seg.to && c.via === seg.via);
+                if (conn && conn.geometry) {
+                    L.geoJSON(conn.geometry, { style: { color: 'blue', weight: 4 } }).addTo(routeLayerGroup);
+                }
+            }
+        });
+
+        updateCurrentRouteUI();
+        updateNextOptions();
+        
+        // Przewiń do góry
+        document.querySelector('.panel').scrollIntoView({behavior: 'smooth'});
+        showStatus("Załadowano pociąg do edycji.", "success");
+    }
+
+    document.getElementById('btnClearDB').addEventListener('click', () => {
+        if(confirm("Usunąć WSZYSTKIE pociągi?")) {
+            trainsDB = [];
+            saveAndUpdate();
+        }
+    });
+
+    function saveAndUpdate() {
+        saveLocalStorage();
+        renderTrainDBList();
+        updateJSONPreview();
+    }
+
+    function saveLocalStorage() { localStorage.setItem('savedTrains', JSON.stringify(trainsDB)); }
+    function loadLocalStorage() {
+        const saved = localStorage.getItem('savedTrains');
+        if (saved) {
+            try { trainsDB = JSON.parse(saved); renderTrainDBList(); } 
+            catch (e) { console.error(e); }
+        }
+    }
+
+    // --- JSON i Kopiowanie ---
+    function updateJSONPreview() {
+        document.getElementById('jsonOutput').value = JSON.stringify(trainsDB, null, 2);
+    }
+
+    document.getElementById('btnCopyJSON').addEventListener('click', () => {
+        const txt = document.getElementById('jsonOutput');
+        txt.select();
+        navigator.clipboard.writeText(txt.value).then(() => {
+            const btn = document.getElementById('btnCopyJSON');
+            const orig = btn.textContent;
+            btn.textContent = "Skopiowano!";
+            setTimeout(() => btn.textContent = orig, 2000);
+        });
+    });
+
+    document.getElementById('btnDownloadJSON').addEventListener('click', () => {
+        const blob = new Blob([document.getElementById('jsonOutput').value], {type: 'application/json'});
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = 'trains.json';
+        document.body.appendChild(a); a.click(); document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    });
+
+    function showStatus(msg, type) {
+        const el = document.getElementById('status');
+        el.textContent = msg;
+        el.className = `status-msg status-${type}`;
+        el.style.display = 'block';
+        setTimeout(() => el.style.display = 'none', 4000);
+    }
 
 </script>
-
 </body>
 </html>
