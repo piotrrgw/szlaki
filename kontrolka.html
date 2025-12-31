@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Karta Znajomości Szlaków - Kontrolka</title>
+    <title>Karta Znajomości Szlaków - Kontrolka v1.2</title>
     
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-W05T4L1HFD"></script>
     <script>
@@ -16,7 +16,8 @@
     <style>
         :root {
             --primary-color: #0056b3;
-            --accent-color: #ffc107;
+            --accent-color: #ffc107; /* Żółty dla służb */
+            --night-color: #2c3e50;  /* Ciemny dla nocek */
             --bg-color: #f8f9fa;
             --text-color: #333;
             --border-color: #dee2e6;
@@ -28,7 +29,7 @@
             padding: 0;
             background-color: var(--bg-color);
             color: var(--text-color);
-            line-height: 1.6;
+            line-height: 1.5;
         }
 
         header {
@@ -44,11 +45,27 @@
             padding: 20px;
         }
 
+        /* --- AWARYJNE ŁADOWANIE --- */
+        #fallback-upload {
+            display: none;
+            background-color: white;
+            border: 2px dashed var(--primary-color);
+            padding: 30px;
+            text-align: center;
+            margin-bottom: 20px;
+            border-radius: 8px;
+        }
+        
+        #fallback-upload h3 { margin-top: 0; color: var(--primary-color); }
+        .file-input-group { margin: 15px 0; }
+
         /* --- KALENDARZ --- */
         .calendar-controls {
             display: flex;
             justify-content: space-between;
             align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
             margin-bottom: 20px;
             background: white;
             padding: 15px;
@@ -59,14 +76,16 @@
         .month-display {
             font-size: 1.5rem;
             font-weight: bold;
+            min-width: 200px;
+            text-align: center;
         }
 
         .calendar-grid {
             display: grid;
             grid-template-columns: repeat(7, 1fr);
-            gap: 5px;
+            gap: 4px;
             background: white;
-            padding: 15px;
+            padding: 10px;
             border-radius: 8px;
             box-shadow: 0 2px 5px rgba(0,0,0,0.1);
             margin-bottom: 30px;
@@ -77,6 +96,7 @@
             font-weight: bold;
             padding: 10px;
             background-color: #e9ecef;
+            font-size: 0.9rem;
         }
 
         .calendar-day {
@@ -87,6 +107,8 @@
             position: relative;
             background: white;
             transition: background 0.2s;
+            display: flex;
+            flex-direction: column;
         }
 
         .calendar-day:hover {
@@ -99,20 +121,49 @@
             cursor: default;
         }
 
+        .day-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 5px;
+            flex-wrap: wrap;
+            gap: 2px;
+        }
+
         .day-number {
             font-weight: bold;
-            margin-bottom: 5px;
-            display: block;
+            font-size: 1.1rem;
+            margin-right: 5px;
+        }
+
+        /* Stylizacja Służb (ICS) */
+        .shift-badge {
+            background-color: var(--accent-color);
+            color: #000;
+            font-size: 0.75rem;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: bold;
+            display: inline-flex;
+            align-items: center;
+            gap: 3px;
+            cursor: help;
+            border: 1px solid #e0a800;
+        }
+
+        .shift-badge.overnight {
+            background-color: var(--night-color);
+            color: #fff; /* Biały tekst na ciemnym tle */
+            border-color: #1a252f;
         }
 
         .train-badge {
             background-color: var(--primary-color);
             color: white;
-            font-size: 0.75rem;
-            padding: 2px 5px;
-            border-radius: 4px;
+            font-size: 0.7rem;
+            padding: 2px 4px;
+            border-radius: 3px;
             margin-bottom: 2px;
-            display: block;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
@@ -130,16 +181,21 @@
             width: 100%;
             border-collapse: collapse;
             margin-top: 20px;
+            font-size: 0.9rem;
         }
 
         table.report-table th, table.report-table td {
             border: 1px solid black;
-            padding: 8px;
+            padding: 6px;
             text-align: left;
         }
 
         table.report-table th {
             background-color: #e9ecef;
+        }
+        
+        table.report-table tr:nth-child(even) {
+            background-color: #fcfcfc;
         }
 
         /* --- MODAL --- */
@@ -164,6 +220,7 @@
             max-width: 500px;
             max-height: 90vh;
             overflow-y: auto;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
         }
 
         .form-group {
@@ -184,15 +241,17 @@
         }
 
         .btn {
-            padding: 10px 20px;
+            padding: 8px 16px;
             border: none;
             border-radius: 4px;
             cursor: pointer;
             font-weight: bold;
-            margin-right: 10px;
+            margin-right: 5px;
+            font-size: 0.9rem;
         }
 
         .btn-primary { background-color: var(--primary-color); color: white; }
+        .btn-warning { background-color: var(--accent-color); color: #000; }
         .btn-danger { background-color: #dc3545; color: white; }
         .btn-secondary { background-color: #6c757d; color: white; }
 
@@ -204,6 +263,7 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
+            border-radius: 4px;
         }
 
         footer {
@@ -211,21 +271,39 @@
             text-align: center;
             padding: 20px;
             border-top: 1px solid var(--border-color);
-            font-size: 0.9rem;
+            font-size: 0.8rem;
             color: #666;
         }
 
-        /* --- DRUKOWANIE --- */
+        /* --- DRUKOWANIE (A4 OPTIMIZATION) --- */
         @media print {
-            body { background: white; }
-            header, .calendar-controls, .calendar-grid, footer, .no-print {
+            @page {
+                size: A4;
+                margin: 0.8cm;
+            }
+
+            body { background: white; -webkit-print-color-adjust: exact; }
+            header, .calendar-controls, .calendar-grid, footer, .no-print, #fallback-upload {
                 display: none !important;
             }
+            
             .container { width: 100%; max-width: none; padding: 0; margin: 0; }
             .report-section { box-shadow: none; padding: 0; }
-            table.report-table th, table.report-table td { font-size: 11px; padding: 4px; }
-            /* Force table header on new pages if needed */
-            thead { display: table-header-group; } 
+            
+            h2 { margin-top: 0; margin-bottom: 5px; font-size: 1.1rem; text-align: center; }
+            
+            table.report-table {
+                font-size: 9pt; /* Jeszcze mniejsza, żeby mieć pewność */
+                width: 100%;
+            }
+            
+            table.report-table th, table.report-table td {
+                padding: 2px 4px;
+                border: 1px solid #000;
+            }
+
+            tr { page-break-inside: avoid; }
+            thead { display: table-header-group; }
         }
     </style>
 </head>
@@ -237,12 +315,35 @@
 </header>
 
 <div class="container">
+
+    <div id="fallback-upload">
+        <h3>⚠️ Nie znaleziono plików danych</h3>
+        <p>Aplikacja nie mogła automatycznie pobrać plików `trains.json` i `szlaki_master.json`.</p>
+        
+        <div class="file-input-group">
+            <label>Plik <strong>trains.json</strong>:</label><br>
+            <input type="file" id="manualTrainsFile" accept=".json">
+        </div>
+        <div class="file-input-group">
+            <label>Plik <strong>szlaki_master.json</strong>:</label><br>
+            <input type="file" id="manualSzlakiFile" accept=".json">
+        </div>
+        <button class="btn btn-primary" onclick="processManualFiles()">Wczytaj pliki i uruchom</button>
+    </div>
+
     <div class="calendar-controls">
-        <button class="btn btn-secondary" onclick="changeMonth(-1)">Poprzedni</button>
-        <div class="month-display" id="monthDisplay">Styczeń 2026</div>
-        <button class="btn btn-secondary" onclick="changeMonth(1)">Następny</button>
-        <button class="btn btn-primary no-print" onclick="window.print()">🖨️ Drukuj Kartę</button>
-        <button class="btn btn-danger no-print" onclick="clearData()">🗑️ Wyczyść Dane</button>
+        <div>
+            <button class="btn btn-secondary" onclick="changeMonth(-1)">◀ Poprzedni</button>
+            <span class="month-display" id="monthDisplay">Styczeń 2026</span>
+            <button class="btn btn-secondary" onclick="changeMonth(1)">Następny ▶</button>
+        </div>
+        
+        <div>
+            <input type="file" id="icsFileInput" accept=".ics" style="display: none;" onchange="handleIcsUpload(this)">
+            <button class="btn btn-warning no-print" onclick="document.getElementById('icsFileInput').click()">📅 Importuj Grafik (ICS)</button>
+            <button class="btn btn-primary no-print" onclick="window.print()">🖨️ Drukuj Kartę</button>
+            <button class="btn btn-danger no-print" onclick="clearData()">🗑️ Reset</button>
+        </div>
     </div>
 
     <div class="calendar-grid" id="calendarGrid">
@@ -253,11 +354,11 @@
         <table class="report-table" id="reportTable">
             <thead>
                 <tr>
-                    <th style="width: 50px;">LP</th>
+                    <th style="width: 40px;">LP</th>
                     <th>Od</th>
                     <th>Do</th>
                     <th>Przez</th>
-                    <th style="width: 150px;">Data ost. przejazdu</th>
+                    <th style="width: 100px;">Data ost. przejazdu</th>
                 </tr>
             </thead>
             <tbody>
@@ -268,12 +369,12 @@
 
 <div class="modal" id="dayModal">
     <div class="modal-content">
-        <h3 id="modalDateTitle">Edycja dnia: </h3>
+        <h3 id="modalDateTitle">Edycja dnia</h3>
         
         <div id="existingTrainsList">
             </div>
 
-        <hr style="margin: 20px 0;">
+        <hr style="margin: 20px 0; border-top: 1px solid #eee;">
         
         <h4>Dodaj pociąg</h4>
         <div class="form-group">
@@ -284,23 +385,23 @@
         </div>
 
         <div class="form-group" id="routeSelectorContainer" style="display:none;">
-            <label for="startStation">Stacja początkowa (Twoja zmiana):</label>
+            <label for="startStation">Odcinek od:</label>
             <select id="startStation"></select>
             
-            <label for="endStation" style="margin-top:10px;">Stacja końcowa (Twoja zmiana):</label>
+            <label for="endStation" style="margin-top:10px;">Odcinek do:</label>
             <select id="endStation"></select>
         </div>
 
         <div style="text-align: right; margin-top: 20px;">
-            <button class="btn btn-secondary" onclick="closeModal()">Anuluj</button>
-            <button class="btn btn-primary" onclick="addTrainToDay()">Dodaj Pociąg</button>
+            <button class="btn btn-secondary" onclick="closeModal()">Zamknij</button>
+            <button class="btn btn-primary" onclick="addTrainToDay()">Zapisz</button>
         </div>
     </div>
 </div>
 
 <footer>
     <p>Współautorzy: Gemini & Piotr M 🚂</p>
-    <p>Wersja aplikacji: v1.0</p>
+    <p>Wersja aplikacji: v1.2</p>
 </footer>
 
 <script>
@@ -308,51 +409,194 @@
     let currentDate = new Date();
     let trainsData = [];
     let masterSzlakiData = [];
-    let userSchedule = {}; // Struktura: { "YYYY-MM-DD": [ { trainId: "...", from: "...", to: "..." } ] }
+    
+    // Dane użytkownika
+    let userSchedule = {}; 
+    // Struktura importedShifts: { "YYYY-MM-DD": [ { summary: "DW5", isOvernight: false, timeInfo: "..." } ] }
+    let importedShifts = {}; 
 
     // --- INICJALIZACJA ---
     document.addEventListener('DOMContentLoaded', async () => {
-        await loadDataFiles();
-        loadFromLocalStorage();
-        renderCalendar();
-        generateReport(); // Generuj pustą tabelę na start
+        loadLocalStorage();
+        await attemptAutoLoad();
     });
 
-    // --- ŁADOWANIE DANYCH ---
-    async function loadDataFiles() {
+    // --- ŁADOWANIE PLIKÓW ---
+    async function attemptAutoLoad() {
         try {
             const [trainsRes, masterRes] = await Promise.all([
                 fetch('./trains.json'),
                 fetch('./szlaki_master.json')
             ]);
+            if (!trainsRes.ok || !masterRes.ok) throw new Error("Błąd sieci");
 
             trainsData = await trainsRes.json();
             masterSzlakiData = await masterRes.json();
-            
-            populateTrainSelect();
-            console.log("Dane załadowane pomyślnie.");
+            initializeApp();
         } catch (error) {
-            console.error("Błąd ładowania plików JSON:", error);
-            alert("Nie udało się załadować plików danych (trains.json, szlaki_master.json). Upewnij się, że są w tym samym folderze.");
+            console.warn("Autoload fail:", error);
+            document.getElementById('fallback-upload').style.display = 'block';
+            document.querySelector('.calendar-controls').style.display = 'none';
+            document.querySelector('.calendar-grid').style.display = 'none';
+            document.querySelector('.report-section').style.display = 'none';
         }
     }
 
-    function populateTrainSelect() {
-        const select = document.getElementById('trainSelect');
-        select.innerHTML = '<option value="">-- Wybierz pociąg --</option>';
-        
-        // Sortowanie pociągów po numerze
-        trainsData.sort((a, b) => a.number.localeCompare(b.number));
+    function processManualFiles() {
+        const tFile = document.getElementById('manualTrainsFile').files[0];
+        const mFile = document.getElementById('manualSzlakiFile').files[0];
+        if (!tFile || !mFile) return alert("Wybierz oba pliki!");
 
-        trainsData.forEach(train => {
-            const option = document.createElement('option');
-            option.value = train.id;
-            option.textContent = `${train.number} ${train.name} (${train.category})`;
-            select.appendChild(option);
+        const rT = new FileReader();
+        const rM = new FileReader();
+        let tOk = false, mOk = false;
+
+        rT.onload = (e) => { trainsData = JSON.parse(e.target.result); tOk = true; check(); };
+        rM.onload = (e) => { masterSzlakiData = JSON.parse(e.target.result); mOk = true; check(); };
+
+        rT.readAsText(tFile);
+        rM.readAsText(mFile);
+
+        function check() {
+            if (tOk && mOk) {
+                document.getElementById('fallback-upload').style.display = 'none';
+                document.querySelector('.calendar-controls').style.display = 'flex';
+                document.querySelector('.calendar-grid').style.display = 'grid';
+                document.querySelector('.report-section').style.display = 'block';
+                initializeApp();
+            }
+        }
+    }
+
+    function initializeApp() {
+        populateTrainSelect();
+        renderCalendar();
+        generateReport();
+    }
+
+    // --- OBSŁUGA ICS (NOWA LOGIKA) ---
+    function handleIcsUpload(input) {
+        const file = input.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                parseICS(e.target.result);
+                saveLocalStorage();
+                renderCalendar();
+                alert("Grafik zaimportowany! Sprawdź oznaczenia 🌙 dla nocek.");
+            } catch (err) {
+                console.error(err);
+                alert("Błąd pliku ICS: " + err.message);
+            }
+        };
+        reader.readAsText(file);
+        input.value = '';
+    }
+
+    function parseICS(content) {
+        // Czyścimy poprzednie importy przy nowym załadowaniu
+        // importedShifts = {}; // Opcjonalnie: odkomentuj jeśli chcesz nadpisać wszystko
+        
+        // Dzielimy na zdarzenia
+        const events = content.split('BEGIN:VEVENT');
+        
+        events.forEach(eventBlock => {
+            if (!eventBlock.includes('END:VEVENT')) return;
+
+            const summaryMatch = eventBlock.match(/SUMMARY:(.*)/);
+            const dtStartMatch = eventBlock.match(/DTSTART(?:;VALUE=[^:]+)?:([0-9T]+)/);
+            const dtEndMatch = eventBlock.match(/DTEND(?:;VALUE=[^:]+)?:([0-9T]+)/);
+
+            if (summaryMatch && dtStartMatch) {
+                const summary = summaryMatch[1].trim();
+                const startRaw = dtStartMatch[1];
+                // Jeśli brak DTEND, zakładamy ten sam dzień/czas co start
+                const endRaw = dtEndMatch ? dtEndMatch[1] : startRaw; 
+
+                const startDate = parseIcsDate(startRaw);
+                const endDate = parseIcsDate(endRaw);
+
+                if (!startDate) return;
+
+                const dateKey = formatDateKey(startDate);
+                
+                // Sprawdzanie czy łamie dobę (Start Date != End Date)
+                // Uwaga: Dla VALUE=DATE (tylko data), DTEND jest exclusive (następny dzień).
+                // Czyli 20251213 -> 20251214 to jest 1 dzień.
+                // Ale 20251213T200000 -> 20251214T060000 to jest łamanie doby.
+
+                let isOvernight = false;
+                let timeInfo = "";
+
+                const hasTime = startRaw.includes('T');
+                
+                if (hasTime) {
+                    // Mamy czas, więc sprawdzamy czy dzień się różni
+                    const startDay = startDate.getDate();
+                    const endDay = endDate.getDate();
+                    if (startDay !== endDay) {
+                        isOvernight = true;
+                    }
+                    // Formatowanie czasu do tooltipa
+                    const timeOpts = {hour: '2-digit', minute:'2-digit'};
+                    timeInfo = `${startDate.toLocaleTimeString([], timeOpts)} - ${endDate.toLocaleTimeString([], timeOpts)}`;
+                } else {
+                    // Tylko data. Standard ICS: End = Start + 1 day dla eventu jednodniowego.
+                    // Jeśli End - Start > 1 dzień (w ms), to wielodniowe.
+                    const diffTime = Math.abs(endDate - startDate);
+                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
+                    
+                    if (diffDays > 1) {
+                        // Traktujemy jako nockę/wielodniowe
+                         isOvernight = true;
+                         timeInfo = "(Wielodniowa)";
+                    }
+                }
+
+                // Dodajemy do struktury
+                if (!importedShifts[dateKey]) importedShifts[dateKey] = [];
+                
+                // Unikamy duplikatów
+                const exists = importedShifts[dateKey].some(s => s.summary === summary && s.isOvernight === isOvernight);
+                if (!exists) {
+                    importedShifts[dateKey].push({
+                        summary: summary,
+                        isOvernight: isOvernight,
+                        timeInfo: timeInfo
+                    });
+                }
+            }
         });
     }
 
-    // --- LOGIKA KALENDARZA ---
+    function parseIcsDate(raw) {
+        // Obsługa formatów: 20251213 lub 20251213T200000 lub 20251213T200000Z
+        if (!raw) return null;
+        const y = raw.substring(0,4);
+        const m = raw.substring(4,6) - 1; // JS months 0-11
+        const d = raw.substring(6,8);
+        
+        let h=0, min=0, s=0;
+        if (raw.includes('T')) {
+            const timePart = raw.split('T')[1];
+            h = timePart.substring(0,2);
+            min = timePart.substring(2,4);
+            s = timePart.substring(4,6);
+        }
+        
+        return new Date(y, m, d, h, min, s);
+    }
+
+    function formatDateKey(dateObj) {
+        const y = dateObj.getFullYear();
+        const m = String(dateObj.getMonth() + 1).padStart(2, '0');
+        const d = String(dateObj.getDate()).padStart(2, '0');
+        return `${y}-${m}-${d}`;
+    }
+
+    // --- KALENDARZ UI ---
     function renderCalendar() {
         const grid = document.getElementById('calendarGrid');
         const display = document.getElementById('monthDisplay');
@@ -360,14 +604,13 @@
 
         const year = currentDate.getFullYear();
         const month = currentDate.getMonth();
-
         const monthNames = ["Styczeń", "Luty", "Marzec", "Kwiecień", "Maj", "Czerwiec", "Lipiec", "Sierpień", "Wrzesień", "Październik", "Listopad", "Grudzień"];
         display.textContent = `${monthNames[month]} ${year}`;
 
-        const firstDayOfMonth = new Date(year, month, 1).getDay(); // 0 = Niedziela
+        const firstDayOfMonth = new Date(year, month, 1).getDay();
         const daysInMonth = new Date(year, month + 1, 0).getDate();
         
-        // Nagłówki dni tygodnia
+        // Dni tygodnia
         const daysOfWeek = ["Pon", "Wt", "Śr", "Czw", "Pt", "Sob", "Nd"];
         daysOfWeek.forEach(day => {
             const div = document.createElement('div');
@@ -376,34 +619,57 @@
             grid.appendChild(div);
         });
 
-        // Puste pola przed 1. dniem miesiąca (korekta: JS Sunday=0, Polska Pon=0 logicznie)
-        let emptySlots = firstDayOfMonth === 0 ? 6 : firstDayOfMonth - 1;
-        for (let i = 0; i < emptySlots; i++) {
+        let startDay = firstDayOfMonth === 0 ? 7 : firstDayOfMonth;
+        
+        for (let i = 1; i < startDay; i++) {
             const div = document.createElement('div');
             div.className = 'calendar-day empty';
             grid.appendChild(div);
         }
 
-        // Dni miesiąca
         for (let day = 1; day <= daysInMonth; day++) {
             const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
             const div = document.createElement('div');
             div.className = 'calendar-day';
             div.onclick = () => openDayModal(dateStr);
 
-            const dayNum = document.createElement('span');
-            dayNum.className = 'day-number';
-            dayNum.textContent = day;
-            div.appendChild(dayNum);
+            const headerDiv = document.createElement('div');
+            headerDiv.className = 'day-header';
+            
+            const numSpan = document.createElement('span');
+            numSpan.className = 'day-number';
+            numSpan.textContent = day;
+            headerDiv.appendChild(numSpan);
 
-            // Wyświetl pociągi dodane tego dnia
+            // RENDEROWANIE SŁUŻB (ICS)
+            if (importedShifts[dateStr]) {
+                // Obsługa kompatybilności wstecznej (gdyby ktoś miał stary format stringa w LocalStorage)
+                let shifts = Array.isArray(importedShifts[dateStr]) ? importedShifts[dateStr] : [{summary: importedShifts[dateStr], isOvernight: false}];
+                
+                shifts.forEach(shift => {
+                    const badge = document.createElement('span');
+                    badge.className = `shift-badge ${shift.isOvernight ? 'overnight' : ''}`;
+                    // Treść badge'a
+                    let content = shift.summary;
+                    if (shift.isOvernight) content += ' 🌙';
+                    badge.textContent = content;
+                    
+                    if (shift.timeInfo) badge.title = shift.timeInfo; // Tooltip
+                    
+                    headerDiv.appendChild(badge);
+                });
+            }
+            
+            div.appendChild(headerDiv);
+
+            // RENDEROWANIE POCIĄGÓW (USER)
             if (userSchedule[dateStr]) {
                 userSchedule[dateStr].forEach(entry => {
                     const train = trainsData.find(t => t.id == entry.trainId);
                     if (train) {
                         const badge = document.createElement('div');
                         badge.className = 'train-badge';
-                        badge.textContent = `${train.number} (${entry.from}-${entry.to})`;
+                        badge.textContent = `🚂 ${train.number}`;
                         div.appendChild(badge);
                     }
                 });
@@ -418,7 +684,7 @@
         renderCalendar();
     }
 
-    // --- MODAL I EDYCJA ---
+    // --- MODAL, EDYCJA, PERSISTENCE ---
     let selectedDate = null;
 
     function openDayModal(dateStr) {
@@ -441,86 +707,56 @@
         const startSelect = document.getElementById('startStation');
         const endSelect = document.getElementById('endStation');
 
-        if (!trainId) {
-            container.style.display = 'none';
-            return;
-        }
+        if (!trainId) { container.style.display = 'none'; return; }
 
         const train = trainsData.find(t => t.id == trainId);
-        if (!train || !train.route || !train.route.segments) {
-            container.style.display = 'none';
-            return;
+        if (!train || !train.route) { container.style.display = 'none'; return; }
+
+        const stations = [];
+        if (train.route.start) stations.push(train.route.start);
+        if (train.route.segments) {
+            train.route.segments.forEach(seg => {
+                if (!stations.includes(seg.from)) stations.push(seg.from);
+                if (!stations.includes(seg.to)) stations.push(seg.to);
+            });
         }
 
-        // Wyciągnij unikalne stacje z trasy pociągu (zachowując kolejność)
-        const stations = [];
-        // Dodaj start trasy
-        if (train.route.start) stations.push(train.route.start);
-        
-        train.route.segments.forEach(seg => {
-            if (!stations.includes(seg.from)) stations.push(seg.from); // Zabezpieczenie, choć logika segments jest from->to
-            if (!stations.includes(seg.to)) stations.push(seg.to);
-        });
-
-        // Wypełnij selecty
         startSelect.innerHTML = '';
         endSelect.innerHTML = '';
-
-        stations.forEach((st, index) => {
-            const opt1 = document.createElement('option');
-            opt1.value = st;
-            opt1.textContent = st;
-            startSelect.appendChild(opt1);
-
-            const opt2 = document.createElement('option');
-            opt2.value = st;
-            opt2.textContent = st;
-            endSelect.appendChild(opt2);
+        stations.forEach(st => {
+            const opt1 = document.createElement('option'); opt1.value = st; opt1.textContent = st; startSelect.appendChild(opt1);
+            const opt2 = document.createElement('option'); opt2.value = st; opt2.textContent = st; endSelect.appendChild(opt2);
         });
 
-        // Domyślnie zaznacz całą trasę
         if (stations.length > 0) {
             startSelect.selectedIndex = 0;
             endSelect.selectedIndex = stations.length - 1;
         }
-
         container.style.display = 'block';
     }
 
     function addTrainToDay() {
         if (!selectedDate) return;
-        const trainId = document.getElementById('trainSelect').value;
-        const startStation = document.getElementById('startStation').value;
-        const endStation = document.getElementById('endStation').value;
+        const tId = document.getElementById('trainSelect').value;
+        const sSt = document.getElementById('startStation').value;
+        const eSt = document.getElementById('endStation').value;
 
-        if (!trainId || !startStation || !endStation) {
-            alert("Wybierz pociąg i zakres trasy.");
-            return;
-        }
+        if (!tId || !sSt || !eSt) return alert("Uzupełnij dane!");
 
-        if (!userSchedule[selectedDate]) {
-            userSchedule[selectedDate] = [];
-        }
+        if (!userSchedule[selectedDate]) userSchedule[selectedDate] = [];
+        userSchedule[selectedDate].push({ trainId: tId, from: sSt, to: eSt });
 
-        userSchedule[selectedDate].push({
-            trainId: trainId,
-            from: startStation,
-            to: endStation
-        });
-
-        saveToLocalStorage();
+        saveLocalStorage();
         renderExistingTrainsList();
-        renderCalendar(); // Odśwież widok miesiąca
-        generateReport(); // Przelicz tabelę
+        renderCalendar();
+        generateReport();
     }
 
-    function removeTrainFromDay(index) {
-        if (!selectedDate || !userSchedule[selectedDate]) return;
-        userSchedule[selectedDate].splice(index, 1);
-        if (userSchedule[selectedDate].length === 0) {
-            delete userSchedule[selectedDate];
-        }
-        saveToLocalStorage();
+    function removeTrainFromDay(idx) {
+        if (!userSchedule[selectedDate]) return;
+        userSchedule[selectedDate].splice(idx, 1);
+        if (userSchedule[selectedDate].length === 0) delete userSchedule[selectedDate];
+        saveLocalStorage();
         renderExistingTrainsList();
         renderCalendar();
         generateReport();
@@ -529,183 +765,135 @@
     function renderExistingTrainsList() {
         const container = document.getElementById('existingTrainsList');
         container.innerHTML = '';
+        if (!userSchedule[selectedDate]) { container.innerHTML = '<p style="color:#888;">Brak pociągów.</p>'; return; }
 
-        if (!userSchedule[selectedDate]) {
-            container.innerHTML = '<p style="color:#666; font-style:italic;">Brak pociągów tego dnia.</p>';
-            return;
-        }
-
-        userSchedule[selectedDate].forEach((entry, index) => {
+        userSchedule[selectedDate].forEach((entry, idx) => {
             const train = trainsData.find(t => t.id == entry.trainId);
             const div = document.createElement('div');
             div.className = 'train-list-item';
-            div.innerHTML = `
-                <span>
-                    <strong>${train ? train.number : '???'}</strong> 
-                    <br><small>${entry.from} ➔ ${entry.to}</small>
-                </span>
-                <button class="btn btn-danger" style="padding: 5px 10px; font-size:0.8rem;" onclick="removeTrainFromDay(${index})">Usuń</button>
-            `;
+            div.innerHTML = `<div><strong>${train ? train.number : '???'}</strong> <small>${entry.from}➔${entry.to}</small></div><button class="btn btn-danger" onclick="removeTrainFromDay(${idx})">X</button>`;
             container.appendChild(div);
         });
     }
 
-    // --- LOGIKA RAPORTU (CORE) ---
+    function populateTrainSelect() {
+        const select = document.getElementById('trainSelect');
+        select.innerHTML = '<option value="">-- Wybierz pociąg --</option>';
+        if(!trainsData) return;
+        trainsData.sort((a,b) => a.number.localeCompare(b.number));
+        trainsData.forEach(t => {
+            const opt = document.createElement('option');
+            opt.value = t.id;
+            opt.textContent = `${t.number} ${t.name || ''}`;
+            select.appendChild(opt);
+        });
+    }
+
+    // --- RAPORT ---
     function generateReport() {
         const tbody = document.querySelector('#reportTable tbody');
         tbody.innerHTML = '';
-
-        // Mapa przejazdów szlaków: { szlakId: "YYYY-MM-DD" (najnowsza) }
         const segmentsDriven = {};
 
-        // 1. Iteruj po wszystkich wpisanych dniach
         Object.keys(userSchedule).forEach(dateStr => {
             userSchedule[dateStr].forEach(entry => {
                 const train = trainsData.find(t => t.id == entry.trainId);
                 if (!train) return;
-
-                // 2. Znajdź segmenty pociągu, które mieszczą się w wybranym zakresie (From -> To)
-                const relevantSegments = getSegmentsBetween(train, entry.from, entry.to);
-
-                // 3. Dopasuj segmenty pociągu do Master Szlaki
-                relevantSegments.forEach(trainSeg => {
-                    const masterId = matchToMaster(trainSeg);
-                    if (masterId) {
-                        // Aktualizuj datę, jeśli ta jest nowsza
-                        if (!segmentsDriven[masterId] || dateStr > segmentsDriven[masterId]) {
-                            segmentsDriven[masterId] = dateStr;
+                
+                // Prosta logika znajdowania segmentów
+                // Zakładamy, że segments są w kolejności. Bierzemy wszystko między from i to.
+                if(train.route && train.route.segments) {
+                    let capturing = false;
+                    let foundAny = false;
+                    
+                    // Bezpieczniejsza metoda "przejścia" przez trasę
+                    for(let seg of train.route.segments) {
+                        // Sprawdź czy to start
+                        if (seg.from === entry.from) capturing = true;
+                        
+                        if (capturing) {
+                            matchAndSave(seg, dateStr);
+                            foundAny = true;
+                        }
+                        
+                        // Sprawdź czy to koniec (już po przetworzeniu segmentu, bo segment A->B kończy się na B)
+                        if (seg.to === entry.to) {
+                            capturing = false;
+                            break; // Koniec trasy użytkownika
                         }
                     }
-                });
+                    
+                    // Fallback: Jeśli trasa była jednosegmentowa lub coś nie pykło z nazwami, spróbuj znaleźć pojedyncze dopasowania
+                    if (!foundAny) {
+                       // Opcjonalnie: loguj błąd
+                    }
+                }
             });
         });
 
-        // 4. Renderuj tabelę na podstawie Master Szlaki
-        masterSzlakiData.forEach((master, index) => {
+        function matchAndSave(seg, date) {
+            // Szukamy w Master
+            const norm = s => s ? s.toLowerCase().trim() : "";
+            const tF = norm(seg.from);
+            const tT = norm(seg.to);
+
+            const match = masterSzlakiData.find(m => {
+                const mF = norm(m.start);
+                const mT = norm(m.end);
+                const wayOK = (mF === tF && mT === tT) || (mF === tT && mT === tF);
+                if(!wayOK) return false;
+                if(m.via && m.via !== "-") {
+                    const mV = norm(m.via);
+                    const tV = norm(seg.via);
+                    return tV.includes(mV) || mV.includes(tV);
+                }
+                return true;
+            });
+
+            if (match) {
+                if (!segmentsDriven[match.id] || date > segmentsDriven[match.id]) {
+                    segmentsDriven[match.id] = date;
+                }
+            }
+        }
+
+        if(!masterSzlakiData.length) { tbody.innerHTML = '<tr><td colspan="5">Brak bazy szlaków</td></tr>'; return; }
+
+        masterSzlakiData.forEach((m, i) => {
             const tr = document.createElement('tr');
-            
-            // Formatowanie daty (lub puste)
-            const lastDate = segmentsDriven[master.id] || "";
-            
             tr.innerHTML = `
-                <td>${index + 1}</td>
-                <td>${master.start}</td>
-                <td>${master.end}</td>
-                <td>${master.via === '-' ? '' : master.via}</td>
-                <td style="text-align:center; font-weight:bold;">${lastDate}</td>
+                <td style="text-align:center">${i+1}</td>
+                <td>${m.start}</td>
+                <td>${m.end}</td>
+                <td>${m.via === '-' ? '' : m.via}</td>
+                <td style="text-align:center; font-weight:bold">${segmentsDriven[m.id] || ""}</td>
             `;
             tbody.appendChild(tr);
         });
     }
 
-    // Pomocnicza: Wyciąga segmenty z trasy pociągu pomiędzy stacją A i B
-    function getSegmentsBetween(train, startStation, endStation) {
-        if (!train.route || !train.route.segments) return [];
-        
-        const allSegments = train.route.segments;
-        let startIndex = -1;
-        let endIndex = -1;
-
-        // Znajdź indeksy. Uwaga: pociąg jedzie sekwencyjnie.
-        // Segments: [A->B], [B->C], [C->D]. 
-        // Jeśli user wybrał A i C. To bierzemy A->B i B->C.
-        
-        // Budujemy listę przystanków po kolei, żeby znaleźć indeksy
-        // Ale segments to tablica obiektów.
-        // Spróbujmy znaleźć indeks segmentu, w którym 'from' == startStation
-        // Oraz indeks segmentu, w którym 'to' == endStation.
-        
-        for (let i = 0; i < allSegments.length; i++) {
-            if (allSegments[i].from === startStation) startIndex = i;
-            if (allSegments[i].to === endStation) endIndex = i;
-        }
-
-        // Obsługa kierunku jazdy (w razie gdyby lista była dziwna, ale zakładamy from->to)
-        if (startIndex !== -1 && endIndex !== -1 && startIndex <= endIndex) {
-            return allSegments.slice(startIndex, endIndex + 1);
-        }
-        
-        // Fallback: Jeśli nie znaleziono po indeksach segmentów (np. stacja pośrednia jako start), 
-        // to uproszczony model: filtruj wszystko co jest "wewnątrz". 
-        // Ale UI wymusza wybór z listy stacji, więc powinno działać. 
-        // Jeśli user wybierze odwrotnie (End -> Start), zwróć pustą lub odwróć (tu: pusta).
-        return [];
+    // --- ZAPIS ---
+    function saveLocalStorage() {
+        localStorage.setItem('kierownik_v1_data', JSON.stringify({ schedule: userSchedule, shifts: importedShifts }));
     }
-
-    // Pomocnicza: Dopasowuje odcinek pociągu do ID z szlaki_master
-    function matchToMaster(trainSeg) {
-        // trainSeg ma: from, to, via
-        // master ma: start, end, via
-
-        // Normalizacja stringów (usuń spacje, lowercase)
-        const norm = (str) => str ? str.toLowerCase().trim() : "";
-
-        const tFrom = norm(trainSeg.from);
-        const tTo = norm(trainSeg.to);
-        
-        // Szukaj w master
-        const match = masterSzlakiData.find(m => {
-            const mStart = norm(m.start);
-            const mEnd = norm(m.end);
-            
-            // Sprawdź wprost (A->B) lub wspak (B->A)
-            const simpleMatch = (mStart === tFrom && mEnd === tTo) || (mStart === tTo && mEnd === tFrom);
-            
-            if (!simpleMatch) return false;
-
-            // Sprawdź VIA tylko jeśli jest istotne
-            // Jeśli master ma "-", to pasuje wszystko.
-            // Jeśli master ma konkretne via, trainSeg musi je mieć (lub podobne).
-            if (m.via !== "-") {
-                const mVia = norm(m.via);
-                const tVia = norm(trainSeg.via);
-                // Proste sprawdzenie czy via zawiera się w stringu
-                // Np. Master: "Łódź Dąbrowa", Train: "Łódź Dąbrowa" - OK.
-                // Train czasem ma "..., ..."
-                return tVia.includes(mVia) || mVia.includes(tVia);
-            }
-            
-            return true;
-        });
-
-        return match ? match.id : null;
-    }
-
-
-    // --- PERSISTENCE ---
-    function saveToLocalStorage() {
-        localStorage.setItem('kierownik_pociagu_grafik', JSON.stringify(userSchedule));
-    }
-
-    function loadFromLocalStorage() {
-        const saved = localStorage.getItem('kierownik_pociagu_grafik');
-        if (saved) {
+    function loadLocalStorage() {
+        const raw = localStorage.getItem('kierownik_v1_data');
+        if (raw) {
             try {
-                userSchedule = JSON.parse(saved);
-            } catch (e) {
-                console.error("Błąd odczytu localStorage", e);
-                userSchedule = {};
-            }
+                const d = JSON.parse(raw);
+                if (d.schedule) userSchedule = d.schedule;
+                if (d.shifts) importedShifts = d.shifts;
+            } catch(e) {}
         }
     }
-
     function clearData() {
-        if (confirm("Czy na pewno chcesz usunąć wszystkie wprowadzone dane?")) {
-            localStorage.removeItem('kierownik_pociagu_grafik');
-            userSchedule = {};
-            renderCalendar();
-            generateReport();
-            alert("Dane wyczyszczone.");
+        if(confirm("Usunąć wszystko?")) {
+            userSchedule = {}; importedShifts = {};
+            localStorage.removeItem('kierownik_v1_data');
+            renderCalendar(); generateReport();
         }
     }
-
-    // Kliknięcie poza modalem zamyka go
-    window.onclick = function(event) {
-        const modal = document.getElementById('dayModal');
-        if (event.target == modal) {
-            closeModal();
-        }
-    }
+    window.onclick = function(e) { if(e.target == document.getElementById('dayModal')) closeModal(); }
 </script>
 
 </body>
