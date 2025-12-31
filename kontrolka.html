@@ -2,8 +2,8 @@
 <html lang="pl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Karta Znajomości Szlaków - Kontrolka v1.5</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Karta Znajomości Szlaków v2.5</title>
     
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-W05T4L1HFD"></script>
     <script>
@@ -15,953 +15,678 @@
 
     <style>
         :root {
-            --primary-color: #0056b3;
-            --secondary-color: #6c757d;
-            --accent-color: #ffc107;
-            --success-color: #28a745;
-            --bg-color: #f4f6f8;
-            --text-color: #333;
-            --paper-bg: #fff;
+            --primary: #2563eb;
+            --secondary: #64748b;
+            --success: #22c55e;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --bg: #f1f5f9;
+            --surface: #ffffff;
+            --text: #0f172a;
+            --border: #e2e8f0;
         }
 
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            margin: 0;
-            padding: 0;
-            background-color: var(--bg-color);
-            color: var(--text-color);
-            line-height: 1.5;
-            height: 100vh;
-            display: flex;
-            flex-direction: column;
-        }
+        * { box-sizing: border-box; outline: none; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; padding: 0; background-color: var(--bg); color: var(--text); height: 100vh; display: flex; flex-direction: column; }
 
-        header {
-            background-color: var(--primary-color);
-            color: white;
-            padding: 0.8rem;
-            text-align: center;
-            flex-shrink: 0;
-        }
+        /* UI GLOBAL */
+        .disclaimer-bar { background: #fffbeb; color: #92400e; padding: 8px; text-align: center; font-weight: 600; font-size: 0.8rem; border-bottom: 1px solid #fcd34d; flex-shrink: 0; }
+        header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
+        header h1 { margin: 0; font-size: 1.2rem; color: var(--primary); display: flex; align-items: center; gap: 10px; }
+        .help-btn { background: transparent; border: 1px solid var(--primary); color: var(--primary); padding: 5px 12px; border-radius: 6px; cursor: pointer; font-size: 0.9rem; font-weight: 600; }
+        .help-btn:hover { background: #eff6ff; }
 
-        /* --- LAYOUT GŁÓWNY (SPLIT VIEW) --- */
-        .main-wrapper {
-            display: flex;
-            flex: 1;
-            overflow: hidden; /* Scrollujemy tylko kolumny */
-            gap: 20px;
-            padding: 20px;
-            max-width: 1600px;
-            margin: 0 auto;
-            width: 100%;
-            box-sizing: border-box;
-        }
+        /* LAYOUT */
+        .app-container { display: grid; grid-template-columns: 360px 1fr; flex: 1; overflow: hidden; }
+        .sidebar { background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; overflow-y: auto; padding: 15px; gap: 15px; }
+        .content-area { padding: 20px; overflow-y: auto; display: flex; flex-direction: column; background: #f8fafc; }
+        .card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 12px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+        .card h3 { margin: 0 0 10px 0; font-size: 0.95rem; font-weight: 600; color: var(--text); }
 
-        .column-left {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            overflow-y: auto;
-            padding-right: 10px;
-        }
-
-        .column-right {
-            flex: 0 0 50%; /* Prawa kolumna zajmuje połowę (dla podglądu A4) */
-            display: flex;
-            flex-direction: column;
-            overflow-y: auto;
-            align-items: center;
-            background: #e9ecef;
-            border-radius: 8px;
-            padding: 20px;
-            border: 1px solid #dee2e6;
-        }
-
-        /* Responsywność dla małych ekranów */
-        @media (max-width: 1024px) {
-            .main-wrapper { flex-direction: column; overflow: auto; }
-            .column-right { flex: auto; width: 100%; }
-        }
-
-        /* --- UI COMPONENTS --- */
-        .panel {
-            background: white;
-            padding: 15px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-            margin-bottom: 20px;
-        }
-
-        .btn {
-            padding: 8px 14px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-weight: 600;
-            font-size: 0.9rem;
-            transition: opacity 0.2s;
-            margin-right: 5px;
-            margin-bottom: 5px;
-            display: inline-flex;
-            align-items: center;
-            gap: 5px;
-        }
+        .input-group { margin-bottom: 10px; }
+        .input-group label { display: block; font-size: 0.75rem; color: var(--secondary); margin-bottom: 2px; }
+        input[type="text"], select { width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 6px; font-size: 0.9rem; }
+        
+        .btn-group { display: flex; flex-wrap: wrap; gap: 6px; }
+        .btn { padding: 8px 10px; border: none; border-radius: 6px; cursor: pointer; font-size: 0.85rem; font-weight: 500; display: inline-flex; align-items: center; justify-content: center; gap: 4px; color: white; flex: 1; }
         .btn:hover { opacity: 0.9; }
+        .btn-primary { background: var(--primary); }
+        .btn-secondary { background: var(--secondary); }
+        .btn-success { background: var(--success); }
+        .btn-warning { background: var(--warning); color: black; }
+        .btn-danger { background: var(--danger); }
 
-        .btn-primary { background-color: var(--primary-color); color: white; }
-        .btn-secondary { background-color: var(--secondary-color); color: white; }
-        .btn-warning { background-color: var(--accent-color); color: #000; }
-        .btn-success { background-color: var(--success-color); color: white; }
-        .btn-danger { background-color: #dc3545; color: white; }
+        /* CALENDAR */
+        .calendar-nav { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+        .month-label { font-weight: 700; font-size: 1rem; }
+        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; background: var(--border); border: 1px solid var(--border); }
+        .cal-head { background: #f1f5f9; text-align: center; font-size: 0.7rem; font-weight: 700; padding: 4px 0; color: var(--secondary); }
+        .cal-day { background: white; min-height: 60px; padding: 2px; cursor: pointer; position: relative; display: flex; flex-direction: column; gap: 2px; width: 100%; min-width: 0; }
+        .cal-day:hover { background: #eff6ff; }
+        .day-num { font-size: 0.75rem; font-weight: 600; color: var(--secondary); align-self: flex-end; margin-right: 2px; }
+        .badge { font-size: 0.65rem; padding: 2px 4px; border-radius: 3px; color: white; word-break: break-word; line-height: 1.1; }
+        .bg-train { background: var(--primary); }
+        .bg-shift { background: var(--warning); color: black; border: 1px solid #d97706; }
+        .bg-night { background: #1e293b; color: #fcd34d; border: 1px solid #0f172a; font-weight: bold; }
 
-        input, select {
-            padding: 8px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            width: 100%;
-            box-sizing: border-box;
+        /* TABLE */
+        .table-wrapper { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; display: flex; flex-direction: column; flex: 1; }
+        .table-scroll { overflow: auto; flex: 1; }
+        table.data-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+        table.data-table th { background: #f8fafc; padding: 10px; text-align: left; font-weight: 600; color: var(--secondary); border-bottom: 2px solid var(--border); position: sticky; top: 0; z-index: 5; }
+        table.data-table td { padding: 8px 10px; border-bottom: 1px solid var(--border); color: var(--text); }
+        .col-lp { width: 40px; text-align: center; }
+        .col-date { width: 110px; text-align: center; font-family: monospace; font-weight: 600; white-space: nowrap; }
+        .status-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; border:1px solid rgba(0,0,0,0.1); }
+        .dot-green { background: var(--success); }
+        .dot-yellow { background: var(--warning); }
+        .dot-red { background: var(--danger); }
+
+        /* VARIANT SELECTOR (New in v2.5) */
+        #variantSelector { 
+            display: none; background: #fff7ed; border: 1px solid #fdba74; 
+            padding: 10px; border-radius: 6px; margin-top: 10px; 
         }
-
-        /* --- KALENDARZ --- */
-        .calendar-controls {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 15px;
+        .variant-btn {
+            display: block; width: 100%; text-align: left; padding: 8px; margin-top: 5px;
+            background: white; border: 1px solid #fed7aa; border-radius: 4px; cursor: pointer; font-size: 0.85rem;
         }
-        .month-title { font-size: 1.3rem; font-weight: bold; }
+        .variant-btn:hover { background: #ffedd5; }
 
-        .calendar-grid {
-            display: grid;
-            grid-template-columns: repeat(7, 1fr);
-            gap: 2px;
-            background: #dee2e6;
-            border: 1px solid #dee2e6;
-        }
+        /* MODALS */
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 100; justify-content: center; align-items: center; }
+        .modal { background: white; width: 95%; max-width: 500px; padding: 20px; border-radius: 8px; max-height: 90vh; overflow-y: auto; }
 
-        .calendar-header {
-            background: #e9ecef;
-            text-align: center;
-            padding: 5px;
-            font-weight: bold;
-            font-size: 0.8rem;
-        }
-
-        .calendar-day {
-            background: white;
-            min-height: 80px;
-            padding: 4px;
-            cursor: pointer;
-            position: relative;
-            font-size: 0.85rem;
-        }
-        .calendar-day:hover { background-color: #f8f9fa; }
-        .calendar-day.empty { background: #f4f4f4; cursor: default; }
-
-        .day-num { font-weight: bold; margin-bottom: 2px; display: block; }
-        
-        .badge {
-            display: inline-block;
-            padding: 2px 4px;
-            border-radius: 3px;
-            font-size: 0.7rem;
-            margin-bottom: 2px;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            max-width: 100%;
-        }
-        .badge-shift { background-color: var(--accent-color); color: black; }
-        .badge-shift.night { background-color: #343a40; color: white; }
-        .badge-train { background-color: var(--primary-color); color: white; }
-
-        /* --- PODGLĄD A4 (PREVIEW) --- */
-        .a4-page {
-            width: 210mm;
-            min-height: 297mm;
-            background: white;
-            box-shadow: 0 0 10px rgba(0,0,0,0.2);
-            padding: 10mm;
-            box-sizing: border-box;
-            font-family: 'Arial', sans-serif;
-            color: black;
-            font-size: 9pt; /* Podgląd taki jak druk */
-            position: relative;
+        @media (max-width: 900px) {
+            .app-container { display: block; overflow: auto; height: auto; }
+            .sidebar { border-right: none; border-bottom: 1px solid var(--border); }
+            .table-wrapper { overflow-x: auto; } table.data-table { min-width: 600px; }
         }
 
-        .preview-header {
-            text-align: center;
-            border-bottom: 2px solid black;
-            margin-bottom: 10px;
-            padding-bottom: 5px;
-        }
-        .preview-header h2 { margin: 0; text-transform: uppercase; font-size: 14pt; }
-
-        table.preview-table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-        table.preview-table th, table.preview-table td {
-            border: 1px solid black;
-            padding: 2px 4px;
-            font-size: 8pt;
-        }
-        table.preview-table th { background-color: #eee; }
-
-        /* --- MODALE --- */
-        .modal {
-            display: none;
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.5);
-            z-index: 1000;
-            justify-content: center; align-items: center;
-        }
-        .modal-content {
-            background: white; padding: 25px; border-radius: 8px;
-            width: 90%; max-width: 500px;
-            max-height: 90vh; overflow-y: auto;
-        }
-        
-        /* Styl dla filtra pociągów */
-        .train-filter-container {
-            position: relative;
-            margin-bottom: 10px;
-        }
-        #trainSearchInput {
-            padding-left: 30px; /* Miejsce na ikonę */
-        }
-        .search-icon {
-            position: absolute; left: 8px; top: 8px; color: #888;
-        }
-
-        /* Lista budowania trasy custom */
-        .route-builder-list {
-            list-style: none; padding: 0; margin: 10px 0;
-            border: 1px solid #ddd; border-radius: 4px;
-            max-height: 150px; overflow-y: auto;
-        }
-        .route-builder-list li {
-            padding: 5px 10px; border-bottom: 1px solid #eee;
-            display: flex; justify-content: space-between; align-items: center;
-            font-size: 0.9rem;
-        }
-        .route-builder-list li:last-child { border-bottom: none; }
-
-        /* --- PRINT --- */
         @media print {
-            body { display: block; height: auto; background: white; }
-            .column-left, header, footer, .no-print { display: none !important; }
-            .main-wrapper { display: block; padding: 0; margin: 0; }
-            .column-right { 
-                display: block; width: 100%; margin: 0; padding: 0; border: none; 
-                background: white; overflow: visible;
-            }
-            .a4-page {
-                box-shadow: none; margin: 0; padding: 0; width: 100%; min-height: auto;
-            }
             @page { size: A4; margin: 1cm; }
+            body { display: block; height: auto; background: white; font-size: 8pt; color: black; }
+            .sidebar, header, .disclaimer-bar, .no-print, .btn, .help-btn { display: none !important; }
+            .app-container { display: block; height: auto; overflow: visible; }
+            .content-area { padding: 0; overflow: visible; background: white; }
+            .table-wrapper { border: none; overflow: visible; }
+            .table-scroll { overflow: visible; }
+            .print-header { display: block !important; border-bottom: 2px solid black; margin-bottom: 10px; padding-bottom: 5px; }
+            .print-row { display: flex; justify-content: space-between; margin-bottom: 4px; font-size: 10pt; }
+            .print-title { text-align: center; text-transform: uppercase; font-size: 14pt; font-weight: bold; margin: 5px 0; }
+            table.data-table { font-size: 8pt; width: 100%; border-collapse: collapse; }
+            table.data-table th, table.data-table td { border: 1px solid black; padding: 2px 4px; }
+            thead { display: table-header-group; } tr { page-break-inside: avoid; }
+            .print-footer { display: block !important; margin-top: 20px; text-align: right; font-size: 10pt; page-break-inside: avoid; }
         }
+        .print-header, .print-footer { display: none; }
     </style>
 </head>
 <body>
 
-<header class="no-print">
-    <h1>Karta Znajomości Szlaków v1.5</h1>
+<div class="disclaimer-bar">⚠️ Aplikacja pomocnicza. Kierownik Pociągu weryfikuje dane.</div>
+
+<header>
+    <h1>🚂 Karta Szlaków <span style="font-size:0.7rem; background:var(--primary); color:white; padding:2px 5px; border-radius:4px; margin-left:5px;">v2.5 Routes</span></h1>
+    <button class="help-btn" onclick="openModal('helpModal')">❓ Instrukcja</button>
 </header>
 
-<div class="main-wrapper">
-    
-    <div class="column-left">
-        
-        <div class="panel">
-            <div style="display:flex; flex-wrap:wrap; gap:5px; margin-bottom:10px;">
-                <input type="file" id="icsFileInput" accept=".ics" style="display: none;" onchange="handleIcsUpload(this)">
-                <button class="btn btn-warning" onclick="document.getElementById('icsFileInput').click()">📅 Importuj Grafik (ICS)</button>
-                
-                <button class="btn btn-success" onclick="openCustomTrainModal()">➕ Stwórz własny pociąg</button>
-                
-                <button class="btn btn-secondary" onclick="exportData()">💾 Kopia (Backup)</button>
-                <input type="file" id="backupInput" accept=".json" style="display:none;" onchange="importData(this)">
-                <button class="btn btn-secondary" onclick="document.getElementById('backupInput').click()">📂 Wczytaj</button>
-            </div>
-            
-            <div style="display:flex; flex-wrap:wrap; gap:5px;">
-                <button class="btn btn-primary" onclick="window.print()">🖨️ Drukuj Raport</button>
-                <button class="btn btn-danger" onclick="clearData()">🗑️ Reset</button>
-            </div>
+<div class="app-container">
+    <div class="sidebar">
+        <div class="card">
+            <h3>👤 Profil Kierownika</h3>
+            <div class="input-group"><label>Imię i Nazwisko:</label><input type="text" id="userName" oninput="saveUserData()"></div>
+            <div class="input-group"><label>Numer KP:</label><input type="text" id="userKP" oninput="saveUserData()"></div>
         </div>
 
-        <div class="panel">
-            <div class="calendar-controls">
-                <button class="btn btn-secondary" onclick="changeMonth(-1)">◀</button>
-                <span class="month-title" id="monthDisplay">Styczeń 2026</span>
-                <button class="btn btn-secondary" onclick="changeMonth(1)">▶</button>
+        <div class="card">
+            <div class="calendar-nav">
+                <button class="btn btn-secondary" style="flex:0" onclick="changeMonth(-1)">◀</button>
+                <span id="monthDisplay" class="month-label">Styczeń 2026</span>
+                <button class="btn btn-secondary" style="flex:0" onclick="changeMonth(1)">▶</button>
             </div>
             <div class="calendar-grid" id="calendarGrid"></div>
         </div>
 
-        <div id="fallback-upload" class="panel" style="display:none; border:2px dashed red;">
-            <h3>⚠️ Brak plików danych</h3>
-            <p>Wgraj pliki ręcznie:</p>
-            <input type="file" id="manualTrainsFile" accept=".json"><br><br>
-            <input type="file" id="manualSzlakiFile" accept=".json"><br><br>
-            <button class="btn btn-primary" onclick="processManualFiles()">Start</button>
+        <div class="card">
+            <h3>Narzędzia</h3>
+            <div class="btn-group">
+                <input type="file" id="icsInput" accept=".ics" hidden onchange="handleIcs(this)">
+                <button class="btn btn-warning" onclick="document.getElementById('icsInput').click()">📅 Import</button>
+                <button class="btn btn-success" onclick="openCustomModal()">➕ Pociąg</button>
+            </div>
+            <div class="btn-group" style="margin-top:8px;">
+                <button class="btn btn-secondary" onclick="exportData()">💾 Kopia</button>
+                <input type="file" id="backupInput" accept=".json" hidden onchange="importData(this)">
+                <button class="btn btn-secondary" onclick="document.getElementById('backupInput').click()">📂 Wczytaj</button>
+                <button class="btn btn-danger" onclick="clearData()">🗑️ Reset</button>
+            </div>
+             <button class="btn btn-primary" style="width:100%; margin-top:8px;" onclick="window.print()">🖨️ DRUKUJ</button>
+        </div>
+        
+        <div id="fallback" style="display:none; color:red; font-size:0.8rem; text-align:center; padding:10px; border:1px dashed red;">
+            Brak danych. Wgraj:<br>
+            <input type="file" id="fTrain" accept=".json" style="margin:5px 0"><br>
+            <input type="file" id="fMaster" accept=".json">
+            <button onclick="manualLoad()" class="btn btn-primary" style="margin-top:5px;">Start</button>
         </div>
     </div>
 
-    <div class="column-right">
-        <div class="no-print" style="margin-bottom:10px; color:#666; font-size:0.9rem;">
-            👁️ Podgląd wydruku (Aktualizowany na żywo)
+    <div class="content-area">
+        <div class="print-header">
+            <div class="print-title">Wykaz znajomości szlaków</div>
+            <div class="print-row"><span id="printMonthInfo"></span><span></span></div>
+            <div class="print-row"><span>Imię: <strong id="printName"></strong></span><span>Nr KP: <strong id="printKP"></strong></span></div>
         </div>
-        
-        <div class="a4-page">
-            <div class="preview-header">
-                <h2>Wykaz znajomości szlaków</h2>
-                <p style="margin:5px 0 0 0; font-size:10pt;">Podsumowanie miesiąca</p>
-            </div>
-            <table class="preview-table" id="reportTable">
-                <thead>
-                    <tr>
-                        <th style="width:30px">LP</th>
-                        <th>Od</th>
-                        <th>Do</th>
-                        <th>Przez</th>
-                        <th style="width:80px">Data</th>
-                    </tr>
-                </thead>
-                <tbody></tbody>
-            </table>
-            
-            <div style="margin-top:20px; text-align:right; font-size:10pt;">
-                .......................................................<br>
-                (Podpis pracownika)
+
+        <div class="no-print" style="margin-bottom:15px;">
+            <div style="background:white; padding:10px; border-radius:8px; border:1px solid var(--border); font-size:0.9rem; display:flex; gap:15px; flex-wrap:wrap;">
+                <span>🟢 <strong>Zielona:</strong> Ważny</span>
+                <span>🟡 <strong>Żółta:</strong> <30 dni</span>
+                <span>🔴 <strong>Czerwona:</strong> Brak/Wygasł</span>
             </div>
         </div>
+
+        <div class="table-wrapper">
+            <div class="table-scroll">
+                <table class="data-table" id="reportTable">
+                    <thead>
+                        <tr><th class="col-lp">LP</th><th>Odcinek (Od)</th><th>Odcinek (Do)</th><th>Przez</th><th class="col-date">Data</th></tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="print-footer"><p>.......................................................<br>(Podpis pracownika)</p></div>
     </div>
 </div>
 
-<div class="modal" id="dayModal">
-    <div class="modal-content">
-        <h3 id="modalDateTitle">Edycja dnia</h3>
-        <div id="existingTrainsList" style="margin-bottom:15px;"></div>
-        <hr>
-        <h4>Dodaj pociąg</h4>
-        
-        <div class="train-filter-container">
-            <span class="search-icon">🔍</span>
-            <input type="text" id="trainSearchInput" placeholder="Wpisz numer pociągu..." onkeyup="filterTrainList()">
-        </div>
-        
-        <div class="form-group">
-            <select id="trainSelect" size="5" style="height: 100px;" onchange="updateStationSelectors()">
-                </select>
-        </div>
-
-        <div class="form-group" id="routeSelectorContainer" style="display:none; margin-top:15px;">
-            <label>Odcinek (Twoja zmiana):</label>
-            <div style="display:flex; gap:10px;">
-                <div style="flex:1">
-                    <small>Od:</small>
-                    <select id="startStation"></select>
-                </div>
-                <div style="flex:1">
-                    <small>Do:</small>
-                    <select id="endStation"></select>
-                </div>
+<div class="modal-overlay" id="dayModal">
+    <div class="modal">
+        <h3>Edycja: <span id="modalDateTitle"></span></h3>
+        <div id="dayTrainsList" style="margin-bottom:15px; display:flex; flex-direction:column; gap:5px;"></div>
+        <hr style="border:0; border-top:1px solid #eee; margin:10px 0;">
+        <label>Dodaj pociąg:</label>
+        <input type="text" id="trainFilter" placeholder="Szukaj numeru..." onkeyup="filterTrains()">
+        <select id="trainSelect" size="5" style="height:100px; margin-bottom:10px" onchange="updateRoute()"></select>
+        <div id="routeArea" style="display:none; background:#f8fafc; padding:10px; border-radius:6px;">
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:5px;">
+                <div><small>Od:</small><select id="startSt"></select></div>
+                <div><small>Do:</small><select id="endSt"></select></div>
             </div>
         </div>
-
-        <div style="text-align: right; margin-top: 20px;">
+        <div style="text-align:right; margin-top:15px; display:flex; gap:5px; justify-content:flex-end;">
             <button class="btn btn-secondary" onclick="closeModal('dayModal')">Anuluj</button>
-            <button class="btn btn-primary" onclick="addTrainToDay()">Zapisz</button>
+            <button class="btn btn-primary" onclick="addTrain()">Zapisz</button>
         </div>
     </div>
 </div>
 
-<div class="modal" id="customTrainModal">
-    <div class="modal-content">
-        <h3>Stwórz własny pociąg</h3>
-        <p style="font-size:0.85rem; color:#666;">Zdefiniuj pociąg, jeśli nie ma go w bazie presetów.</p>
-
-        <label>Numer pociągu:</label>
-        <input type="text" id="customTrainNumber" placeholder="np. 99999">
+<div class="modal-overlay" id="customModal">
+    <div class="modal">
+        <h3>Kreator Pociągu</h3>
+        <p style="font-size:0.8rem; color:var(--secondary); margin-bottom:10px;">
+            Buduj trasę stacja po stacji (A➔B➔C). System podpowie możliwe kierunki.
+        </p>
         
-        <div style="margin-top:15px;">
-            <label>Budowanie trasy (dodawaj stacje po kolei):</label>
-            <div style="display:flex; gap:5px;">
-                <input type="text" id="customStationInput" list="masterStationsList" placeholder="Nazwa stacji...">
-                <datalist id="masterStationsList"></datalist>
-                <button class="btn btn-success" onclick="addStationToBuilder()">➕</button>
+        <label style="font-size:0.85rem; font-weight:600;">Numer pociągu:</label>
+        <input type="text" id="custNum" placeholder="np. 99999" style="margin-bottom:15px;">
+        
+        <div style="background:#f1f5f9; padding:10px; border-radius:6px; border:1px solid var(--border);">
+            <label style="font-size:0.8rem; font-weight:bold;">Następna stacja:</label>
+            <div style="display:flex; gap:5px; margin-top:5px;">
+                <select id="custNextSt"></select>
+                <button class="btn btn-success" id="btnAddSt" onclick="addCustSt()">Dodaj</button>
+            </div>
+            
+            <div id="variantSelector">
+                <strong style="font-size:0.85rem; color:#c2410c;">⚠️ Wybierz wariant trasy:</strong>
+                <div id="variantOptions"></div>
             </div>
         </div>
 
-        <ul id="customRouteList" class="route-builder-list">
-            </ul>
-        <div id="customRouteError" style="color:red; font-size:0.8rem; display:none;">Dodaj min. 2 stacje!</div>
-
-        <div style="text-align: right; margin-top: 20px;">
-            <button class="btn btn-secondary" onclick="closeModal('customTrainModal')">Anuluj</button>
-            <button class="btn btn-primary" onclick="saveCustomTrain()">Zapisz Pociąg</button>
+        <ul id="custRoute" style="list-style:decimal; padding-left:25px; margin-top:10px; font-size:0.9rem; max-height:150px; overflow-y:auto;"></ul>
+        
+        <div style="text-align:right; margin-top:15px; display:flex; gap:5px; justify-content:flex-end;">
+            <button class="btn btn-secondary" onclick="closeModal('customModal')">Anuluj</button>
+            <button class="btn btn-primary" onclick="saveCust()">Zapisz Pociąg</button>
         </div>
     </div>
 </div>
 
-<footer class="no-print" style="text-align:center; padding:10px; font-size:0.8rem; color:#666;">
-    Wersja aplikacji: v1.5 | Współautorzy: Gemini & Piotr M 🚂
-</footer>
+<div class="modal-overlay" id="helpModal">
+    <div class="modal" style="max-width:600px;">
+        <h2>📖 Instrukcja Obsługi</h2>
+        <div style="font-size:0.9rem; line-height:1.6; max-height:70vh; overflow-y:auto; padding-right:10px;">
+            <h4 style="margin:10px 0 5px; color:var(--primary);">1. Kreator Pociągu (Nowość!)</h4>
+            <ul style="padding-left:20px; margin:0;">
+                <li>Budujesz trasę od stacji do stacji.</li>
+                <li>Jeśli między dwiema stacjami jest kilka dróg (np. Łódź Widzew - Łódź Chojny przez Dąbrowę LUB Olechów), aplikacja poprosi Cię o wybór właściwego wariantu.</li>
+                <li>Gwarantuje to poprawne zaliczenie właściwego szlaku.</li>
+            </ul>
+            <h4 style="margin:10px 0 5px; color:var(--primary);">2. Raport i Kolory</h4>
+            <ul style="padding-left:20px; margin:0;">
+                <li>🟢 <strong>Zielona:</strong> Uprawnienia ważne (przejazd < 11 msc).</li>
+                <li>🟡 <strong>Żółta:</strong> Termin mija (< 30 dni).</li>
+                <li>🔴 <strong>Czerwona:</strong> Uprawnienia nieważne (brak przejazdu od roku).</li>
+            </ul>
+        </div>
+        <div style="text-align:right; margin-top:20px;"><button class="btn btn-primary" onclick="closeModal('helpModal')">Zamknij</button></div>
+    </div>
+</div>
 
 <script>
-    // --- STAN APLIKACJI ---
+    const DB_KEY = 'kierownik_v2_5_data';
+    
+    let appData = { schedule: {}, shifts: {}, customTrains: [], profile: { name: "", kp: "" } };
+    let dbTrains = [], dbMaster = [];
     let currentDate = new Date();
-    let trainsData = []; // Baza pociągów (Original + Custom)
-    let originalTrainsData = []; // Tylko te z JSON
-    let masterSzlakiData = [];
-    let uniqueStations = new Set(); // Do podpowiedzi
+    let selectedDateStr = null;
+    // Smart Route vars
+    let tempCustRoute = []; // Array of station names
+    let tempCustSegments = []; // Array of {from, to, via} objects
+    let stationGraph = {}; 
 
-    let userSchedule = {}; 
-    let importedShifts = {};
-    let customTrains = []; // Zapisane przez użytkownika
-
-    // --- START ---
     document.addEventListener('DOMContentLoaded', async () => {
-        loadLocalStorage();
-        await attemptAutoLoad();
+        loadData(); await autoFetchFiles();
     });
 
-    // --- ŁADOWANIE DANYCH ---
-    async function attemptAutoLoad() {
+    async function autoFetchFiles() {
         try {
-            const [tRes, mRes] = await Promise.all([ fetch('./trains.json'), fetch('./szlaki_master.json') ]);
-            if (!tRes.ok || !mRes.ok) throw new Error();
-            
-            originalTrainsData = await tRes.json();
-            masterSzlakiData = await mRes.json();
-            
-            initDataProcessing();
-        } catch (e) {
-            document.getElementById('fallback-upload').style.display = 'block';
-        }
+            const [t, m] = await Promise.all([ fetch('./trains.json'), fetch('./szlaki_master.json') ]);
+            if(!t.ok || !m.ok) throw new Error();
+            dbTrains = await t.json();
+            dbMaster = await m.json();
+            buildGraph();
+            startSystem();
+        } catch(e) { document.getElementById('fallback').style.display = 'block'; }
     }
 
-    function processManualFiles() {
-        const tFile = document.getElementById('manualTrainsFile').files[0];
-        const mFile = document.getElementById('manualSzlakiFile').files[0];
-        if(!tFile || !mFile) return alert("Wybierz pliki!");
-        
-        const r1 = new FileReader(); r1.onload = e => { originalTrainsData = JSON.parse(e.target.result); check(); };
-        const r2 = new FileReader(); r2.onload = e => { masterSzlakiData = JSON.parse(e.target.result); check(); };
-        
-        let loaded = 0;
-        const check = () => { if(++loaded===2) { document.getElementById('fallback-upload').style.display='none'; initDataProcessing(); }};
-        
-        r1.readAsText(tFile); r2.readAsText(mFile);
-    }
-
-    function initDataProcessing() {
-        // Scalanie Custom Trains z Original
-        mergeTrains();
-        
-        // Generowanie listy stacji do podpowiedzi
-        masterSzlakiData.forEach(m => {
-            uniqueStations.add(m.start);
-            uniqueStations.add(m.end);
+    function buildGraph() {
+        stationGraph = {};
+        dbMaster.forEach(m => {
+            if(!stationGraph[m.start]) stationGraph[m.start] = [];
+            if(!stationGraph[m.end]) stationGraph[m.end] = [];
+            if(!stationGraph[m.start].includes(m.end)) stationGraph[m.start].push(m.end);
+            if(!stationGraph[m.end].includes(m.start)) stationGraph[m.end].push(m.start);
         });
-        const dataList = document.getElementById('masterStationsList');
-        dataList.innerHTML = '';
-        [...uniqueStations].sort().forEach(st => {
-            const opt = document.createElement('option');
-            opt.value = st;
-            dataList.appendChild(opt);
-        });
-
-        populateTrainList(); // Wypełnij listę wyboru
-        renderCalendar();
-        generateReport();
     }
 
-    function mergeTrains() {
-        // trainsData to baza z pliku + baza usera
-        trainsData = [...originalTrainsData, ...customTrains];
+    function manualLoad() {
+        const f1 = document.getElementById('fTrain').files[0];
+        const f2 = document.getElementById('fMaster').files[0];
+        if(!f1 || !f2) return alert("Wybierz oba pliki!");
+        const r1 = new FileReader(), r2 = new FileReader();
+        let c=0; const check = ()=>{if(++c===2){document.getElementById('fallback').style.display='none'; buildGraph(); startSystem()}};
+        r1.onload=e=>{dbTrains=JSON.parse(e.target.result);check()};
+        r2.onload=e=>{dbMaster=JSON.parse(e.target.result);check()};
+        r1.readAsText(f1); r2.readAsText(f2);
     }
 
-    // --- UI KALENDARZA ---
+    function startSystem() {
+        dbTrains = [...dbTrains, ...appData.customTrains];
+        document.getElementById('userName').value = appData.profile.name || "";
+        document.getElementById('userKP').value = appData.profile.kp || "";
+        updatePrintHeader(); fillTrainSelect(); renderCalendar(); renderReport();
+    }
+
+    function saveUserData() {
+        appData.profile.name = document.getElementById('userName').value;
+        appData.profile.kp = document.getElementById('userKP').value;
+        updatePrintHeader(); saveData();
+    }
+    function updatePrintHeader() {
+        document.getElementById('printName').innerText = appData.profile.name;
+        document.getElementById('printKP').innerText = appData.profile.kp;
+    }
+
+    // --- CALENDAR & REPORT ---
     function renderCalendar() {
-        const grid = document.getElementById('calendarGrid');
-        grid.innerHTML = '';
-        
-        // Nagłówki
-        const days = ["Pon","Wt","Śr","Czw","Pt","Sob","Nd"];
-        days.forEach(d => {
-            const h = document.createElement('div');
-            h.className = 'calendar-header';
-            h.textContent = d;
-            grid.appendChild(h);
-        });
-
-        const year = currentDate.getFullYear();
-        const month = currentDate.getMonth();
-        document.getElementById('monthDisplay').textContent = 
-            currentDate.toLocaleDateString('pl-PL', { month: 'long', year: 'numeric' });
-
-        const firstDay = new Date(year, month, 1).getDay() || 7; 
-        const totalDays = new Date(year, month + 1, 0).getDate();
-
-        // Puste
-        for(let i=1; i<firstDay; i++) {
-            const d = document.createElement('div'); d.className='calendar-day empty'; grid.appendChild(d);
-        }
-
-        // Dni
-        for(let i=1; i<=totalDays; i++) {
-            const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(i).padStart(2,'0')}`;
-            const cell = document.createElement('div');
-            cell.className = 'calendar-day';
-            cell.onclick = () => openDayModal(dateStr);
-
-            // Numer
-            const num = document.createElement('span');
-            num.className = 'day-num';
-            num.textContent = i;
-            cell.appendChild(num);
-
-            // Służby (ICS)
-            if(importedShifts[dateStr]) {
-                importedShifts[dateStr].forEach(s => {
-                    const b = document.createElement('span');
-                    b.className = `badge badge-shift ${s.isOvernight?'night':''}`;
-                    b.textContent = s.summary + (s.isOvernight?' 🌙':'');
-                    b.title = s.timeInfo || '';
-                    cell.appendChild(b);
-                });
-            }
-
-            // Pociągi (User)
-            if(userSchedule[dateStr]) {
-                userSchedule[dateStr].forEach(entry => {
-                    const t = trainsData.find(x => x.id == entry.trainId);
-                    const b = document.createElement('div');
-                    b.className = 'badge badge-train';
-                    b.textContent = t ? `🚂 ${t.number}` : '???';
-                    cell.appendChild(b);
-                });
-            }
+        const grid = document.getElementById('calendarGrid'); grid.innerHTML='';
+        const y = currentDate.getFullYear(), m = currentDate.getMonth();
+        document.getElementById('monthDisplay').innerText = currentDate.toLocaleDateString('pl-PL',{month:'long',year:'numeric'});
+        ["Pn","Wt","Śr","Cz","Pt","Sb","Nd"].forEach(d=>{const x=document.createElement('div');x.className='cal-head';x.innerText=d;grid.appendChild(x)});
+        const firstDay = new Date(y, m, 1).getDay() || 7;
+        const daysInMonth = new Date(y, m+1, 0).getDate();
+        for(let i=1; i<firstDay; i++) grid.appendChild(document.createElement('div'));
+        for(let d=1; d<=daysInMonth; d++) {
+            const dateStr = `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+            const cell = document.createElement('div'); cell.className='cal-day';
+            cell.onclick = () => openDayEdit(dateStr);
+            cell.innerHTML = `<div class="day-num">${d}</div>`;
+            if(appData.shifts[dateStr]) appData.shifts[dateStr].forEach(s => {
+                const b=document.createElement('div'); b.className=`badge ${s.isOvernight?'bg-night':'bg-shift'}`;
+                b.innerHTML=(s.isOvernight?'🌙 ':'')+s.summary; if(s.timeInfo)b.title=s.timeInfo; cell.appendChild(b);
+            });
+            if(appData.schedule[dateStr]) appData.schedule[dateStr].forEach(tr => {
+                const t=dbTrains.find(x=>x.id==tr.trainId);
+                const b=document.createElement('div'); b.className='badge bg-train'; b.innerText=t?t.number:'?'; cell.appendChild(b);
+            });
             grid.appendChild(cell);
         }
     }
-    
     function changeMonth(delta) {
         currentDate.setMonth(currentDate.getMonth() + delta);
-        renderCalendar();
+        renderCalendar(); renderReport();
+        document.getElementById('printMonthInfo').innerText = `Miesiąc: ${currentDate.toLocaleDateString('pl-PL',{month:'long',year:'numeric'})}`;
     }
 
-    // --- OBSŁUGA MODALA EDYCJI DNIA ---
-    let selectedDate = null;
+    function renderReport() {
+        const tbody = document.querySelector('#reportTable tbody'); tbody.innerHTML='';
+        const viewY = currentDate.getFullYear();
+        const viewM = currentDate.getMonth();
+        const viewEnd = new Date(viewY, viewM+1, 0);
 
-    function openDayModal(dateStr) {
-        selectedDate = dateStr;
-        document.getElementById('modalDateTitle').textContent = "Edycja: " + dateStr;
-        document.getElementById('dayModal').style.display = 'flex';
-        
-        // Reset formularza
-        document.getElementById('trainSearchInput').value = '';
-        filterTrainList(); // Pokaż wszystkie
-        document.getElementById('trainSelect').value = '';
-        document.getElementById('routeSelectorContainer').style.display = 'none';
+        const vGlobal = {}; const vMonthly = {};
 
-        renderExistingTrains();
-    }
-
-    function closeModal(id) {
-        document.getElementById(id).style.display = 'none';
-        if(id === 'dayModal') selectedDate = null;
-    }
-
-    // --- LISTA POCIĄGÓW (SEARCHABLE) ---
-    function populateTrainList() {
-        const sel = document.getElementById('trainSelect');
-        sel.innerHTML = '';
-        
-        // Sortowanie
-        trainsData.sort((a,b) => a.number.localeCompare(b.number));
-
-        trainsData.forEach(t => {
-            const opt = document.createElement('option');
-            opt.value = t.id;
-            opt.textContent = `${t.number} ${t.name||''} ${t.isCustom?'(Własny)':''}`;
-            opt.dataset.search = `${t.number} ${t.name||''}`.toLowerCase(); // Do szukania
-            sel.appendChild(opt);
-        });
-    }
-
-    function filterTrainList() {
-        const term = document.getElementById('trainSearchInput').value.toLowerCase();
-        const opts = document.getElementById('trainSelect').options;
-        for(let opt of opts) {
-            const txt = opt.dataset.search;
-            if(txt.includes(term)) opt.style.display = '';
-            else opt.style.display = 'none';
-        }
-    }
-
-    function updateStationSelectors() {
-        const tid = document.getElementById('trainSelect').value;
-        const div = document.getElementById('routeSelectorContainer');
-        const s1 = document.getElementById('startStation');
-        const s2 = document.getElementById('endStation');
-        
-        if(!tid) { div.style.display='none'; return; }
-        
-        const train = trainsData.find(t => t.id == tid);
-        if(!train || !train.route || !train.route.segments) { div.style.display='none'; return; }
-
-        // Zbieranie stacji w kolejności
-        const stops = [];
-        if(train.route.start) stops.push(train.route.start);
-        train.route.segments.forEach(seg => {
-            if(stops[stops.length-1] !== seg.from) stops.push(seg.from);
-            stops.push(seg.to);
-        });
-
-        s1.innerHTML = ''; s2.innerHTML = '';
-        stops.forEach(st => {
-            s1.add(new Option(st, st));
-            s2.add(new Option(st, st));
-        });
-
-        if(stops.length > 1) {
-            s1.selectedIndex = 0;
-            s2.selectedIndex = stops.length - 1;
-        }
-        div.style.display = 'block';
-    }
-
-    // --- CUSTOM TRAIN CREATOR ---
-    let builderStations = [];
-
-    function openCustomTrainModal() {
-        builderStations = [];
-        document.getElementById('customTrainNumber').value = '';
-        document.getElementById('customStationInput').value = '';
-        document.getElementById('customRouteError').style.display = 'none';
-        renderBuilderList();
-        document.getElementById('customTrainModal').style.display = 'flex';
-    }
-
-    function addStationToBuilder() {
-        const val = document.getElementById('customStationInput').value.trim();
-        if(!val) return;
-        builderStations.push(val);
-        document.getElementById('customStationInput').value = '';
-        document.getElementById('customStationInput').focus();
-        renderBuilderList();
-    }
-
-    function renderBuilderList() {
-        const ul = document.getElementById('customRouteList');
-        ul.innerHTML = '';
-        builderStations.forEach((st, idx) => {
-            const li = document.createElement('li');
-            li.innerHTML = `<span>${idx+1}. ${st}</span> <button class="btn btn-danger" style="padding:2px 6px; font-size:0.7rem;" onclick="removeBuilderStation(${idx})">Usuń</button>`;
-            ul.appendChild(li);
-        });
-    }
-    
-    // Musi być globalne żeby onclick w HTML widział
-    window.removeBuilderStation = function(idx) {
-        builderStations.splice(idx, 1);
-        renderBuilderList();
-    }
-
-    function saveCustomTrain() {
-        const num = document.getElementById('customTrainNumber').value.trim();
-        if(!num || builderStations.length < 2) {
-            document.getElementById('customRouteError').style.display = 'block';
-            return;
-        }
-
-        // Konwersja listy stacji na segmenty
-        const segments = [];
-        for(let i=0; i<builderStations.length-1; i++) {
-            segments.push({
-                from: builderStations[i],
-                to: builderStations[i+1],
-                via: "-" // Domyślne
-            });
-        }
-
-        const newTrain = {
-            id: 'custom_' + Date.now(),
-            number: num,
-            name: "Własny",
-            isCustom: true,
-            route: {
-                start: builderStations[0],
-                segments: segments
-            }
-        };
-
-        customTrains.push(newTrain);
-        mergeTrains();
-        populateTrainList(); // Odśwież listę
-        saveLocalStorage();
-        
-        closeModal('customTrainModal');
-        alert("Pociąg dodany! Możesz go teraz wybrać z listy.");
-    }
-
-    // --- OPERACJE NA DANYCH DNIA ---
-    function addTrainToDay() {
-        const tid = document.getElementById('trainSelect').value;
-        const from = document.getElementById('startStation').value;
-        const to = document.getElementById('endStation').value;
-        
-        if(!tid || !from || !to) return;
-        
-        if(!userSchedule[selectedDate]) userSchedule[selectedDate] = [];
-        userSchedule[selectedDate].push({ trainId: tid, from, to });
-        
-        saveLocalStorage();
-        renderExistingTrains();
-        renderCalendar();
-        generateReport();
-    }
-
-    function renderExistingTrains() {
-        const div = document.getElementById('existingTrainsList');
-        div.innerHTML = '';
-        if(!userSchedule[selectedDate] || !userSchedule[selectedDate].length) {
-            div.innerHTML = '<span style="color:#999">Brak pociągów tego dnia.</span>';
-            return;
-        }
-        
-        userSchedule[selectedDate].forEach((entry, idx) => {
-            const t = trainsData.find(x => x.id == entry.trainId);
-            const row = document.createElement('div');
-            row.style.display = 'flex';
-            row.style.justifyContent = 'space-between';
-            row.style.alignItems = 'center';
-            row.style.background = '#f8f9fa';
-            row.style.padding = '5px';
-            row.style.marginBottom = '4px';
-            row.style.borderRadius = '4px';
-            
-            row.innerHTML = `
-                <div><strong>${t?t.number:'???'}</strong> <small>${entry.from}➔${entry.to}</small></div>
-                <button class="btn btn-danger" style="padding:2px 5px; font-size:0.7rem;" onclick="removeTrain(${idx})">X</button>
-            `;
-            div.appendChild(row);
-        });
-    }
-
-    window.removeTrain = function(idx) {
-        userSchedule[selectedDate].splice(idx, 1);
-        if(!userSchedule[selectedDate].length) delete userSchedule[selectedDate];
-        saveLocalStorage();
-        renderExistingTrains();
-        renderCalendar();
-        generateReport();
-    }
-
-    // --- RAPORT ---
-    function generateReport() {
-        const tbody = document.querySelector('#reportTable tbody');
-        tbody.innerHTML = '';
-        const visited = {}; // { masterId: lastDate }
-
-        Object.keys(userSchedule).forEach(date => {
-            userSchedule[date].forEach(entry => {
-                const train = trainsData.find(t => t.id == entry.trainId);
-                if(!train) return;
-
-                // Znajdź segmenty na trasie pociągu
-                let active = false;
-                for(let seg of train.route.segments) {
-                    if(seg.from === entry.from) active = true;
-                    if(active) matchSegment(seg, date, visited);
-                    if(seg.to === entry.to) { active = false; break; }
+        Object.keys(appData.schedule).forEach(dateStr => {
+            const d = new Date(dateStr);
+            if(d > viewEnd) return; 
+            appData.schedule[dateStr].forEach(entry => {
+                const tr = dbTrains.find(t=>t.id==entry.trainId);
+                if(!tr) return;
+                let active=false;
+                if(tr.route && tr.route.segments) {
+                    for(let seg of tr.route.segments) {
+                        if(seg.from === entry.from) active=true;
+                        if(active) matchRoute(seg, dateStr, vGlobal, vMonthly, viewY, viewM);
+                        if(seg.to === entry.to) { active=false; break; }
+                    }
                 }
             });
         });
 
-        // Generuj tabelę
-        masterSzlakiData.forEach((m, idx) => {
+        dbMaster.forEach((m, idx) => {
             const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td style="text-align:center">${idx+1}</td>
-                <td>${m.start}</td>
-                <td>${m.end}</td>
-                <td>${m.via==='-'?'':m.via}</td>
-                <td style="text-align:center; font-weight:bold;">${visited[m.id] || ''}</td>
-            `;
+            const lastG = vGlobal[m.id];
+            let dot = 'dot-red'; 
+            if(lastG) {
+                const ld = new Date(lastG);
+                const exp = new Date(ld); exp.setFullYear(ld.getFullYear() + 1); 
+                const warn = new Date(exp); warn.setMonth(exp.getMonth() - 1); 
+                if (exp < viewEnd) dot = 'dot-red'; else if (warn < viewEnd) dot = 'dot-yellow'; else dot = 'dot-green';
+            }
+            const dateTxt = vMonthly[m.id] || "";
+            tr.innerHTML = `<td class="col-lp">${idx+1}</td><td><span class="status-dot ${dot}"></span>${m.start}</td><td>${m.end}</td><td>${m.via==='-'?'':m.via}</td><td class="col-date">${dateTxt}</td>`;
             tbody.appendChild(tr);
         });
     }
 
-    function matchSegment(seg, date, visited) {
+    function matchRoute(seg, dateStr, vG, vM, vY, vMonth) {
         const norm = s => s ? s.toLowerCase().trim() : "";
-        const tf = norm(seg.from);
-        const tt = norm(seg.to);
-        
-        const match = masterSzlakiData.find(m => {
-            const mf = norm(m.start);
-            const mt = norm(m.end);
-            const stMatch = (mf===tf && mt===tt) || (mf===tt && mt===tf);
-            if(!stMatch) return false;
+        const f = norm(seg.from), t = norm(seg.to);
+        const segVia = norm(seg.via);
+
+        const match = dbMaster.find(m => {
+            const mf = norm(m.start), mt = norm(m.end);
+            const mVia = norm(m.via);
             
-            if(m.via && m.via !== '-' && m.via.length > 2) {
-                const mv = norm(m.via);
-                const tv = norm(seg.via);
-                return tv.includes(mv) || mv.includes(tv);
+            // 1. Sprawdź stacje (kierunek dowolny)
+            const stationsMatch = (mf===f && mt===t) || (mf===t && mt===f);
+            if(!stationsMatch) return false;
+
+            // 2. PRECYZYJNE SPRAWDZANIE WARIANTU (VIA)
+            // Jeśli szlak master ma zdefiniowane 'via' (inne niż '-'), to segment pociągu MUSI to zawierać
+            if(mVia.length > 1 && mVia !== '-') {
+                if(segVia.length > 1 && segVia !== '-') {
+                    return segVia.includes(mVia) || mVia.includes(segVia);
+                } else {
+                    // Pociąg nie ma info o via, a szlak ma. To NIE JEST ten szlak (chyba że to jedyna opcja, ale tu zakładamy precyzję)
+                    return false; 
+                }
             }
-            return true;
+            // Jeśli szlak master NIE MA via, a pociąg MA - to też może nie pasować, ale zazwyczaj szlaki "główne" mają via '-'
+            // Dla uproszczenia: jeśli master via is '-', uznajemy to za match podstawowy
+            return true; 
         });
 
         if(match) {
-            if(!visited[match.id] || date > visited[match.id]) {
-                visited[match.id] = date;
+            if(!vG[match.id] || dateStr > vG[match.id]) vG[match.id]=dateStr;
+            const d = new Date(dateStr);
+            if(d.getFullYear() === vY && d.getMonth() === vMonth) {
+                if(!vM[match.id] || dateStr > vM[match.id]) vM[match.id]=dateStr;
             }
         }
     }
 
-    // --- EXPORT / IMPORT / ICS ---
-    function handleIcsUpload(input) {
-        const file = input.files[0];
-        if(!file) return;
-        const reader = new FileReader();
-        reader.onload = e => {
-            try {
-                parseICS(e.target.result);
-                saveLocalStorage();
-                renderCalendar();
-                alert("Grafik wczytany!");
-            } catch(err) { alert("Błąd ICS"); }
-        };
-        reader.readAsText(file);
-        input.value='';
+    // --- DAY EDIT ---
+    function openDayEdit(d) {
+        selectedDateStr=d; document.getElementById('modalDateTitle').innerText=d; 
+        document.getElementById('dayModal').style.display='flex';
+        document.getElementById('trainFilter').value=''; filterTrains();
+        document.getElementById('trainSelect').value=''; document.getElementById('routeArea').style.display='none';
+        renderDayList();
     }
-
-    function parseICS(txt) {
-        importedShifts = {};
-        const lines = txt.replace(/\r\n/g, '\n').split('\n');
-        let evt = null;
-        
-        lines.forEach(line => {
-            line = line.trim();
-            if(line === 'BEGIN:VEVENT') evt = {};
-            else if(line === 'END:VEVENT') {
-                if(evt && evt.summary && evt.start) processEvent(evt);
-                evt = null;
-            } else if(evt) {
-                if(line.startsWith('SUMMARY:')) evt.summary = line.substring(8);
-                else if(line.startsWith('DTSTART')) evt.start = parseIcsDate(line);
-                else if(line.startsWith('DTEND')) evt.end = parseIcsDate(line);
-            }
+    function renderDayList() {
+        const c = document.getElementById('dayTrainsList'); c.innerHTML='';
+        const l = appData.schedule[selectedDateStr]||[];
+        if(!l.length) c.innerHTML='<i style="color:#888;font-size:0.8rem">Brak pociągów</i>';
+        l.forEach((x,i)=>{
+            const t = dbTrains.find(z=>z.id==x.trainId);
+            const d=document.createElement('div'); d.style.cssText="display:flex;justify-content:space-between;background:#f1f5f9;padding:5px;border-radius:4px;font-size:0.85rem";
+            d.innerHTML=`<span><b>${t?t.number:'?'}</b> ${x.from}-${x.to}</span>`;
+            const b=document.createElement('button'); b.className='btn btn-danger'; b.innerText='X';
+            b.onclick=()=>{ appData.schedule[selectedDateStr].splice(i,1); if(!appData.schedule[selectedDateStr].length) delete appData.schedule[selectedDateStr]; saveData(); renderDayList(); renderCalendar(); renderReport(); };
+            d.appendChild(b); c.appendChild(d);
         });
     }
-
-    function parseIcsDate(line) {
-        // DTSTART;VALUE=DATE:20251213 lub DTSTART:20251213T120000
-        const parts = line.split(':');
-        const val = parts[parts.length-1];
-        const y = parseInt(val.substr(0,4));
-        const m = parseInt(val.substr(4,2))-1;
-        const d = parseInt(val.substr(6,2));
-        if(val.includes('T')) {
-            const t = val.split('T')[1];
-            return new Date(y,m,d, parseInt(t.substr(0,2)), parseInt(t.substr(2,2)));
-        }
-        return new Date(y,m,d); // All day
+    function fillTrainSelect() {
+        const s = document.getElementById('trainSelect'); s.innerHTML='';
+        dbTrains.sort((a,b)=>a.number.localeCompare(b.number));
+        dbTrains.forEach(t=>{ const o=new Option(`${t.number} ${t.name||''} ${t.isCustom?'(Własny)':''}`,t.id); o.dataset.s=`${t.number} ${t.name||''}`.toLowerCase(); s.appendChild(o); });
+    }
+    function filterTrains() {
+        const v = document.getElementById('trainFilter').value.toLowerCase();
+        [...document.getElementById('trainSelect').options].forEach(o=>o.style.display=o.dataset.s.includes(v)?'':'none');
+    }
+    function updateRoute() {
+        const tid=document.getElementById('trainSelect').value; const area=document.getElementById('routeArea');
+        if(!tid){area.style.display='none';return}
+        const t=dbTrains.find(x=>x.id==tid); if(!t||!t.route)return;
+        area.style.display='block';
+        const s1=document.getElementById('startSt'), s2=document.getElementById('endSt');
+        s1.innerHTML='';s2.innerHTML='';
+        const stops=[]; if(t.route.start) stops.push(t.route.start);
+        t.route.segments.forEach(seg=>{if(stops[stops.length-1]!==seg.from)stops.push(seg.from);stops.push(seg.to)});
+        stops.forEach(x=>{s1.appendChild(new Option(x));s2.appendChild(new Option(x))});
+        if(stops.length>1)s2.selectedIndex=stops.length-1;
+    }
+    function addTrain() {
+        const tid=document.getElementById('trainSelect').value, f=document.getElementById('startSt').value, t=document.getElementById('endSt').value;
+        if(!tid||!f||!t)return;
+        if(!appData.schedule[selectedDateStr]) appData.schedule[selectedDateStr]=[];
+        appData.schedule[selectedDateStr].push({trainId:tid,from:f,to:t});
+        saveData(); renderDayList(); renderCalendar(); renderReport();
     }
 
-    function processEvent(evt) {
-        const k = `${evt.start.getFullYear()}-${String(evt.start.getMonth()+1).padStart(2,'0')}-${String(evt.start.getDate()).padStart(2,'0')}`;
+    // --- SMART CUSTOM TRAIN + VARIANTS ---
+    function openCustomModal() {
+        tempCustRoute=[]; tempCustSegments=[]; 
+        document.getElementById('custNum').value='';
+        document.getElementById('variantSelector').style.display='none';
+        renderCustNextSelect(); renderCustRoute(); document.getElementById('customModal').style.display='flex';
+    }
+
+    function renderCustNextSelect() {
+        const sel = document.getElementById('custNextSt'); sel.innerHTML='';
+        let options = [];
+        if(tempCustRoute.length === 0) options = Object.keys(stationGraph).sort();
+        else {
+            const last = tempCustRoute[tempCustRoute.length-1];
+            options = (stationGraph[last] || []).sort();
+        }
+        if(options.length === 0 && tempCustRoute.length > 0) {
+            const opt = new Option("Koniec trasy", ""); opt.disabled=true; sel.appendChild(opt);
+            document.getElementById('btnAddSt').disabled=true;
+        } else {
+            options.forEach(s => sel.appendChild(new Option(s)));
+            document.getElementById('btnAddSt').disabled=false;
+        }
+    }
+
+    function addCustSt() {
+        // Reset variant view
+        const vDiv = document.getElementById('variantSelector');
+        vDiv.style.display = 'none';
         
-        let isOvernight = false;
-        let info = '';
+        const nextSt = document.getElementById('custNextSt').value;
+        if(!nextSt) return;
+
+        // Jeśli to pierwsza stacja
+        if(tempCustRoute.length === 0) {
+            tempCustRoute.push(nextSt);
+            renderCustRoute();
+            renderCustNextSelect();
+            return;
+        }
+
+        // Jeśli to kolejna stacja, sprawdzamy warianty
+        const lastSt = tempCustRoute[tempCustRoute.length-1];
         
-        // Jeśli ma czas i różnica dni
-        if(evt.end && (evt.start.getHours() !== 0 || evt.start.getMinutes() !== 0)) {
-            if(evt.start.getDate() !== evt.end.getDate()) isOvernight = true;
-            const fmt = {hour:'2-digit', minute:'2-digit'};
-            info = `${evt.start.toLocaleTimeString([],fmt)} - ${evt.end.toLocaleTimeString([],fmt)}`;
-        }
+        // Znajdź możliwe szlaki w dbMaster
+        const possibleRoutes = dbMaster.filter(m => {
+            const mf = m.start, mt = m.end;
+            return (mf===lastSt && mt===nextSt) || (mf===nextSt && mt===lastSt);
+        });
 
-        if(!importedShifts[k]) importedShifts[k] = [];
-        if(!importedShifts[k].find(x => x.summary === evt.summary)) {
-            importedShifts[k].push({ summary: evt.summary, isOvernight, timeInfo: info });
+        if(possibleRoutes.length > 1) {
+            // KONFLIKT! Pokaż wybór
+            vDiv.style.display = 'block';
+            const vOpts = document.getElementById('variantOptions'); vOpts.innerHTML = '';
+            
+            possibleRoutes.forEach(r => {
+                const btn = document.createElement('div');
+                btn.className = 'variant-btn';
+                btn.innerHTML = `<strong>Przez: ${r.via}</strong> <br><small>(${r.start} - ${r.end})</small>`;
+                btn.onclick = () => confirmVariant(nextSt, r.via);
+                vOpts.appendChild(btn);
+            });
+            // Wyłącz przycisk dodawania, czekamy na wybór
+            document.getElementById('btnAddSt').disabled = true;
+
+        } else {
+            // Tylko jedna droga lub brak info (domyślny '-')
+            let viaVal = '-';
+            if(possibleRoutes.length === 1) viaVal = possibleRoutes[0].via;
+            confirmVariant(nextSt, viaVal);
         }
     }
 
-    // --- ZAPIS I ODCZYT (BACKUP) ---
-    function saveLocalStorage() {
-        const data = { schedule: userSchedule, shifts: importedShifts, customTrains: customTrains };
-        localStorage.setItem('kierownik_v1_5', JSON.stringify(data));
+    function confirmVariant(nextSt, viaVal) {
+        document.getElementById('variantSelector').style.display = 'none';
+        document.getElementById('btnAddSt').disabled = false;
+
+        const lastSt = tempCustRoute[tempCustRoute.length-1];
+        tempCustRoute.push(nextSt);
+        tempCustSegments.push({ from: lastSt, to: nextSt, via: viaVal });
+        
+        renderCustRoute();
+        renderCustNextSelect();
     }
-    
-    function loadLocalStorage() {
-        const raw = localStorage.getItem('kierownik_v1_5');
-        if(raw) {
+
+    function renderCustRoute() {
+        const ul = document.getElementById('custRoute');
+        if(tempCustRoute.length===0) ul.innerHTML='<li style="color:gray; list-style:none;">Start...</li>';
+        else {
+            ul.innerHTML = tempCustRoute.map((s,i) => {
+                let extra = '';
+                if(i > 0) {
+                    const seg = tempCustSegments[i-1];
+                    if(seg && seg.via !== '-') extra = ` <small style="color:#f59e0b">(przez ${seg.via})</small>`;
+                }
+                return `<li>${s}${extra} ${i===tempCustRoute.length-1 && i>0 ? `<span style="color:red;cursor:pointer;font-weight:bold;margin-left:5px;" onclick="undoCustSt()">[Cofnij]</span>` : ''}</li>`;
+            }).join('');
+        }
+    }
+
+    function undoCustSt() {
+        if(tempCustRoute.length > 0) {
+            tempCustRoute.pop();
+            if(tempCustSegments.length > 0) tempCustSegments.pop();
+            document.getElementById('variantSelector').style.display='none';
+            document.getElementById('btnAddSt').disabled = false;
+            renderCustRoute();
+            renderCustNextSelect();
+        }
+    }
+
+    function saveCust() {
+        const n=document.getElementById('custNum').value;
+        if(tempCustRoute.length<2||!n) return alert('Wymagany numer i min. 2 stacje');
+        
+        const obj={
+            id:'c'+Date.now(), 
+            number:n, 
+            isCustom:true, 
+            route:{
+                start:tempCustRoute[0], 
+                segments:tempCustSegments 
+            }
+        };
+        appData.customTrains.push(obj); dbTrains.push(obj);
+        fillTrainSelect(); saveData(); closeModal('customModal');
+    }
+
+    // --- IO ---
+    function loadData() {
+        let r = localStorage.getItem(DB_KEY);
+        if(!r) {
+            const olds = ['kierownik_v2_4_data', 'kierownik_v2_3_data'];
+            for(let k of olds) { let x=localStorage.getItem(k); if(x){r=x; localStorage.setItem(DB_KEY, r); break;} }
+        }
+        if(r) {
             try {
-                const d = JSON.parse(raw);
-                userSchedule = d.schedule || {};
-                importedShifts = d.shifts || {};
-                customTrains = d.customTrains || [];
-            } catch(e) {}
+                const d=JSON.parse(r);
+                if(d.schedule) appData.schedule=d.schedule;
+                if(d.shifts) appData.shifts=d.shifts;
+                if(d.customTrains) appData.customTrains=d.customTrains;
+                if(d.profile) appData.profile=d.profile;
+            } catch(e){}
         }
     }
-
+    function saveData() { localStorage.setItem(DB_KEY, JSON.stringify(appData)); }
     function exportData() {
-        const data = { 
-            version: "1.5", 
-            date: new Date().toISOString(),
-            schedule: userSchedule, 
-            shifts: importedShifts,
-            customTrains: customTrains
-        };
-        const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `backup_kierownik_${new Date().toISOString().slice(0,10)}.json`;
-        a.click();
+        const b=new Blob([JSON.stringify(appData)],{type:'application/json'});
+        const a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download=`backup_${new Date().toISOString().slice(0,10)}.json`; a.click();
     }
-
-    function importData(input) {
-        const file = input.files[0];
-        if(!file) return;
-        const reader = new FileReader();
-        reader.onload = e => {
+    function importData(inp) {
+        const f=inp.files[0]; if(!f)return;
+        const r=new FileReader(); r.onload=e=>{
             try {
-                const d = JSON.parse(e.target.result);
-                if(d.schedule) userSchedule = d.schedule;
-                if(d.shifts) importedShifts = d.shifts;
-                if(d.customTrains) customTrains = d.customTrains;
-                
-                mergeTrains();
-                populateTrainList();
-                saveLocalStorage();
-                renderCalendar();
-                generateReport();
-                alert("Dane przywrócone pomyślnie!");
-            } catch(err) { alert("Błąd pliku backupu"); }
-        };
-        reader.readAsText(file);
-        input.value='';
+                const d=JSON.parse(e.target.result);
+                if(d.schedule) Object.assign(appData.schedule, d.schedule);
+                if(d.shifts) Object.assign(appData.shifts, d.shifts);
+                if(d.profile) appData.profile = d.profile;
+                if(d.customTrains) d.customTrains.forEach(ct=>{if(!appData.customTrains.find(x=>x.id==ct.id)){appData.customTrains.push(ct);dbTrains.push(ct)}});
+                startSystem(); saveData(); alert('Wczytano');
+            } catch(err){alert('Błąd pliku')}
+        }; r.readAsText(f); inp.value='';
     }
-    
-    function clearData() {
-        if(confirm("Czy na pewno chcesz usunąć wszystko?")) {
-            localStorage.removeItem('kierownik_v1_5');
-            userSchedule = {}; importedShifts = {}; customTrains = [];
-            mergeTrains(); populateTrainList();
-            renderCalendar(); generateReport();
-        }
+    function handleIcs(inp) {
+        const f=inp.files[0]; if(!f)return;
+        const r=new FileReader(); r.onload=e=>{
+            const lines=e.target.result.split(/\r\n|\n/); let evt=null;
+            lines.forEach(l=>{
+                if(l.startsWith('BEGIN:VEVENT')) evt={};
+                else if(l.startsWith('END:VEVENT')) {
+                    if(evt&&evt.s&&evt.d) {
+                        const d=evt.d.slice(0,4)+'-'+evt.d.slice(4,6)+'-'+evt.d.slice(6,8);
+                        if(!appData.shifts[d]) appData.shifts[d]=[];
+                        if(!appData.shifts[d].find(x=>x.summary==evt.s)) appData.shifts[d].push({summary:evt.s, isOvernight:false});
+                    } evt=null;
+                } else if(evt) {
+                    if(l.startsWith('SUMMARY:')) evt.s=l.substring(8);
+                    if(l.startsWith('DTSTART')) evt.d=l.split(':')[1].split('T')[0];
+                }
+            });
+            saveData(); renderCalendar(); alert('Grafik OK');
+        }; r.readAsText(f); inp.value='';
     }
-
-    window.onclick = e => { 
-        if(e.target.classList.contains('modal')) e.target.style.display='none'; 
-    }
-
+    function clearData() { if(confirm('Reset?')) { localStorage.removeItem(DB_KEY); location.reload(); } }
+    function closeModal(id){document.getElementById(id).style.display='none'}
+    function openModal(id){document.getElementById(id).style.display='flex'}
+    window.onclick=e=>{if(e.target.className==='modal-overlay')e.target.style.display='none'}
 </script>
 </body>
 </html>
