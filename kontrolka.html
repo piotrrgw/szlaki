@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Karta Znajomości Szlaków - Kontrolka v1.3</title>
+    <title>Karta Znajomości Szlaków - Kontrolka v1.4</title>
     
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-W05T4L1HFD"></script>
     <script>
@@ -283,62 +283,78 @@
             color: #666;
         }
 
-        /* --- DRUKOWANIE (COMPACT MODE) --- */
+        /* --- DRUKOWANIE (ULTRA COMPACT MODE) --- */
         @media print {
             @page {
                 size: A4;
-                margin: 0.5cm; /* Minimalny margines */
+                margin: 0.5cm 0.8cm; /* Bardzo małe marginesy: Góra/Dół, Lewo/Prawo */
             }
 
             body { 
                 background: white; 
                 -webkit-print-color-adjust: exact; 
                 font-family: 'Arial', sans-serif;
+                color: black;
             }
 
-            /* Ukrywamy wszystko co zbędne */
-            header, .calendar-controls, .calendar-grid, footer, .no-print, #fallback-upload {
+            /* Ukrywamy UI aplikacji */
+            header, .calendar-controls, .calendar-grid, footer, .no-print, #fallback-upload, .modal {
                 display: none !important;
             }
             
             .container { width: 100%; max-width: none; padding: 0; margin: 0; }
-            .report-section { 
-                box-shadow: none; padding: 0; border: none;
-                column-count: 2; column-gap: 5mm;
-            }
+            .report-section { box-shadow: none; padding: 0; border: none; margin: 0; }
             
+            /* Tytuł raportu */
             h2 { 
-                margin-top: 0; 
-                margin-bottom: 5px; 
-                font-size: 14pt; 
+                margin: 0 0 5px 0; 
+                font-size: 12pt; 
                 text-align: center; 
                 text-transform: uppercase;
-                column-span: all;
+                border-bottom: 1px solid #000;
+                padding-bottom: 5px;
             }
             
-            /* Tabela ultrakompaktowa */
+            /* Tabela skompresowana */
             table.report-table {
-                font-size: 7pt;
+                font-size: 8pt; /* Mała czcionka = klucz do sukcesu */
                 width: 100%;
                 border-collapse: collapse;
+                border-spacing: 0;
             }
             
             table.report-table th, table.report-table td {
-                padding: 0 2px;
+                padding: 1px 3px;
                 border: 1px solid #000;
-                /* height: 16px; */
-                overflow: hidden;
-                white-space: normal;
-                line-height: 1.1;
+                line-height: 1.1; /* Mała interlinia */
             }
 
-            /* Szersze kolumny dla tekstu, węższe dla dat/LP */
-            table.report-table th:nth-child(1) { width: 20px; } /* LP */
-            table.report-table th:nth-child(5) { width: 60px; text-align: center; } /* Data */
+            table.report-table th {
+                background-color: #eee !important;
+                font-weight: bold;
+            }
 
-            /* Zapobieganie sierotom, ale pozwolenie na łamanie */
+            /* Ustawienia szerokości kolumn */
+            table.report-table th:nth-child(1) { width: 25px; text-align: center; } /* LP */
+            table.report-table th:nth-child(5) { width: 70px; text-align: center; } /* Data */
+
+            /* Zapobieganie łamaniu wewnątrz wiersza */
+            tr { page-break-inside: avoid; }
+            
+            /* Nagłówek tabeli na każdej stronie */
             thead { display: table-header-group; }
-            tr { break-inside: avoid; page-break-inside: avoid; }
+            
+            /* Stopka wydruku (tylko na druku) */
+            .print-footer {
+                display: block;
+                position: fixed;
+                bottom: 0;
+                width: 100%;
+                text-align: center;
+                font-size: 6pt;
+                color: #555;
+                border-top: 1px solid #ccc;
+            }
         }
     </style>
 </head>
@@ -353,7 +369,7 @@
 
     <div id="fallback-upload">
         <h3>⚠️ Nie znaleziono plików danych</h3>
-        <p>Aplikacja nie mogła automatycznie pobrać plików `trains.json` i `szlaki_master.json`.</p>
+        <p>Aplikacja nie mogła automatycznie pobrać plików `trains.json` i `szlaki_master.json`.<br>Załaduj je ręcznie poniżej:</p>
         
         <div class="file-input-group">
             <label>Plik <strong>trains.json</strong>:</label><br>
@@ -389,17 +405,21 @@
         <table class="report-table" id="reportTable">
             <thead>
                 <tr>
-                    <th style="width: 30px;">LP</th>
+                    <th>LP</th>
                     <th>Od</th>
                     <th>Do</th>
                     <th>Przez</th>
-                    <th style="width: 90px;">Data</th>
+                    <th>Data</th>
                 </tr>
             </thead>
             <tbody>
                 </tbody>
         </table>
     </div>
+</div>
+
+<div class="print-footer" style="display:none;">
+    Wygenerowano aplikacją: Karta Znajomości Szlaków v1.4 | Autorzy: Gemini & Piotr M 🚂
 </div>
 
 <div class="modal" id="dayModal">
@@ -436,7 +456,7 @@
 
 <footer>
     <p>Współautorzy: Gemini & Piotr M 🚂</p>
-    <p>Wersja aplikacji: v1.3</p>
+    <p>Wersja aplikacji: v1.4</p>
 </footer>
 
 <script>
@@ -446,8 +466,7 @@
     let masterSzlakiData = [];
     
     let userSchedule = {}; 
-    // Nowa struktura: importedShifts[date] = [ { summary: "DW5", timeInfo: "..." }, ... ]
-    let importedShifts = {}; 
+    let importedShifts = {}; // { date: [ {summary, isOvernight, timeInfo} ] }
 
     // --- INICJALIZACJA ---
     document.addEventListener('DOMContentLoaded', async () => {
@@ -508,7 +527,7 @@
         generateReport();
     }
 
-    // --- OBSŁUGA ICS (POPRAWIONA) ---
+    // --- OBSŁUGA ICS (FIXED v1.4) ---
     function handleIcsUpload(input) {
         const file = input.files[0];
         if (!file) return;
@@ -519,7 +538,7 @@
                 parseICS(e.target.result);
                 saveLocalStorage();
                 renderCalendar();
-                alert("Grafik zaimportowany!");
+                alert("Grafik zaimportowany poprawnie!");
             } catch (err) {
                 console.error(err);
                 alert("Błąd pliku ICS: " + err.message);
@@ -530,14 +549,11 @@
     }
 
     function parseICS(content) {
-        // Reset lub merge? Tutaj zrobimy reset, żeby nie dublować przy ponownym wgraniu
+        // Resetujemy grafiki przy imporcie (lub można zrobić merge)
         importedShifts = {}; 
 
-        // Obsługa "line unfolding" (RFC 5545) - naprawa łamania linii (CRLF + spacja/tab)
-        const unfoldedContent = content.replace(/\r?\n[ \t]/g, '');
-
-        // Rozbijamy na linie, ale bezpiecznie
-        const lines = unfoldedContent.replace(/\r\n/g, "\n").split("\n");
+        // Normalizacja końca linii
+        const lines = content.replace(/\r\n/g, "\n").split("\n");
         
         let inEvent = false;
         let eventData = {};
@@ -561,10 +577,11 @@
             
             if (inEvent) {
                 if (line.startsWith("SUMMARY:")) eventData.summary = line.substring(8);
-                // Obsługa daty z opcjonalnymi parametrami (np. ;VALUE=DATE)
+                // Obsługa dat z parametrami, np. DTSTART;VALUE=DATE:20251213
                 else if (line.startsWith("DTSTART")) {
                     const parts = line.split(":");
-                    eventData.dtstart = parts[parts.length - 1]; // Bierzemy ostatnią część po dwukropku
+                    eventData.dtstart = parts[parts.length - 1]; // wartość po ostatnim dwukropku
+                    if (line.includes("VALUE=DATE")) eventData.isAllDay = true;
                 }
                 else if (line.startsWith("DTEND")) {
                     const parts = line.split(":");
@@ -575,10 +592,9 @@
     }
 
     function processEvent(data) {
-        // Parsowanie daty
-        // Format ICS: YYYYMMDD lub YYYYMMDDTHHMMSS
         const parse = (str) => {
             if (!str) return null;
+            // Format YYYYMMDD lub YYYYMMDDTHHMMSS
             const y = parseInt(str.substring(0,4));
             const m = parseInt(str.substring(4,6)) - 1;
             const d = parseInt(str.substring(6,8));
@@ -591,35 +607,46 @@
         };
 
         const start = parse(data.dtstart);
-        const end = parse(data.dtend);
+        let end = parse(data.dtend);
         
         if (!start) return;
 
+        // Logika dla VALUE=DATE (wydarzenia całodniowe)
+        if (data.isAllDay) {
+            // W ICS data końca dla all-day jest exclusive (+1 dzień).
+            // Np. Start: 13, End: 14 -> to jest tylko 13-ty.
+            // Ignorujemy datę End dla wyświetlania na kalendarzu, traktujemy jako zdarzenie w dniu Start.
+            // Jeśli różnica dni > 1, to wtedy wielodniowe.
+            const dateKey = formatDateKey(start);
+            addToShifts(dateKey, data.summary, false, "");
+            return;
+        }
+
+        // Logika dla wydarzeń czasowych (T...)
         const dateKey = formatDateKey(start);
-        const hasTime = data.dtstart.includes("T");
-        
         let isOvernight = false;
         let timeInfo = "";
 
-        if (hasTime && end) {
-            // Jeśli ma czas i data końca jest inna niż startu -> nocka
-            if (start.getDate() !== end.getDate()) isOvernight = true;
+        if (end) {
+            // Sprawdzenie nocki
+            if (start.getDate() !== end.getDate()) {
+                isOvernight = true;
+            }
             const opts = {hour:'2-digit', minute:'2-digit'};
             timeInfo = `${start.toLocaleTimeString([], opts)} - ${end.toLocaleTimeString([], opts)}`;
-        } else {
-            // Całodzienne (VALUE=DATE)
-            // W ICS VALUE=DATE end jest exclusive (+1 dzień).
-            // Więc jeśli end - start > 1 dzień, to jest wielodniowe.
-            // Dla prostoty w tym projekcie: traktujemy jako wpis w dniu startu.
         }
 
+        addToShifts(dateKey, data.summary, isOvernight, timeInfo);
+    }
+
+    function addToShifts(dateKey, summary, isOvernight, timeInfo) {
         if (!importedShifts[dateKey]) importedShifts[dateKey] = [];
         
-        // Sprawdź duplikaty (ten sam summary tego samego dnia)
-        const exists = importedShifts[dateKey].some(s => s.summary === data.summary);
+        // Unikaj duplikatów
+        const exists = importedShifts[dateKey].some(s => s.summary === summary);
         if (!exists) {
             importedShifts[dateKey].push({
-                summary: data.summary,
+                summary: summary,
                 isOvernight: isOvernight,
                 timeInfo: timeInfo
             });
@@ -682,9 +709,7 @@
             shiftsContainer.className = 'shifts-container';
 
             if (importedShifts[dateStr]) {
-                // Konwersja starego formatu string na tablicę (dla kompatybilności)
-                let shifts = Array.isArray(importedShifts[dateStr]) ? importedShifts[dateStr] : [];
-                
+                const shifts = importedShifts[dateStr];
                 shifts.forEach(shift => {
                     const badge = document.createElement('span');
                     badge.className = `shift-badge ${shift.isOvernight ? 'overnight' : ''}`;
@@ -822,7 +847,7 @@
         });
     }
 
-    // --- RAPORT ---
+    // --- RAPORT (ZAAWANSOWANE PAROWANIE) ---
     function generateReport() {
         const tbody = document.querySelector('#reportTable tbody');
         tbody.innerHTML = '';
@@ -833,6 +858,7 @@
                 const train = trainsData.find(t => t.id == entry.trainId);
                 if (!train || !train.route || !train.route.segments) return;
                 
+                // Znajdź segmenty pociągu między Start a End wybranym przez użytkownika
                 let capturing = false;
                 for(let seg of train.route.segments) {
                     if (seg.from === entry.from) capturing = true;
@@ -855,11 +881,15 @@
             const match = masterSzlakiData.find(m => {
                 const mF = norm(m.start);
                 const mT = norm(m.end);
-                // Sprawdź oba kierunki
-                const wayOK = (mF === tF && mT === tT) || (mF === tT && mT === tF);
-                if(!wayOK) return false;
-                // Sprawdź VIA
-                if(m.via && m.via !== "-") {
+                
+                // ŚCISŁE DOPASOWANIE STACJI (Zapobiega "Warszawa" == "Warszawa Zach")
+                // Muszą być identyczne po normalizacji
+                const stationsMatch = (mF === tF && mT === tT) || (mF === tT && mT === tF);
+                
+                if(!stationsMatch) return false;
+
+                // LUŹNE DOPASOWANIE VIA (Tutaj includes jest OK)
+                if(m.via && m.via !== "-" && m.via.length > 1) {
                     const mV = norm(m.via);
                     const tV = norm(seg.via);
                     return tV.includes(mV) || mV.includes(tV);
