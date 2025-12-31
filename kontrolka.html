@@ -528,8 +528,11 @@
         // Reset lub merge? Tutaj zrobimy reset, żeby nie dublować przy ponownym wgraniu
         importedShifts = {}; 
 
+        // Obsługa "line unfolding" (RFC 5545) - naprawa łamania linii (CRLF + spacja/tab)
+        const unfoldedContent = content.replace(/\r?\n[ \t]/g, '');
+
         // Rozbijamy na linie, ale bezpiecznie
-        const lines = content.replace(/\r\n/g, "\n").split("\n");
+        const lines = unfoldedContent.replace(/\r\n/g, "\n").split("\n");
         
         let inEvent = false;
         let eventData = {};
