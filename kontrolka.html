@@ -302,7 +302,10 @@
             }
             
             .container { width: 100%; max-width: none; padding: 0; margin: 0; }
-            .report-section { box-shadow: none; padding: 0; border: none; }
+            .report-section { 
+                box-shadow: none; padding: 0; border: none;
+                column-count: 2; column-gap: 5mm;
+            }
             
             h2 { 
                 margin-top: 0; 
@@ -310,30 +313,32 @@
                 font-size: 14pt; 
                 text-align: center; 
                 text-transform: uppercase;
+                column-span: all;
             }
             
             /* Tabela ultrakompaktowa */
             table.report-table {
-                font-size: 8pt; /* Bardzo mała czcionka, żeby zmieścić na 2 stronach */
+                font-size: 7pt;
                 width: 100%;
                 border-collapse: collapse;
             }
             
             table.report-table th, table.report-table td {
-                padding: 1px 3px; /* Minimalny padding */
+                padding: 0 2px;
                 border: 1px solid #000;
-                height: 16px; /* Wymuszona niska wysokość wiersza */
+                /* height: 16px; */
                 overflow: hidden;
-                white-space: nowrap;
+                white-space: normal;
+                line-height: 1.1;
             }
 
             /* Szersze kolumny dla tekstu, węższe dla dat/LP */
-            table.report-table th:nth-child(1) { width: 30px; } /* LP */
-            table.report-table th:nth-child(5) { width: 80px; text-align: center; } /* Data */
+            table.report-table th:nth-child(1) { width: 20px; } /* LP */
+            table.report-table th:nth-child(5) { width: 60px; text-align: center; } /* Data */
 
             /* Zapobieganie sierotom, ale pozwolenie na łamanie */
             thead { display: table-header-group; }
-            tr { page-break-inside: avoid; }
+            tr { break-inside: avoid; page-break-inside: avoid; }
         }
     </style>
 </head>
