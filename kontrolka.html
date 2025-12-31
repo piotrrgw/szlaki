@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Karta Znajomości Szlaków - Kontrolka v1.2</title>
+    <title>Karta Znajomości Szlaków - Kontrolka v1.3</title>
     
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-W05T4L1HFD"></script>
     <script>
@@ -137,6 +137,14 @@
         }
 
         /* Stylizacja Służb (ICS) */
+        .shifts-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 2px;
+            justify-content: flex-end;
+            flex-grow: 1;
+        }
+
         .shift-badge {
             background-color: var(--accent-color);
             color: #000;
@@ -153,7 +161,7 @@
 
         .shift-badge.overnight {
             background-color: var(--night-color);
-            color: #fff; /* Biały tekst na ciemnym tle */
+            color: #fff;
             border-color: #1a252f;
         }
 
@@ -275,35 +283,57 @@
             color: #666;
         }
 
-        /* --- DRUKOWANIE (A4 OPTIMIZATION) --- */
+        /* --- DRUKOWANIE (COMPACT MODE) --- */
         @media print {
             @page {
                 size: A4;
-                margin: 0.8cm;
+                margin: 0.5cm; /* Minimalny margines */
             }
 
-            body { background: white; -webkit-print-color-adjust: exact; }
+            body { 
+                background: white; 
+                -webkit-print-color-adjust: exact; 
+                font-family: 'Arial', sans-serif;
+            }
+
+            /* Ukrywamy wszystko co zbędne */
             header, .calendar-controls, .calendar-grid, footer, .no-print, #fallback-upload {
                 display: none !important;
             }
             
             .container { width: 100%; max-width: none; padding: 0; margin: 0; }
-            .report-section { box-shadow: none; padding: 0; }
+            .report-section { box-shadow: none; padding: 0; border: none; }
             
-            h2 { margin-top: 0; margin-bottom: 5px; font-size: 1.1rem; text-align: center; }
+            h2 { 
+                margin-top: 0; 
+                margin-bottom: 5px; 
+                font-size: 14pt; 
+                text-align: center; 
+                text-transform: uppercase;
+            }
             
+            /* Tabela ultrakompaktowa */
             table.report-table {
-                font-size: 9pt; /* Jeszcze mniejsza, żeby mieć pewność */
+                font-size: 8pt; /* Bardzo mała czcionka, żeby zmieścić na 2 stronach */
                 width: 100%;
+                border-collapse: collapse;
             }
             
             table.report-table th, table.report-table td {
-                padding: 2px 4px;
+                padding: 1px 3px; /* Minimalny padding */
                 border: 1px solid #000;
+                height: 16px; /* Wymuszona niska wysokość wiersza */
+                overflow: hidden;
+                white-space: nowrap;
             }
 
-            tr { page-break-inside: avoid; }
+            /* Szersze kolumny dla tekstu, węższe dla dat/LP */
+            table.report-table th:nth-child(1) { width: 30px; } /* LP */
+            table.report-table th:nth-child(5) { width: 80px; text-align: center; } /* Data */
+
+            /* Zapobieganie sierotom, ale pozwolenie na łamanie */
             thead { display: table-header-group; }
+            tr { page-break-inside: avoid; }
         }
     </style>
 </head>
@@ -354,11 +384,11 @@
         <table class="report-table" id="reportTable">
             <thead>
                 <tr>
-                    <th style="width: 40px;">LP</th>
+                    <th style="width: 30px;">LP</th>
                     <th>Od</th>
                     <th>Do</th>
                     <th>Przez</th>
-                    <th style="width: 100px;">Data ost. przejazdu</th>
+                    <th style="width: 90px;">Data</th>
                 </tr>
             </thead>
             <tbody>
@@ -401,7 +431,7 @@
 
 <footer>
     <p>Współautorzy: Gemini & Piotr M 🚂</p>
-    <p>Wersja aplikacji: v1.2</p>
+    <p>Wersja aplikacji: v1.3</p>
 </footer>
 
 <script>
@@ -410,9 +440,8 @@
     let trainsData = [];
     let masterSzlakiData = [];
     
-    // Dane użytkownika
     let userSchedule = {}; 
-    // Struktura importedShifts: { "YYYY-MM-DD": [ { summary: "DW5", isOvernight: false, timeInfo: "..." } ] }
+    // Nowa struktura: importedShifts[date] = [ { summary: "DW5", timeInfo: "..." }, ... ]
     let importedShifts = {}; 
 
     // --- INICJALIZACJA ---
@@ -474,7 +503,7 @@
         generateReport();
     }
 
-    // --- OBSŁUGA ICS (NOWA LOGIKA) ---
+    // --- OBSŁUGA ICS (POPRAWIONA) ---
     function handleIcsUpload(input) {
         const file = input.files[0];
         if (!file) return;
@@ -485,7 +514,7 @@
                 parseICS(e.target.result);
                 saveLocalStorage();
                 renderCalendar();
-                alert("Grafik zaimportowany! Sprawdź oznaczenia 🌙 dla nocek.");
+                alert("Grafik zaimportowany!");
             } catch (err) {
                 console.error(err);
                 alert("Błąd pliku ICS: " + err.message);
@@ -496,97 +525,97 @@
     }
 
     function parseICS(content) {
-        // Czyścimy poprzednie importy przy nowym załadowaniu
-        // importedShifts = {}; // Opcjonalnie: odkomentuj jeśli chcesz nadpisać wszystko
+        // Reset lub merge? Tutaj zrobimy reset, żeby nie dublować przy ponownym wgraniu
+        importedShifts = {}; 
+
+        // Rozbijamy na linie, ale bezpiecznie
+        const lines = content.replace(/\r\n/g, "\n").split("\n");
         
-        // Dzielimy na zdarzenia
-        const events = content.split('BEGIN:VEVENT');
+        let inEvent = false;
+        let eventData = {};
         
-        events.forEach(eventBlock => {
-            if (!eventBlock.includes('END:VEVENT')) return;
-
-            const summaryMatch = eventBlock.match(/SUMMARY:(.*)/);
-            const dtStartMatch = eventBlock.match(/DTSTART(?:;VALUE=[^:]+)?:([0-9T]+)/);
-            const dtEndMatch = eventBlock.match(/DTEND(?:;VALUE=[^:]+)?:([0-9T]+)/);
-
-            if (summaryMatch && dtStartMatch) {
-                const summary = summaryMatch[1].trim();
-                const startRaw = dtStartMatch[1];
-                // Jeśli brak DTEND, zakładamy ten sam dzień/czas co start
-                const endRaw = dtEndMatch ? dtEndMatch[1] : startRaw; 
-
-                const startDate = parseIcsDate(startRaw);
-                const endDate = parseIcsDate(endRaw);
-
-                if (!startDate) return;
-
-                const dateKey = formatDateKey(startDate);
-                
-                // Sprawdzanie czy łamie dobę (Start Date != End Date)
-                // Uwaga: Dla VALUE=DATE (tylko data), DTEND jest exclusive (następny dzień).
-                // Czyli 20251213 -> 20251214 to jest 1 dzień.
-                // Ale 20251213T200000 -> 20251214T060000 to jest łamanie doby.
-
-                let isOvernight = false;
-                let timeInfo = "";
-
-                const hasTime = startRaw.includes('T');
-                
-                if (hasTime) {
-                    // Mamy czas, więc sprawdzamy czy dzień się różni
-                    const startDay = startDate.getDate();
-                    const endDay = endDate.getDate();
-                    if (startDay !== endDay) {
-                        isOvernight = true;
-                    }
-                    // Formatowanie czasu do tooltipa
-                    const timeOpts = {hour: '2-digit', minute:'2-digit'};
-                    timeInfo = `${startDate.toLocaleTimeString([], timeOpts)} - ${endDate.toLocaleTimeString([], timeOpts)}`;
-                } else {
-                    // Tylko data. Standard ICS: End = Start + 1 day dla eventu jednodniowego.
-                    // Jeśli End - Start > 1 dzień (w ms), to wielodniowe.
-                    const diffTime = Math.abs(endDate - startDate);
-                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
-                    
-                    if (diffDays > 1) {
-                        // Traktujemy jako nockę/wielodniowe
-                         isOvernight = true;
-                         timeInfo = "(Wielodniowa)";
-                    }
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i].trim();
+            
+            if (line === "BEGIN:VEVENT") {
+                inEvent = true;
+                eventData = {};
+                continue;
+            }
+            
+            if (line === "END:VEVENT") {
+                inEvent = false;
+                if (eventData.summary && eventData.dtstart) {
+                    processEvent(eventData);
                 }
-
-                // Dodajemy do struktury
-                if (!importedShifts[dateKey]) importedShifts[dateKey] = [];
-                
-                // Unikamy duplikatów
-                const exists = importedShifts[dateKey].some(s => s.summary === summary && s.isOvernight === isOvernight);
-                if (!exists) {
-                    importedShifts[dateKey].push({
-                        summary: summary,
-                        isOvernight: isOvernight,
-                        timeInfo: timeInfo
-                    });
+                continue;
+            }
+            
+            if (inEvent) {
+                if (line.startsWith("SUMMARY:")) eventData.summary = line.substring(8);
+                // Obsługa daty z opcjonalnymi parametrami (np. ;VALUE=DATE)
+                else if (line.startsWith("DTSTART")) {
+                    const parts = line.split(":");
+                    eventData.dtstart = parts[parts.length - 1]; // Bierzemy ostatnią część po dwukropku
+                }
+                else if (line.startsWith("DTEND")) {
+                    const parts = line.split(":");
+                    eventData.dtend = parts[parts.length - 1];
                 }
             }
-        });
+        }
     }
 
-    function parseIcsDate(raw) {
-        // Obsługa formatów: 20251213 lub 20251213T200000 lub 20251213T200000Z
-        if (!raw) return null;
-        const y = raw.substring(0,4);
-        const m = raw.substring(4,6) - 1; // JS months 0-11
-        const d = raw.substring(6,8);
+    function processEvent(data) {
+        // Parsowanie daty
+        // Format ICS: YYYYMMDD lub YYYYMMDDTHHMMSS
+        const parse = (str) => {
+            if (!str) return null;
+            const y = parseInt(str.substring(0,4));
+            const m = parseInt(str.substring(4,6)) - 1;
+            const d = parseInt(str.substring(6,8));
+            
+            if (str.includes("T")) {
+                const t = str.split("T")[1];
+                return new Date(y, m, d, parseInt(t.substring(0,2)), parseInt(t.substring(2,4)));
+            }
+            return new Date(y, m, d);
+        };
+
+        const start = parse(data.dtstart);
+        const end = parse(data.dtend);
         
-        let h=0, min=0, s=0;
-        if (raw.includes('T')) {
-            const timePart = raw.split('T')[1];
-            h = timePart.substring(0,2);
-            min = timePart.substring(2,4);
-            s = timePart.substring(4,6);
+        if (!start) return;
+
+        const dateKey = formatDateKey(start);
+        const hasTime = data.dtstart.includes("T");
+        
+        let isOvernight = false;
+        let timeInfo = "";
+
+        if (hasTime && end) {
+            // Jeśli ma czas i data końca jest inna niż startu -> nocka
+            if (start.getDate() !== end.getDate()) isOvernight = true;
+            const opts = {hour:'2-digit', minute:'2-digit'};
+            timeInfo = `${start.toLocaleTimeString([], opts)} - ${end.toLocaleTimeString([], opts)}`;
+        } else {
+            // Całodzienne (VALUE=DATE)
+            // W ICS VALUE=DATE end jest exclusive (+1 dzień).
+            // Więc jeśli end - start > 1 dzień, to jest wielodniowe.
+            // Dla prostoty w tym projekcie: traktujemy jako wpis w dniu startu.
         }
+
+        if (!importedShifts[dateKey]) importedShifts[dateKey] = [];
         
-        return new Date(y, m, d, h, min, s);
+        // Sprawdź duplikaty (ten sam summary tego samego dnia)
+        const exists = importedShifts[dateKey].some(s => s.summary === data.summary);
+        if (!exists) {
+            importedShifts[dateKey].push({
+                summary: data.summary,
+                isOvernight: isOvernight,
+                timeInfo: timeInfo
+            });
+        }
     }
 
     function formatDateKey(dateObj) {
@@ -610,7 +639,6 @@
         const firstDayOfMonth = new Date(year, month, 1).getDay();
         const daysInMonth = new Date(year, month + 1, 0).getDate();
         
-        // Dni tygodnia
         const daysOfWeek = ["Pon", "Wt", "Śr", "Czw", "Pt", "Sob", "Nd"];
         daysOfWeek.forEach(day => {
             const div = document.createElement('div');
@@ -642,27 +670,27 @@
             headerDiv.appendChild(numSpan);
 
             // RENDEROWANIE SŁUŻB (ICS)
+            const shiftsContainer = document.createElement('div');
+            shiftsContainer.className = 'shifts-container';
+
             if (importedShifts[dateStr]) {
-                // Obsługa kompatybilności wstecznej (gdyby ktoś miał stary format stringa w LocalStorage)
-                let shifts = Array.isArray(importedShifts[dateStr]) ? importedShifts[dateStr] : [{summary: importedShifts[dateStr], isOvernight: false}];
+                // Konwersja starego formatu string na tablicę (dla kompatybilności)
+                let shifts = Array.isArray(importedShifts[dateStr]) ? importedShifts[dateStr] : [];
                 
                 shifts.forEach(shift => {
                     const badge = document.createElement('span');
                     badge.className = `shift-badge ${shift.isOvernight ? 'overnight' : ''}`;
-                    // Treść badge'a
                     let content = shift.summary;
                     if (shift.isOvernight) content += ' 🌙';
                     badge.textContent = content;
-                    
-                    if (shift.timeInfo) badge.title = shift.timeInfo; // Tooltip
-                    
-                    headerDiv.appendChild(badge);
+                    if (shift.timeInfo) badge.title = shift.timeInfo;
+                    shiftsContainer.appendChild(badge);
                 });
             }
-            
+            headerDiv.appendChild(shiftsContainer);
             div.appendChild(headerDiv);
 
-            // RENDEROWANIE POCIĄGÓW (USER)
+            // RENDEROWANIE POCIĄGÓW
             if (userSchedule[dateStr]) {
                 userSchedule[dateStr].forEach(entry => {
                     const train = trainsData.find(t => t.id == entry.trainId);
@@ -684,7 +712,7 @@
         renderCalendar();
     }
 
-    // --- MODAL, EDYCJA, PERSISTENCE ---
+    // --- MODAL ---
     let selectedDate = null;
 
     function openDayModal(dateStr) {
@@ -708,7 +736,6 @@
         const endSelect = document.getElementById('endStation');
 
         if (!trainId) { container.style.display = 'none'; return; }
-
         const train = trainsData.find(t => t.id == trainId);
         if (!train || !train.route) { container.style.display = 'none'; return; }
 
@@ -740,12 +767,10 @@
         const tId = document.getElementById('trainSelect').value;
         const sSt = document.getElementById('startStation').value;
         const eSt = document.getElementById('endStation').value;
-
         if (!tId || !sSt || !eSt) return alert("Uzupełnij dane!");
 
         if (!userSchedule[selectedDate]) userSchedule[selectedDate] = [];
         userSchedule[selectedDate].push({ trainId: tId, from: sSt, to: eSt });
-
         saveLocalStorage();
         renderExistingTrainsList();
         renderCalendar();
@@ -798,41 +823,23 @@
         Object.keys(userSchedule).forEach(dateStr => {
             userSchedule[dateStr].forEach(entry => {
                 const train = trainsData.find(t => t.id == entry.trainId);
-                if (!train) return;
+                if (!train || !train.route || !train.route.segments) return;
                 
-                // Prosta logika znajdowania segmentów
-                // Zakładamy, że segments są w kolejności. Bierzemy wszystko między from i to.
-                if(train.route && train.route.segments) {
-                    let capturing = false;
-                    let foundAny = false;
-                    
-                    // Bezpieczniejsza metoda "przejścia" przez trasę
-                    for(let seg of train.route.segments) {
-                        // Sprawdź czy to start
-                        if (seg.from === entry.from) capturing = true;
-                        
-                        if (capturing) {
-                            matchAndSave(seg, dateStr);
-                            foundAny = true;
-                        }
-                        
-                        // Sprawdź czy to koniec (już po przetworzeniu segmentu, bo segment A->B kończy się na B)
-                        if (seg.to === entry.to) {
-                            capturing = false;
-                            break; // Koniec trasy użytkownika
-                        }
+                let capturing = false;
+                for(let seg of train.route.segments) {
+                    if (seg.from === entry.from) capturing = true;
+                    if (capturing) {
+                        matchAndSave(seg, dateStr);
                     }
-                    
-                    // Fallback: Jeśli trasa była jednosegmentowa lub coś nie pykło z nazwami, spróbuj znaleźć pojedyncze dopasowania
-                    if (!foundAny) {
-                       // Opcjonalnie: loguj błąd
+                    if (seg.to === entry.to) {
+                        capturing = false;
+                        break;
                     }
                 }
             });
         });
 
         function matchAndSave(seg, date) {
-            // Szukamy w Master
             const norm = s => s ? s.toLowerCase().trim() : "";
             const tF = norm(seg.from);
             const tT = norm(seg.to);
@@ -840,8 +847,10 @@
             const match = masterSzlakiData.find(m => {
                 const mF = norm(m.start);
                 const mT = norm(m.end);
+                // Sprawdź oba kierunki
                 const wayOK = (mF === tF && mT === tT) || (mF === tT && mT === tF);
                 if(!wayOK) return false;
+                // Sprawdź VIA
                 if(m.via && m.via !== "-") {
                     const mV = norm(m.via);
                     const tV = norm(seg.via);
