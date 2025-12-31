@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Karta Znajomości Szlaków - Kontrolka v1.4</title>
+    <title>Karta Znajomości Szlaków - Kontrolka v1.5</title>
     
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-W05T4L1HFD"></script>
     <script>
@@ -16,11 +16,12 @@
     <style>
         :root {
             --primary-color: #0056b3;
-            --accent-color: #ffc107; /* Żółty dla służb */
-            --night-color: #2c3e50;  /* Ciemny dla nocek */
-            --bg-color: #f8f9fa;
+            --secondary-color: #6c757d;
+            --accent-color: #ffc107;
+            --success-color: #28a745;
+            --bg-color: #f4f6f8;
             --text-color: #333;
-            --border-color: #dee2e6;
+            --paper-bg: #fff;
         }
 
         body {
@@ -30,918 +31,937 @@
             background-color: var(--bg-color);
             color: var(--text-color);
             line-height: 1.5;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
         }
 
         header {
             background-color: var(--primary-color);
             color: white;
-            padding: 1rem;
+            padding: 0.8rem;
             text-align: center;
+            flex-shrink: 0;
         }
 
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
+        /* --- LAYOUT GŁÓWNY (SPLIT VIEW) --- */
+        .main-wrapper {
+            display: flex;
+            flex: 1;
+            overflow: hidden; /* Scrollujemy tylko kolumny */
+            gap: 20px;
             padding: 20px;
+            max-width: 1600px;
+            margin: 0 auto;
+            width: 100%;
+            box-sizing: border-box;
         }
 
-        /* --- AWARYJNE ŁADOWANIE --- */
-        #fallback-upload {
-            display: none;
-            background-color: white;
-            border: 2px dashed var(--primary-color);
-            padding: 30px;
-            text-align: center;
-            margin-bottom: 20px;
-            border-radius: 8px;
+        .column-left {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+            padding-right: 10px;
         }
-        
-        #fallback-upload h3 { margin-top: 0; color: var(--primary-color); }
-        .file-input-group { margin: 15px 0; }
+
+        .column-right {
+            flex: 0 0 50%; /* Prawa kolumna zajmuje połowę (dla podglądu A4) */
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+            align-items: center;
+            background: #e9ecef;
+            border-radius: 8px;
+            padding: 20px;
+            border: 1px solid #dee2e6;
+        }
+
+        /* Responsywność dla małych ekranów */
+        @media (max-width: 1024px) {
+            .main-wrapper { flex-direction: column; overflow: auto; }
+            .column-right { flex: auto; width: 100%; }
+        }
+
+        /* --- UI COMPONENTS --- */
+        .panel {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            margin-bottom: 20px;
+        }
+
+        .btn {
+            padding: 8px 14px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.9rem;
+            transition: opacity 0.2s;
+            margin-right: 5px;
+            margin-bottom: 5px;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .btn:hover { opacity: 0.9; }
+
+        .btn-primary { background-color: var(--primary-color); color: white; }
+        .btn-secondary { background-color: var(--secondary-color); color: white; }
+        .btn-warning { background-color: var(--accent-color); color: #000; }
+        .btn-success { background-color: var(--success-color); color: white; }
+        .btn-danger { background-color: #dc3545; color: white; }
+
+        input, select {
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            width: 100%;
+            box-sizing: border-box;
+        }
 
         /* --- KALENDARZ --- */
         .calendar-controls {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            flex-wrap: wrap;
-            gap: 10px;
-            margin-bottom: 20px;
-            background: white;
-            padding: 15px;
-            border-radius: 8px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            margin-bottom: 15px;
         }
-
-        .month-display {
-            font-size: 1.5rem;
-            font-weight: bold;
-            min-width: 200px;
-            text-align: center;
-        }
+        .month-title { font-size: 1.3rem; font-weight: bold; }
 
         .calendar-grid {
             display: grid;
             grid-template-columns: repeat(7, 1fr);
-            gap: 4px;
-            background: white;
-            padding: 10px;
-            border-radius: 8px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-            margin-bottom: 30px;
+            gap: 2px;
+            background: #dee2e6;
+            border: 1px solid #dee2e6;
         }
 
-        .calendar-day-header {
+        .calendar-header {
+            background: #e9ecef;
             text-align: center;
+            padding: 5px;
             font-weight: bold;
-            padding: 10px;
-            background-color: #e9ecef;
-            font-size: 0.9rem;
+            font-size: 0.8rem;
         }
 
         .calendar-day {
-            min-height: 100px;
-            border: 1px solid var(--border-color);
-            padding: 5px;
+            background: white;
+            min-height: 80px;
+            padding: 4px;
             cursor: pointer;
             position: relative;
-            background: white;
-            transition: background 0.2s;
-            display: flex;
-            flex-direction: column;
+            font-size: 0.85rem;
         }
+        .calendar-day:hover { background-color: #f8f9fa; }
+        .calendar-day.empty { background: #f4f4f4; cursor: default; }
 
-        .calendar-day:hover {
-            background-color: #f1f8ff;
-        }
-
-        .calendar-day.empty {
-            background-color: transparent;
-            border: none;
-            cursor: default;
-        }
-
-        .day-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            margin-bottom: 5px;
-            flex-wrap: wrap;
-            gap: 2px;
-        }
-
-        .day-number {
-            font-weight: bold;
-            font-size: 1.1rem;
-            margin-right: 5px;
-        }
-
-        /* Stylizacja Służb (ICS) */
-        .shifts-container {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 2px;
-            justify-content: flex-end;
-            flex-grow: 1;
-        }
-
-        .shift-badge {
-            background-color: var(--accent-color);
-            color: #000;
-            font-size: 0.75rem;
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-weight: bold;
-            display: inline-flex;
-            align-items: center;
-            gap: 3px;
-            cursor: help;
-            border: 1px solid #e0a800;
-        }
-
-        .shift-badge.overnight {
-            background-color: var(--night-color);
-            color: #fff;
-            border-color: #1a252f;
-        }
-
-        .train-badge {
-            background-color: var(--primary-color);
-            color: white;
-            font-size: 0.7rem;
+        .day-num { font-weight: bold; margin-bottom: 2px; display: block; }
+        
+        .badge {
+            display: inline-block;
             padding: 2px 4px;
             border-radius: 3px;
+            font-size: 0.7rem;
             margin-bottom: 2px;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
+            max-width: 100%;
         }
+        .badge-shift { background-color: var(--accent-color); color: black; }
+        .badge-shift.night { background-color: #343a40; color: white; }
+        .badge-train { background-color: var(--primary-color); color: white; }
 
-        /* --- TABELA WYNIKOWA --- */
-        .report-section {
+        /* --- PODGLĄD A4 (PREVIEW) --- */
+        .a4-page {
+            width: 210mm;
+            min-height: 297mm;
             background: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            box-shadow: 0 0 10px rgba(0,0,0,0.2);
+            padding: 10mm;
+            box-sizing: border-box;
+            font-family: 'Arial', sans-serif;
+            color: black;
+            font-size: 9pt; /* Podgląd taki jak druk */
+            position: relative;
         }
 
-        table.report-table {
+        .preview-header {
+            text-align: center;
+            border-bottom: 2px solid black;
+            margin-bottom: 10px;
+            padding-bottom: 5px;
+        }
+        .preview-header h2 { margin: 0; text-transform: uppercase; font-size: 14pt; }
+
+        table.preview-table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 20px;
-            font-size: 0.9rem;
         }
-
-        table.report-table th, table.report-table td {
+        table.preview-table th, table.preview-table td {
             border: 1px solid black;
-            padding: 6px;
-            text-align: left;
+            padding: 2px 4px;
+            font-size: 8pt;
         }
+        table.preview-table th { background-color: #eee; }
 
-        table.report-table th {
-            background-color: #e9ecef;
-        }
-        
-        table.report-table tr:nth-child(even) {
-            background-color: #fcfcfc;
-        }
-
-        /* --- MODAL --- */
+        /* --- MODALE --- */
         .modal {
             display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0,0,0,0.5);
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5);
             z-index: 1000;
-            justify-content: center;
-            align-items: center;
+            justify-content: center; align-items: center;
         }
-
         .modal-content {
-            background-color: white;
-            padding: 25px;
-            border-radius: 8px;
-            width: 90%;
-            max-width: 500px;
-            max-height: 90vh;
-            overflow-y: auto;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            background: white; padding: 25px; border-radius: 8px;
+            width: 90%; max-width: 500px;
+            max-height: 90vh; overflow-y: auto;
+        }
+        
+        /* Styl dla filtra pociągów */
+        .train-filter-container {
+            position: relative;
+            margin-bottom: 10px;
+        }
+        #trainSearchInput {
+            padding-left: 30px; /* Miejsce na ikonę */
+        }
+        .search-icon {
+            position: absolute; left: 8px; top: 8px; color: #888;
         }
 
-        .form-group {
-            margin-bottom: 15px;
+        /* Lista budowania trasy custom */
+        .route-builder-list {
+            list-style: none; padding: 0; margin: 10px 0;
+            border: 1px solid #ddd; border-radius: 4px;
+            max-height: 150px; overflow-y: auto;
         }
-
-        .form-group label {
-            display: block;
-            margin-bottom: 5px;
-            font-weight: bold;
-        }
-
-        .form-group select, .form-group input {
-            width: 100%;
-            padding: 8px;
-            border: 1px solid var(--border-color);
-            border-radius: 4px;
-        }
-
-        .btn {
-            padding: 8px 16px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-weight: bold;
-            margin-right: 5px;
+        .route-builder-list li {
+            padding: 5px 10px; border-bottom: 1px solid #eee;
+            display: flex; justify-content: space-between; align-items: center;
             font-size: 0.9rem;
         }
+        .route-builder-list li:last-child { border-bottom: none; }
 
-        .btn-primary { background-color: var(--primary-color); color: white; }
-        .btn-warning { background-color: var(--accent-color); color: #000; }
-        .btn-danger { background-color: #dc3545; color: white; }
-        .btn-secondary { background-color: #6c757d; color: white; }
-
-        .train-list-item {
-            background: #f8f9fa;
-            border: 1px solid var(--border-color);
-            padding: 10px;
-            margin-bottom: 5px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-radius: 4px;
-        }
-
-        footer {
-            margin-top: 40px;
-            text-align: center;
-            padding: 20px;
-            border-top: 1px solid var(--border-color);
-            font-size: 0.8rem;
-            color: #666;
-        }
-
-        /* --- DRUKOWANIE (ULTRA COMPACT MODE) --- */
+        /* --- PRINT --- */
         @media print {
-            @page {
-                size: A4;
-                margin: 0.5cm 0.8cm; /* Bardzo małe marginesy: Góra/Dół, Lewo/Prawo */
+            body { display: block; height: auto; background: white; }
+            .column-left, header, footer, .no-print { display: none !important; }
+            .main-wrapper { display: block; padding: 0; margin: 0; }
+            .column-right { 
+                display: block; width: 100%; margin: 0; padding: 0; border: none; 
+                background: white; overflow: visible;
             }
-
-            body { 
-                background: white; 
-                -webkit-print-color-adjust: exact; 
-                font-family: 'Arial', sans-serif;
-                color: black;
+            .a4-page {
+                box-shadow: none; margin: 0; padding: 0; width: 100%; min-height: auto;
             }
-
-            /* Ukrywamy UI aplikacji */
-            header, .calendar-controls, .calendar-grid, footer, .no-print, #fallback-upload, .modal {
-                display: none !important;
-            }
-            
-            .container { width: 100%; max-width: none; padding: 0; margin: 0; }
-            .report-section { box-shadow: none; padding: 0; border: none; margin: 0; }
-            
-            /* Tytuł raportu */
-            h2 { 
-                margin: 0 0 5px 0; 
-                font-size: 12pt; 
-                text-align: center; 
-                text-transform: uppercase;
-                border-bottom: 1px solid #000;
-                padding-bottom: 5px;
-            }
-            
-            /* Tabela skompresowana */
-            table.report-table {
-                font-size: 8pt; /* Mała czcionka = klucz do sukcesu */
-                width: 100%;
-                border-collapse: collapse;
-                border-spacing: 0;
-            }
-            
-            table.report-table th, table.report-table td {
-                padding: 1px 3px;
-                border: 1px solid #000;
-                line-height: 1.1; /* Mała interlinia */
-            }
-
-            table.report-table th {
-                background-color: #eee !important;
-                font-weight: bold;
-            }
-
-            /* Ustawienia szerokości kolumn */
-            table.report-table th:nth-child(1) { width: 25px; text-align: center; } /* LP */
-            table.report-table th:nth-child(5) { width: 70px; text-align: center; } /* Data */
-
-            /* Zapobieganie łamaniu wewnątrz wiersza */
-            tr { page-break-inside: avoid; }
-            
-            /* Nagłówek tabeli na każdej stronie */
-            thead { display: table-header-group; }
-            
-            /* Stopka wydruku (tylko na druku) */
-            .print-footer {
-                display: block;
-                position: fixed;
-                bottom: 0;
-                width: 100%;
-                text-align: center;
-                font-size: 6pt;
-                color: #555;
-                border-top: 1px solid #ccc;
-            }
+            @page { size: A4; margin: 1cm; }
         }
     </style>
 </head>
 <body>
 
-<header>
-    <h1>Karta Znajomości Szlaków</h1>
-    <p>Generator Podsumowania Miesiąca</p>
+<header class="no-print">
+    <h1>Karta Znajomości Szlaków v1.5</h1>
 </header>
 
-<div class="container">
-
-    <div id="fallback-upload">
-        <h3>⚠️ Nie znaleziono plików danych</h3>
-        <p>Aplikacja nie mogła automatycznie pobrać plików `trains.json` i `szlaki_master.json`.<br>Załaduj je ręcznie poniżej:</p>
+<div class="main-wrapper">
+    
+    <div class="column-left">
         
-        <div class="file-input-group">
-            <label>Plik <strong>trains.json</strong>:</label><br>
-            <input type="file" id="manualTrainsFile" accept=".json">
+        <div class="panel">
+            <div style="display:flex; flex-wrap:wrap; gap:5px; margin-bottom:10px;">
+                <input type="file" id="icsFileInput" accept=".ics" style="display: none;" onchange="handleIcsUpload(this)">
+                <button class="btn btn-warning" onclick="document.getElementById('icsFileInput').click()">📅 Importuj Grafik (ICS)</button>
+                
+                <button class="btn btn-success" onclick="openCustomTrainModal()">➕ Stwórz własny pociąg</button>
+                
+                <button class="btn btn-secondary" onclick="exportData()">💾 Kopia (Backup)</button>
+                <input type="file" id="backupInput" accept=".json" style="display:none;" onchange="importData(this)">
+                <button class="btn btn-secondary" onclick="document.getElementById('backupInput').click()">📂 Wczytaj</button>
+            </div>
+            
+            <div style="display:flex; flex-wrap:wrap; gap:5px;">
+                <button class="btn btn-primary" onclick="window.print()">🖨️ Drukuj Raport</button>
+                <button class="btn btn-danger" onclick="clearData()">🗑️ Reset</button>
+            </div>
         </div>
-        <div class="file-input-group">
-            <label>Plik <strong>szlaki_master.json</strong>:</label><br>
-            <input type="file" id="manualSzlakiFile" accept=".json">
+
+        <div class="panel">
+            <div class="calendar-controls">
+                <button class="btn btn-secondary" onclick="changeMonth(-1)">◀</button>
+                <span class="month-title" id="monthDisplay">Styczeń 2026</span>
+                <button class="btn btn-secondary" onclick="changeMonth(1)">▶</button>
+            </div>
+            <div class="calendar-grid" id="calendarGrid"></div>
         </div>
-        <button class="btn btn-primary" onclick="processManualFiles()">Wczytaj pliki i uruchom</button>
+
+        <div id="fallback-upload" class="panel" style="display:none; border:2px dashed red;">
+            <h3>⚠️ Brak plików danych</h3>
+            <p>Wgraj pliki ręcznie:</p>
+            <input type="file" id="manualTrainsFile" accept=".json"><br><br>
+            <input type="file" id="manualSzlakiFile" accept=".json"><br><br>
+            <button class="btn btn-primary" onclick="processManualFiles()">Start</button>
+        </div>
     </div>
 
-    <div class="calendar-controls">
-        <div>
-            <button class="btn btn-secondary" onclick="changeMonth(-1)">◀ Poprzedni</button>
-            <span class="month-display" id="monthDisplay">Styczeń 2026</span>
-            <button class="btn btn-secondary" onclick="changeMonth(1)">Następny ▶</button>
+    <div class="column-right">
+        <div class="no-print" style="margin-bottom:10px; color:#666; font-size:0.9rem;">
+            👁️ Podgląd wydruku (Aktualizowany na żywo)
         </div>
         
-        <div>
-            <input type="file" id="icsFileInput" accept=".ics" style="display: none;" onchange="handleIcsUpload(this)">
-            <button class="btn btn-warning no-print" onclick="document.getElementById('icsFileInput').click()">📅 Importuj Grafik (ICS)</button>
-            <button class="btn btn-primary no-print" onclick="window.print()">🖨️ Drukuj Kartę</button>
-            <button class="btn btn-danger no-print" onclick="clearData()">🗑️ Reset</button>
+        <div class="a4-page">
+            <div class="preview-header">
+                <h2>Wykaz znajomości szlaków</h2>
+                <p style="margin:5px 0 0 0; font-size:10pt;">Podsumowanie miesiąca</p>
+            </div>
+            <table class="preview-table" id="reportTable">
+                <thead>
+                    <tr>
+                        <th style="width:30px">LP</th>
+                        <th>Od</th>
+                        <th>Do</th>
+                        <th>Przez</th>
+                        <th style="width:80px">Data</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+            
+            <div style="margin-top:20px; text-align:right; font-size:10pt;">
+                .......................................................<br>
+                (Podpis pracownika)
+            </div>
         </div>
     </div>
-
-    <div class="calendar-grid" id="calendarGrid">
-        </div>
-
-    <div class="report-section">
-        <h2>Wykaz znajomości szlaków</h2>
-        <table class="report-table" id="reportTable">
-            <thead>
-                <tr>
-                    <th>LP</th>
-                    <th>Od</th>
-                    <th>Do</th>
-                    <th>Przez</th>
-                    <th>Data</th>
-                </tr>
-            </thead>
-            <tbody>
-                </tbody>
-        </table>
-    </div>
-</div>
-
-<div class="print-footer" style="display:none;">
-    Wygenerowano aplikacją: Karta Znajomości Szlaków v1.4 | Autorzy: Gemini & Piotr M 🚂
 </div>
 
 <div class="modal" id="dayModal">
     <div class="modal-content">
         <h3 id="modalDateTitle">Edycja dnia</h3>
-        
-        <div id="existingTrainsList">
-            </div>
-
-        <hr style="margin: 20px 0; border-top: 1px solid #eee;">
-        
+        <div id="existingTrainsList" style="margin-bottom:15px;"></div>
+        <hr>
         <h4>Dodaj pociąg</h4>
+        
+        <div class="train-filter-container">
+            <span class="search-icon">🔍</span>
+            <input type="text" id="trainSearchInput" placeholder="Wpisz numer pociągu..." onkeyup="filterTrainList()">
+        </div>
+        
         <div class="form-group">
-            <label for="trainSelect">Wybierz pociąg:</label>
-            <select id="trainSelect" onchange="updateStationSelectors()">
-                <option value="">-- Wybierz pociąg --</option>
-            </select>
+            <select id="trainSelect" size="5" style="height: 100px;" onchange="updateStationSelectors()">
+                </select>
         </div>
 
-        <div class="form-group" id="routeSelectorContainer" style="display:none;">
-            <label for="startStation">Odcinek od:</label>
-            <select id="startStation"></select>
-            
-            <label for="endStation" style="margin-top:10px;">Odcinek do:</label>
-            <select id="endStation"></select>
+        <div class="form-group" id="routeSelectorContainer" style="display:none; margin-top:15px;">
+            <label>Odcinek (Twoja zmiana):</label>
+            <div style="display:flex; gap:10px;">
+                <div style="flex:1">
+                    <small>Od:</small>
+                    <select id="startStation"></select>
+                </div>
+                <div style="flex:1">
+                    <small>Do:</small>
+                    <select id="endStation"></select>
+                </div>
+            </div>
         </div>
 
         <div style="text-align: right; margin-top: 20px;">
-            <button class="btn btn-secondary" onclick="closeModal()">Zamknij</button>
+            <button class="btn btn-secondary" onclick="closeModal('dayModal')">Anuluj</button>
             <button class="btn btn-primary" onclick="addTrainToDay()">Zapisz</button>
         </div>
     </div>
 </div>
 
-<footer>
-    <p>Współautorzy: Gemini & Piotr M 🚂</p>
-    <p>Wersja aplikacji: v1.4</p>
+<div class="modal" id="customTrainModal">
+    <div class="modal-content">
+        <h3>Stwórz własny pociąg</h3>
+        <p style="font-size:0.85rem; color:#666;">Zdefiniuj pociąg, jeśli nie ma go w bazie presetów.</p>
+
+        <label>Numer pociągu:</label>
+        <input type="text" id="customTrainNumber" placeholder="np. 99999">
+        
+        <div style="margin-top:15px;">
+            <label>Budowanie trasy (dodawaj stacje po kolei):</label>
+            <div style="display:flex; gap:5px;">
+                <input type="text" id="customStationInput" list="masterStationsList" placeholder="Nazwa stacji...">
+                <datalist id="masterStationsList"></datalist>
+                <button class="btn btn-success" onclick="addStationToBuilder()">➕</button>
+            </div>
+        </div>
+
+        <ul id="customRouteList" class="route-builder-list">
+            </ul>
+        <div id="customRouteError" style="color:red; font-size:0.8rem; display:none;">Dodaj min. 2 stacje!</div>
+
+        <div style="text-align: right; margin-top: 20px;">
+            <button class="btn btn-secondary" onclick="closeModal('customTrainModal')">Anuluj</button>
+            <button class="btn btn-primary" onclick="saveCustomTrain()">Zapisz Pociąg</button>
+        </div>
+    </div>
+</div>
+
+<footer class="no-print" style="text-align:center; padding:10px; font-size:0.8rem; color:#666;">
+    Wersja aplikacji: v1.5 | Współautorzy: Gemini & Piotr M 🚂
 </footer>
 
 <script>
-    // --- ZMIENNE GLOBALNE ---
+    // --- STAN APLIKACJI ---
     let currentDate = new Date();
-    let trainsData = [];
+    let trainsData = []; // Baza pociągów (Original + Custom)
+    let originalTrainsData = []; // Tylko te z JSON
     let masterSzlakiData = [];
-    
-    let userSchedule = {}; 
-    let importedShifts = {}; // { date: [ {summary, isOvernight, timeInfo} ] }
+    let uniqueStations = new Set(); // Do podpowiedzi
 
-    // --- INICJALIZACJA ---
+    let userSchedule = {}; 
+    let importedShifts = {};
+    let customTrains = []; // Zapisane przez użytkownika
+
+    // --- START ---
     document.addEventListener('DOMContentLoaded', async () => {
         loadLocalStorage();
         await attemptAutoLoad();
     });
 
-    // --- ŁADOWANIE PLIKÓW ---
+    // --- ŁADOWANIE DANYCH ---
     async function attemptAutoLoad() {
         try {
-            const [trainsRes, masterRes] = await Promise.all([
-                fetch('./trains.json'),
-                fetch('./szlaki_master.json')
-            ]);
-            if (!trainsRes.ok || !masterRes.ok) throw new Error("Błąd sieci");
-
-            trainsData = await trainsRes.json();
-            masterSzlakiData = await masterRes.json();
-            initializeApp();
-        } catch (error) {
-            console.warn("Autoload fail:", error);
+            const [tRes, mRes] = await Promise.all([ fetch('./trains.json'), fetch('./szlaki_master.json') ]);
+            if (!tRes.ok || !mRes.ok) throw new Error();
+            
+            originalTrainsData = await tRes.json();
+            masterSzlakiData = await mRes.json();
+            
+            initDataProcessing();
+        } catch (e) {
             document.getElementById('fallback-upload').style.display = 'block';
-            document.querySelector('.calendar-controls').style.display = 'none';
-            document.querySelector('.calendar-grid').style.display = 'none';
-            document.querySelector('.report-section').style.display = 'none';
         }
     }
 
     function processManualFiles() {
         const tFile = document.getElementById('manualTrainsFile').files[0];
         const mFile = document.getElementById('manualSzlakiFile').files[0];
-        if (!tFile || !mFile) return alert("Wybierz oba pliki!");
-
-        const rT = new FileReader();
-        const rM = new FileReader();
-        let tOk = false, mOk = false;
-
-        rT.onload = (e) => { trainsData = JSON.parse(e.target.result); tOk = true; check(); };
-        rM.onload = (e) => { masterSzlakiData = JSON.parse(e.target.result); mOk = true; check(); };
-
-        rT.readAsText(tFile);
-        rM.readAsText(mFile);
-
-        function check() {
-            if (tOk && mOk) {
-                document.getElementById('fallback-upload').style.display = 'none';
-                document.querySelector('.calendar-controls').style.display = 'flex';
-                document.querySelector('.calendar-grid').style.display = 'grid';
-                document.querySelector('.report-section').style.display = 'block';
-                initializeApp();
-            }
-        }
+        if(!tFile || !mFile) return alert("Wybierz pliki!");
+        
+        const r1 = new FileReader(); r1.onload = e => { originalTrainsData = JSON.parse(e.target.result); check(); };
+        const r2 = new FileReader(); r2.onload = e => { masterSzlakiData = JSON.parse(e.target.result); check(); };
+        
+        let loaded = 0;
+        const check = () => { if(++loaded===2) { document.getElementById('fallback-upload').style.display='none'; initDataProcessing(); }};
+        
+        r1.readAsText(tFile); r2.readAsText(mFile);
     }
 
-    function initializeApp() {
-        populateTrainSelect();
+    function initDataProcessing() {
+        // Scalanie Custom Trains z Original
+        mergeTrains();
+        
+        // Generowanie listy stacji do podpowiedzi
+        masterSzlakiData.forEach(m => {
+            uniqueStations.add(m.start);
+            uniqueStations.add(m.end);
+        });
+        const dataList = document.getElementById('masterStationsList');
+        dataList.innerHTML = '';
+        [...uniqueStations].sort().forEach(st => {
+            const opt = document.createElement('option');
+            opt.value = st;
+            dataList.appendChild(opt);
+        });
+
+        populateTrainList(); // Wypełnij listę wyboru
         renderCalendar();
         generateReport();
     }
 
-    // --- OBSŁUGA ICS (FIXED v1.4) ---
-    function handleIcsUpload(input) {
-        const file = input.files[0];
-        if (!file) return;
-
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            try {
-                parseICS(e.target.result);
-                saveLocalStorage();
-                renderCalendar();
-                alert("Grafik zaimportowany poprawnie!");
-            } catch (err) {
-                console.error(err);
-                alert("Błąd pliku ICS: " + err.message);
-            }
-        };
-        reader.readAsText(file);
-        input.value = '';
+    function mergeTrains() {
+        // trainsData to baza z pliku + baza usera
+        trainsData = [...originalTrainsData, ...customTrains];
     }
 
-    function parseICS(content) {
-        // Resetujemy grafiki przy imporcie (lub można zrobić merge)
-        importedShifts = {}; 
-
-        // Normalizacja końca linii
-        const lines = content.replace(/\r\n/g, "\n").split("\n");
-        
-        let inEvent = false;
-        let eventData = {};
-        
-        for (let i = 0; i < lines.length; i++) {
-            const line = lines[i].trim();
-            
-            if (line === "BEGIN:VEVENT") {
-                inEvent = true;
-                eventData = {};
-                continue;
-            }
-            
-            if (line === "END:VEVENT") {
-                inEvent = false;
-                if (eventData.summary && eventData.dtstart) {
-                    processEvent(eventData);
-                }
-                continue;
-            }
-            
-            if (inEvent) {
-                if (line.startsWith("SUMMARY:")) eventData.summary = line.substring(8);
-                // Obsługa dat z parametrami, np. DTSTART;VALUE=DATE:20251213
-                else if (line.startsWith("DTSTART")) {
-                    const parts = line.split(":");
-                    eventData.dtstart = parts[parts.length - 1]; // wartość po ostatnim dwukropku
-                    if (line.includes("VALUE=DATE")) eventData.isAllDay = true;
-                }
-                else if (line.startsWith("DTEND")) {
-                    const parts = line.split(":");
-                    eventData.dtend = parts[parts.length - 1];
-                }
-            }
-        }
-    }
-
-    function processEvent(data) {
-        const parse = (str) => {
-            if (!str) return null;
-            // Format YYYYMMDD lub YYYYMMDDTHHMMSS
-            const y = parseInt(str.substring(0,4));
-            const m = parseInt(str.substring(4,6)) - 1;
-            const d = parseInt(str.substring(6,8));
-            
-            if (str.includes("T")) {
-                const t = str.split("T")[1];
-                return new Date(y, m, d, parseInt(t.substring(0,2)), parseInt(t.substring(2,4)));
-            }
-            return new Date(y, m, d);
-        };
-
-        const start = parse(data.dtstart);
-        let end = parse(data.dtend);
-        
-        if (!start) return;
-
-        // Logika dla VALUE=DATE (wydarzenia całodniowe)
-        if (data.isAllDay) {
-            // W ICS data końca dla all-day jest exclusive (+1 dzień).
-            // Np. Start: 13, End: 14 -> to jest tylko 13-ty.
-            // Ignorujemy datę End dla wyświetlania na kalendarzu, traktujemy jako zdarzenie w dniu Start.
-            // Jeśli różnica dni > 1, to wtedy wielodniowe.
-            const dateKey = formatDateKey(start);
-            addToShifts(dateKey, data.summary, false, "");
-            return;
-        }
-
-        // Logika dla wydarzeń czasowych (T...)
-        const dateKey = formatDateKey(start);
-        let isOvernight = false;
-        let timeInfo = "";
-
-        if (end) {
-            // Sprawdzenie nocki
-            if (start.getDate() !== end.getDate()) {
-                isOvernight = true;
-            }
-            const opts = {hour:'2-digit', minute:'2-digit'};
-            timeInfo = `${start.toLocaleTimeString([], opts)} - ${end.toLocaleTimeString([], opts)}`;
-        }
-
-        addToShifts(dateKey, data.summary, isOvernight, timeInfo);
-    }
-
-    function addToShifts(dateKey, summary, isOvernight, timeInfo) {
-        if (!importedShifts[dateKey]) importedShifts[dateKey] = [];
-        
-        // Unikaj duplikatów
-        const exists = importedShifts[dateKey].some(s => s.summary === summary);
-        if (!exists) {
-            importedShifts[dateKey].push({
-                summary: summary,
-                isOvernight: isOvernight,
-                timeInfo: timeInfo
-            });
-        }
-    }
-
-    function formatDateKey(dateObj) {
-        const y = dateObj.getFullYear();
-        const m = String(dateObj.getMonth() + 1).padStart(2, '0');
-        const d = String(dateObj.getDate()).padStart(2, '0');
-        return `${y}-${m}-${d}`;
-    }
-
-    // --- KALENDARZ UI ---
+    // --- UI KALENDARZA ---
     function renderCalendar() {
         const grid = document.getElementById('calendarGrid');
-        const display = document.getElementById('monthDisplay');
         grid.innerHTML = '';
+        
+        // Nagłówki
+        const days = ["Pon","Wt","Śr","Czw","Pt","Sob","Nd"];
+        days.forEach(d => {
+            const h = document.createElement('div');
+            h.className = 'calendar-header';
+            h.textContent = d;
+            grid.appendChild(h);
+        });
 
         const year = currentDate.getFullYear();
         const month = currentDate.getMonth();
-        const monthNames = ["Styczeń", "Luty", "Marzec", "Kwiecień", "Maj", "Czerwiec", "Lipiec", "Sierpień", "Wrzesień", "Październik", "Listopad", "Grudzień"];
-        display.textContent = `${monthNames[month]} ${year}`;
+        document.getElementById('monthDisplay').textContent = 
+            currentDate.toLocaleDateString('pl-PL', { month: 'long', year: 'numeric' });
 
-        const firstDayOfMonth = new Date(year, month, 1).getDay();
-        const daysInMonth = new Date(year, month + 1, 0).getDate();
-        
-        const daysOfWeek = ["Pon", "Wt", "Śr", "Czw", "Pt", "Sob", "Nd"];
-        daysOfWeek.forEach(day => {
-            const div = document.createElement('div');
-            div.className = 'calendar-day-header';
-            div.textContent = day;
-            grid.appendChild(div);
-        });
+        const firstDay = new Date(year, month, 1).getDay() || 7; 
+        const totalDays = new Date(year, month + 1, 0).getDate();
 
-        let startDay = firstDayOfMonth === 0 ? 7 : firstDayOfMonth;
-        
-        for (let i = 1; i < startDay; i++) {
-            const div = document.createElement('div');
-            div.className = 'calendar-day empty';
-            grid.appendChild(div);
+        // Puste
+        for(let i=1; i<firstDay; i++) {
+            const d = document.createElement('div'); d.className='calendar-day empty'; grid.appendChild(d);
         }
 
-        for (let day = 1; day <= daysInMonth; day++) {
-            const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-            const div = document.createElement('div');
-            div.className = 'calendar-day';
-            div.onclick = () => openDayModal(dateStr);
+        // Dni
+        for(let i=1; i<=totalDays; i++) {
+            const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(i).padStart(2,'0')}`;
+            const cell = document.createElement('div');
+            cell.className = 'calendar-day';
+            cell.onclick = () => openDayModal(dateStr);
 
-            const headerDiv = document.createElement('div');
-            headerDiv.className = 'day-header';
-            
-            const numSpan = document.createElement('span');
-            numSpan.className = 'day-number';
-            numSpan.textContent = day;
-            headerDiv.appendChild(numSpan);
+            // Numer
+            const num = document.createElement('span');
+            num.className = 'day-num';
+            num.textContent = i;
+            cell.appendChild(num);
 
-            // RENDEROWANIE SŁUŻB (ICS)
-            const shiftsContainer = document.createElement('div');
-            shiftsContainer.className = 'shifts-container';
-
-            if (importedShifts[dateStr]) {
-                const shifts = importedShifts[dateStr];
-                shifts.forEach(shift => {
-                    const badge = document.createElement('span');
-                    badge.className = `shift-badge ${shift.isOvernight ? 'overnight' : ''}`;
-                    let content = shift.summary;
-                    if (shift.isOvernight) content += ' 🌙';
-                    badge.textContent = content;
-                    if (shift.timeInfo) badge.title = shift.timeInfo;
-                    shiftsContainer.appendChild(badge);
+            // Służby (ICS)
+            if(importedShifts[dateStr]) {
+                importedShifts[dateStr].forEach(s => {
+                    const b = document.createElement('span');
+                    b.className = `badge badge-shift ${s.isOvernight?'night':''}`;
+                    b.textContent = s.summary + (s.isOvernight?' 🌙':'');
+                    b.title = s.timeInfo || '';
+                    cell.appendChild(b);
                 });
             }
-            headerDiv.appendChild(shiftsContainer);
-            div.appendChild(headerDiv);
 
-            // RENDEROWANIE POCIĄGÓW
-            if (userSchedule[dateStr]) {
+            // Pociągi (User)
+            if(userSchedule[dateStr]) {
                 userSchedule[dateStr].forEach(entry => {
-                    const train = trainsData.find(t => t.id == entry.trainId);
-                    if (train) {
-                        const badge = document.createElement('div');
-                        badge.className = 'train-badge';
-                        badge.textContent = `🚂 ${train.number}`;
-                        div.appendChild(badge);
-                    }
+                    const t = trainsData.find(x => x.id == entry.trainId);
+                    const b = document.createElement('div');
+                    b.className = 'badge badge-train';
+                    b.textContent = t ? `🚂 ${t.number}` : '???';
+                    cell.appendChild(b);
                 });
             }
-
-            grid.appendChild(div);
+            grid.appendChild(cell);
         }
     }
-
-    function changeMonth(offset) {
-        currentDate.setMonth(currentDate.getMonth() + offset);
+    
+    function changeMonth(delta) {
+        currentDate.setMonth(currentDate.getMonth() + delta);
         renderCalendar();
     }
 
-    // --- MODAL ---
+    // --- OBSŁUGA MODALA EDYCJI DNIA ---
     let selectedDate = null;
 
     function openDayModal(dateStr) {
         selectedDate = dateStr;
-        document.getElementById('modalDateTitle').textContent = `Edycja dnia: ${dateStr}`;
+        document.getElementById('modalDateTitle').textContent = "Edycja: " + dateStr;
         document.getElementById('dayModal').style.display = 'flex';
-        document.getElementById('trainSelect').value = "";
+        
+        // Reset formularza
+        document.getElementById('trainSearchInput').value = '';
+        filterTrainList(); // Pokaż wszystkie
+        document.getElementById('trainSelect').value = '';
         document.getElementById('routeSelectorContainer').style.display = 'none';
-        renderExistingTrainsList();
+
+        renderExistingTrains();
     }
 
-    function closeModal() {
-        document.getElementById('dayModal').style.display = 'none';
-        selectedDate = null;
+    function closeModal(id) {
+        document.getElementById(id).style.display = 'none';
+        if(id === 'dayModal') selectedDate = null;
     }
 
-    function updateStationSelectors() {
-        const trainId = document.getElementById('trainSelect').value;
-        const container = document.getElementById('routeSelectorContainer');
-        const startSelect = document.getElementById('startStation');
-        const endSelect = document.getElementById('endStation');
-
-        if (!trainId) { container.style.display = 'none'; return; }
-        const train = trainsData.find(t => t.id == trainId);
-        if (!train || !train.route) { container.style.display = 'none'; return; }
-
-        const stations = [];
-        if (train.route.start) stations.push(train.route.start);
-        if (train.route.segments) {
-            train.route.segments.forEach(seg => {
-                if (!stations.includes(seg.from)) stations.push(seg.from);
-                if (!stations.includes(seg.to)) stations.push(seg.to);
-            });
-        }
-
-        startSelect.innerHTML = '';
-        endSelect.innerHTML = '';
-        stations.forEach(st => {
-            const opt1 = document.createElement('option'); opt1.value = st; opt1.textContent = st; startSelect.appendChild(opt1);
-            const opt2 = document.createElement('option'); opt2.value = st; opt2.textContent = st; endSelect.appendChild(opt2);
-        });
-
-        if (stations.length > 0) {
-            startSelect.selectedIndex = 0;
-            endSelect.selectedIndex = stations.length - 1;
-        }
-        container.style.display = 'block';
-    }
-
-    function addTrainToDay() {
-        if (!selectedDate) return;
-        const tId = document.getElementById('trainSelect').value;
-        const sSt = document.getElementById('startStation').value;
-        const eSt = document.getElementById('endStation').value;
-        if (!tId || !sSt || !eSt) return alert("Uzupełnij dane!");
-
-        if (!userSchedule[selectedDate]) userSchedule[selectedDate] = [];
-        userSchedule[selectedDate].push({ trainId: tId, from: sSt, to: eSt });
-        saveLocalStorage();
-        renderExistingTrainsList();
-        renderCalendar();
-        generateReport();
-    }
-
-    function removeTrainFromDay(idx) {
-        if (!userSchedule[selectedDate]) return;
-        userSchedule[selectedDate].splice(idx, 1);
-        if (userSchedule[selectedDate].length === 0) delete userSchedule[selectedDate];
-        saveLocalStorage();
-        renderExistingTrainsList();
-        renderCalendar();
-        generateReport();
-    }
-
-    function renderExistingTrainsList() {
-        const container = document.getElementById('existingTrainsList');
-        container.innerHTML = '';
-        if (!userSchedule[selectedDate]) { container.innerHTML = '<p style="color:#888;">Brak pociągów.</p>'; return; }
-
-        userSchedule[selectedDate].forEach((entry, idx) => {
-            const train = trainsData.find(t => t.id == entry.trainId);
-            const div = document.createElement('div');
-            div.className = 'train-list-item';
-            div.innerHTML = `<div><strong>${train ? train.number : '???'}</strong> <small>${entry.from}➔${entry.to}</small></div><button class="btn btn-danger" onclick="removeTrainFromDay(${idx})">X</button>`;
-            container.appendChild(div);
-        });
-    }
-
-    function populateTrainSelect() {
-        const select = document.getElementById('trainSelect');
-        select.innerHTML = '<option value="">-- Wybierz pociąg --</option>';
-        if(!trainsData) return;
+    // --- LISTA POCIĄGÓW (SEARCHABLE) ---
+    function populateTrainList() {
+        const sel = document.getElementById('trainSelect');
+        sel.innerHTML = '';
+        
+        // Sortowanie
         trainsData.sort((a,b) => a.number.localeCompare(b.number));
+
         trainsData.forEach(t => {
             const opt = document.createElement('option');
             opt.value = t.id;
-            opt.textContent = `${t.number} ${t.name || ''}`;
-            select.appendChild(opt);
+            opt.textContent = `${t.number} ${t.name||''} ${t.isCustom?'(Własny)':''}`;
+            opt.dataset.search = `${t.number} ${t.name||''}`.toLowerCase(); // Do szukania
+            sel.appendChild(opt);
         });
     }
 
-    // --- RAPORT (ZAAWANSOWANE PAROWANIE) ---
+    function filterTrainList() {
+        const term = document.getElementById('trainSearchInput').value.toLowerCase();
+        const opts = document.getElementById('trainSelect').options;
+        for(let opt of opts) {
+            const txt = opt.dataset.search;
+            if(txt.includes(term)) opt.style.display = '';
+            else opt.style.display = 'none';
+        }
+    }
+
+    function updateStationSelectors() {
+        const tid = document.getElementById('trainSelect').value;
+        const div = document.getElementById('routeSelectorContainer');
+        const s1 = document.getElementById('startStation');
+        const s2 = document.getElementById('endStation');
+        
+        if(!tid) { div.style.display='none'; return; }
+        
+        const train = trainsData.find(t => t.id == tid);
+        if(!train || !train.route || !train.route.segments) { div.style.display='none'; return; }
+
+        // Zbieranie stacji w kolejności
+        const stops = [];
+        if(train.route.start) stops.push(train.route.start);
+        train.route.segments.forEach(seg => {
+            if(stops[stops.length-1] !== seg.from) stops.push(seg.from);
+            stops.push(seg.to);
+        });
+
+        s1.innerHTML = ''; s2.innerHTML = '';
+        stops.forEach(st => {
+            s1.add(new Option(st, st));
+            s2.add(new Option(st, st));
+        });
+
+        if(stops.length > 1) {
+            s1.selectedIndex = 0;
+            s2.selectedIndex = stops.length - 1;
+        }
+        div.style.display = 'block';
+    }
+
+    // --- CUSTOM TRAIN CREATOR ---
+    let builderStations = [];
+
+    function openCustomTrainModal() {
+        builderStations = [];
+        document.getElementById('customTrainNumber').value = '';
+        document.getElementById('customStationInput').value = '';
+        document.getElementById('customRouteError').style.display = 'none';
+        renderBuilderList();
+        document.getElementById('customTrainModal').style.display = 'flex';
+    }
+
+    function addStationToBuilder() {
+        const val = document.getElementById('customStationInput').value.trim();
+        if(!val) return;
+        builderStations.push(val);
+        document.getElementById('customStationInput').value = '';
+        document.getElementById('customStationInput').focus();
+        renderBuilderList();
+    }
+
+    function renderBuilderList() {
+        const ul = document.getElementById('customRouteList');
+        ul.innerHTML = '';
+        builderStations.forEach((st, idx) => {
+            const li = document.createElement('li');
+            li.innerHTML = `<span>${idx+1}. ${st}</span> <button class="btn btn-danger" style="padding:2px 6px; font-size:0.7rem;" onclick="removeBuilderStation(${idx})">Usuń</button>`;
+            ul.appendChild(li);
+        });
+    }
+    
+    // Musi być globalne żeby onclick w HTML widział
+    window.removeBuilderStation = function(idx) {
+        builderStations.splice(idx, 1);
+        renderBuilderList();
+    }
+
+    function saveCustomTrain() {
+        const num = document.getElementById('customTrainNumber').value.trim();
+        if(!num || builderStations.length < 2) {
+            document.getElementById('customRouteError').style.display = 'block';
+            return;
+        }
+
+        // Konwersja listy stacji na segmenty
+        const segments = [];
+        for(let i=0; i<builderStations.length-1; i++) {
+            segments.push({
+                from: builderStations[i],
+                to: builderStations[i+1],
+                via: "-" // Domyślne
+            });
+        }
+
+        const newTrain = {
+            id: 'custom_' + Date.now(),
+            number: num,
+            name: "Własny",
+            isCustom: true,
+            route: {
+                start: builderStations[0],
+                segments: segments
+            }
+        };
+
+        customTrains.push(newTrain);
+        mergeTrains();
+        populateTrainList(); // Odśwież listę
+        saveLocalStorage();
+        
+        closeModal('customTrainModal');
+        alert("Pociąg dodany! Możesz go teraz wybrać z listy.");
+    }
+
+    // --- OPERACJE NA DANYCH DNIA ---
+    function addTrainToDay() {
+        const tid = document.getElementById('trainSelect').value;
+        const from = document.getElementById('startStation').value;
+        const to = document.getElementById('endStation').value;
+        
+        if(!tid || !from || !to) return;
+        
+        if(!userSchedule[selectedDate]) userSchedule[selectedDate] = [];
+        userSchedule[selectedDate].push({ trainId: tid, from, to });
+        
+        saveLocalStorage();
+        renderExistingTrains();
+        renderCalendar();
+        generateReport();
+    }
+
+    function renderExistingTrains() {
+        const div = document.getElementById('existingTrainsList');
+        div.innerHTML = '';
+        if(!userSchedule[selectedDate] || !userSchedule[selectedDate].length) {
+            div.innerHTML = '<span style="color:#999">Brak pociągów tego dnia.</span>';
+            return;
+        }
+        
+        userSchedule[selectedDate].forEach((entry, idx) => {
+            const t = trainsData.find(x => x.id == entry.trainId);
+            const row = document.createElement('div');
+            row.style.display = 'flex';
+            row.style.justifyContent = 'space-between';
+            row.style.alignItems = 'center';
+            row.style.background = '#f8f9fa';
+            row.style.padding = '5px';
+            row.style.marginBottom = '4px';
+            row.style.borderRadius = '4px';
+            
+            row.innerHTML = `
+                <div><strong>${t?t.number:'???'}</strong> <small>${entry.from}➔${entry.to}</small></div>
+                <button class="btn btn-danger" style="padding:2px 5px; font-size:0.7rem;" onclick="removeTrain(${idx})">X</button>
+            `;
+            div.appendChild(row);
+        });
+    }
+
+    window.removeTrain = function(idx) {
+        userSchedule[selectedDate].splice(idx, 1);
+        if(!userSchedule[selectedDate].length) delete userSchedule[selectedDate];
+        saveLocalStorage();
+        renderExistingTrains();
+        renderCalendar();
+        generateReport();
+    }
+
+    // --- RAPORT ---
     function generateReport() {
         const tbody = document.querySelector('#reportTable tbody');
         tbody.innerHTML = '';
-        const segmentsDriven = {};
+        const visited = {}; // { masterId: lastDate }
 
-        Object.keys(userSchedule).forEach(dateStr => {
-            userSchedule[dateStr].forEach(entry => {
+        Object.keys(userSchedule).forEach(date => {
+            userSchedule[date].forEach(entry => {
                 const train = trainsData.find(t => t.id == entry.trainId);
-                if (!train || !train.route || !train.route.segments) return;
-                
-                // Znajdź segmenty pociągu między Start a End wybranym przez użytkownika
-                let capturing = false;
+                if(!train) return;
+
+                // Znajdź segmenty na trasie pociągu
+                let active = false;
                 for(let seg of train.route.segments) {
-                    if (seg.from === entry.from) capturing = true;
-                    if (capturing) {
-                        matchAndSave(seg, dateStr);
-                    }
-                    if (seg.to === entry.to) {
-                        capturing = false;
-                        break;
-                    }
+                    if(seg.from === entry.from) active = true;
+                    if(active) matchSegment(seg, date, visited);
+                    if(seg.to === entry.to) { active = false; break; }
                 }
             });
         });
 
-        function matchAndSave(seg, date) {
-            const norm = s => s ? s.toLowerCase().trim() : "";
-            const tF = norm(seg.from);
-            const tT = norm(seg.to);
-
-            const match = masterSzlakiData.find(m => {
-                const mF = norm(m.start);
-                const mT = norm(m.end);
-                
-                // ŚCISŁE DOPASOWANIE STACJI (Zapobiega "Warszawa" == "Warszawa Zach")
-                // Muszą być identyczne po normalizacji
-                const stationsMatch = (mF === tF && mT === tT) || (mF === tT && mT === tF);
-                
-                if(!stationsMatch) return false;
-
-                // LUŹNE DOPASOWANIE VIA (Tutaj includes jest OK)
-                if(m.via && m.via !== "-" && m.via.length > 1) {
-                    const mV = norm(m.via);
-                    const tV = norm(seg.via);
-                    return tV.includes(mV) || mV.includes(tV);
-                }
-                return true;
-            });
-
-            if (match) {
-                if (!segmentsDriven[match.id] || date > segmentsDriven[match.id]) {
-                    segmentsDriven[match.id] = date;
-                }
-            }
-        }
-
-        if(!masterSzlakiData.length) { tbody.innerHTML = '<tr><td colspan="5">Brak bazy szlaków</td></tr>'; return; }
-
-        masterSzlakiData.forEach((m, i) => {
+        // Generuj tabelę
+        masterSzlakiData.forEach((m, idx) => {
             const tr = document.createElement('tr');
             tr.innerHTML = `
-                <td style="text-align:center">${i+1}</td>
+                <td style="text-align:center">${idx+1}</td>
                 <td>${m.start}</td>
                 <td>${m.end}</td>
-                <td>${m.via === '-' ? '' : m.via}</td>
-                <td style="text-align:center; font-weight:bold">${segmentsDriven[m.id] || ""}</td>
+                <td>${m.via==='-'?'':m.via}</td>
+                <td style="text-align:center; font-weight:bold;">${visited[m.id] || ''}</td>
             `;
             tbody.appendChild(tr);
         });
     }
 
-    // --- ZAPIS ---
-    function saveLocalStorage() {
-        localStorage.setItem('kierownik_v1_data', JSON.stringify({ schedule: userSchedule, shifts: importedShifts }));
+    function matchSegment(seg, date, visited) {
+        const norm = s => s ? s.toLowerCase().trim() : "";
+        const tf = norm(seg.from);
+        const tt = norm(seg.to);
+        
+        const match = masterSzlakiData.find(m => {
+            const mf = norm(m.start);
+            const mt = norm(m.end);
+            const stMatch = (mf===tf && mt===tt) || (mf===tt && mt===tf);
+            if(!stMatch) return false;
+            
+            if(m.via && m.via !== '-' && m.via.length > 2) {
+                const mv = norm(m.via);
+                const tv = norm(seg.via);
+                return tv.includes(mv) || mv.includes(tv);
+            }
+            return true;
+        });
+
+        if(match) {
+            if(!visited[match.id] || date > visited[match.id]) {
+                visited[match.id] = date;
+            }
+        }
     }
+
+    // --- EXPORT / IMPORT / ICS ---
+    function handleIcsUpload(input) {
+        const file = input.files[0];
+        if(!file) return;
+        const reader = new FileReader();
+        reader.onload = e => {
+            try {
+                parseICS(e.target.result);
+                saveLocalStorage();
+                renderCalendar();
+                alert("Grafik wczytany!");
+            } catch(err) { alert("Błąd ICS"); }
+        };
+        reader.readAsText(file);
+        input.value='';
+    }
+
+    function parseICS(txt) {
+        importedShifts = {};
+        const lines = txt.replace(/\r\n/g, '\n').split('\n');
+        let evt = null;
+        
+        lines.forEach(line => {
+            line = line.trim();
+            if(line === 'BEGIN:VEVENT') evt = {};
+            else if(line === 'END:VEVENT') {
+                if(evt && evt.summary && evt.start) processEvent(evt);
+                evt = null;
+            } else if(evt) {
+                if(line.startsWith('SUMMARY:')) evt.summary = line.substring(8);
+                else if(line.startsWith('DTSTART')) evt.start = parseIcsDate(line);
+                else if(line.startsWith('DTEND')) evt.end = parseIcsDate(line);
+            }
+        });
+    }
+
+    function parseIcsDate(line) {
+        // DTSTART;VALUE=DATE:20251213 lub DTSTART:20251213T120000
+        const parts = line.split(':');
+        const val = parts[parts.length-1];
+        const y = parseInt(val.substr(0,4));
+        const m = parseInt(val.substr(4,2))-1;
+        const d = parseInt(val.substr(6,2));
+        if(val.includes('T')) {
+            const t = val.split('T')[1];
+            return new Date(y,m,d, parseInt(t.substr(0,2)), parseInt(t.substr(2,2)));
+        }
+        return new Date(y,m,d); // All day
+    }
+
+    function processEvent(evt) {
+        const k = `${evt.start.getFullYear()}-${String(evt.start.getMonth()+1).padStart(2,'0')}-${String(evt.start.getDate()).padStart(2,'0')}`;
+        
+        let isOvernight = false;
+        let info = '';
+        
+        // Jeśli ma czas i różnica dni
+        if(evt.end && (evt.start.getHours() !== 0 || evt.start.getMinutes() !== 0)) {
+            if(evt.start.getDate() !== evt.end.getDate()) isOvernight = true;
+            const fmt = {hour:'2-digit', minute:'2-digit'};
+            info = `${evt.start.toLocaleTimeString([],fmt)} - ${evt.end.toLocaleTimeString([],fmt)}`;
+        }
+
+        if(!importedShifts[k]) importedShifts[k] = [];
+        if(!importedShifts[k].find(x => x.summary === evt.summary)) {
+            importedShifts[k].push({ summary: evt.summary, isOvernight, timeInfo: info });
+        }
+    }
+
+    // --- ZAPIS I ODCZYT (BACKUP) ---
+    function saveLocalStorage() {
+        const data = { schedule: userSchedule, shifts: importedShifts, customTrains: customTrains };
+        localStorage.setItem('kierownik_v1_5', JSON.stringify(data));
+    }
+    
     function loadLocalStorage() {
-        const raw = localStorage.getItem('kierownik_v1_data');
-        if (raw) {
+        const raw = localStorage.getItem('kierownik_v1_5');
+        if(raw) {
             try {
                 const d = JSON.parse(raw);
-                if (d.schedule) userSchedule = d.schedule;
-                if (d.shifts) importedShifts = d.shifts;
+                userSchedule = d.schedule || {};
+                importedShifts = d.shifts || {};
+                customTrains = d.customTrains || [];
             } catch(e) {}
         }
     }
+
+    function exportData() {
+        const data = { 
+            version: "1.5", 
+            date: new Date().toISOString(),
+            schedule: userSchedule, 
+            shifts: importedShifts,
+            customTrains: customTrains
+        };
+        const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `backup_kierownik_${new Date().toISOString().slice(0,10)}.json`;
+        a.click();
+    }
+
+    function importData(input) {
+        const file = input.files[0];
+        if(!file) return;
+        const reader = new FileReader();
+        reader.onload = e => {
+            try {
+                const d = JSON.parse(e.target.result);
+                if(d.schedule) userSchedule = d.schedule;
+                if(d.shifts) importedShifts = d.shifts;
+                if(d.customTrains) customTrains = d.customTrains;
+                
+                mergeTrains();
+                populateTrainList();
+                saveLocalStorage();
+                renderCalendar();
+                generateReport();
+                alert("Dane przywrócone pomyślnie!");
+            } catch(err) { alert("Błąd pliku backupu"); }
+        };
+        reader.readAsText(file);
+        input.value='';
+    }
+    
     function clearData() {
-        if(confirm("Usunąć wszystko?")) {
-            userSchedule = {}; importedShifts = {};
-            localStorage.removeItem('kierownik_v1_data');
+        if(confirm("Czy na pewno chcesz usunąć wszystko?")) {
+            localStorage.removeItem('kierownik_v1_5');
+            userSchedule = {}; importedShifts = {}; customTrains = [];
+            mergeTrains(); populateTrainList();
             renderCalendar(); generateReport();
         }
     }
-    window.onclick = function(e) { if(e.target == document.getElementById('dayModal')) closeModal(); }
-</script>
 
+    window.onclick = e => { 
+        if(e.target.classList.contains('modal')) e.target.style.display='none'; 
+    }
+
+</script>
 </body>
 </html>
