@@ -40,12 +40,12 @@ Projekt został zbudowany z naciskiem na dostępność i responsywność:
 
 ## 📂 Struktura Plików
 
-* `index.html` - Główny widok wizualizacji.
-* `trains.json` - Baza danych rozkładów i pociągów.
+* `index.html` - Główny widok aplikacji - wizualizacja tras jazdy pociągów.
+* `trains.json` - Baza danych pociągów z ich szlakami.
 * `szlaki_master.json` - Baza danych geometrii i definicji odcinków.
-* `kontrolka.html` - Moduł dla drużyn konduktorskich.
+* `kontrolka.html` - Moduł dla Kierownika Pociągu ułatwiający uzupełniania kontrolki.
 * `train_menager.html` - Edytor pociągów.
-* `creator_szlaki.html` (w repozytorium jako: `crestor_szlaki.html`) - Edytor mapy.
+* `creator_szlaki.html` - Edytor mapy oraz szlaków.
 
 ## 👥 Autorzy
 
