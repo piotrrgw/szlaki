@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edytor Bazy Szlaków v3.2</title>
+    
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-W05T4L1HFD"></script> 
+    <script> window.dataLayer = window.dataLayer || []; function gtag(){dataLayer.push(arguments);} gtag('js', new Date()); gtag('config', 'G-W05T4L1HFD'); </script>
+
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        body, html { margin: 0; padding: 0; height: 100%; font-family: 'Segoe UI', sans-serif; overflow: hidden; }
+        #app { display: flex; height: 100vh; }
+        
+        /* PANEL BOCZNY */
+        #sidebar {
+            width: 450px;
+            background: #fff;
+            border-right: 1px solid #ccc;
+            display: flex;
+            flex-direction: column;
+            z-index: 1000;
+            box-shadow: 2px 0 15px rgba(0,0,0,0.1);
+        }
+
+        .header {
+            background: #2c3e50; color: white; padding: 15px;
+        }
+        .header h2 { margin: 0; font-size: 1.1rem; }
+        .data-source { font-size: 0.75rem; color: #bbb; margin-top: 5px; }
+        .source-tag { font-weight: bold; color: #4db6ac; }
+
+        .list-controls { padding: 10px; background: #f8f9fa; border-bottom: 1px solid #ddd; display: flex; flex-direction: column; gap: 5px; }
+        .control-row { display: flex; gap: 5px; }
+        #search-box { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        
+        #list-container { flex-grow: 1; overflow-y: auto; background: #f1f1f1; }
+        
+        /* ELEMENT LISTY */
+        .segment-item {
+            background: white; border-bottom: 1px solid #e0e0e0; padding: 8px;
+            display: flex; align-items: center; transition: background 0.2s;
+            gap: 10px;
+        }
+        .segment-item:hover { background: #e9ecef; }
+        .segment-item.active { background: #d1ecf1; border-left: 5px solid #17a2b8; }
+        
+        .segment-content { flex-grow: 1; cursor: pointer; }
+
+        .status-dot {
+            width: 10px; height: 10px; border-radius: 50%; margin-right: 5px; display: inline-block;
+            background: #ccc; 
+        }
+        .status-dot.done { background: #28a745; }
+        
+        .seg-title { font-weight: bold; font-size: 0.85rem; display: block; }
+        .seg-via { font-size: 0.75rem; color: #666; }
+
+        /* PRZYCISKI KOLEJNOŚCI */
+        .order-controls {
+            display: flex; flex-direction: column; gap: 2px;
+        }
+        .mini-btn {
+            border: 1px solid #ddd; background: #fff; cursor: pointer;
+            width: 24px; height: 24px; font-size: 10px; color: #555;
+            display: flex; align-items: center; justify-content: center;
+            border-radius: 3px;
+        }
+        .mini-btn:hover { background: #eee; color: #000; }
+        .mini-btn.insert-btn { color: #007bff; border-color: #cce5ff; }
+
+        /* PANEL EDYCJI */
+        #edit-panel {
+            padding: 15px; background: white; border-top: 2px solid #ddd;
+            display: none; 
+        }
+        .panel-row { margin-bottom: 5px; }
+        .panel-row label { font-size: 0.75rem; color: #555; display: block;}
+        .panel-row input { width: 100%; padding: 5px; border: 1px solid #ccc; border-radius: 3px; box-sizing: border-box; }
+
+        .btn {
+            border: none; padding: 8px; border-radius: 4px; cursor: pointer; font-weight: bold; width: 100%; margin-top: 5px;
+            font-size: 0.85rem; transition: 0.2s; display: flex; justify-content: center; align-items: center; gap: 5px;
+        }
+        .btn-green { background: #28a745; color: white; } .btn-green:hover { background: #218838; }
+        .btn-blue { background: #007bff; color: white; } .btn-blue:hover { background: #0056b3; }
+        .btn-orange { background: #fd7e14; color: white; } .btn-orange:hover { background: #e36d0a; }
+        .btn-red { background: #dc3545; color: white; } .btn-red:hover { background: #c82333; }
+        .btn-grey { background: #6c757d; color: white; } .btn-grey:hover { background: #5a6268; }
+
+        #map { flex-grow: 1; height: 100%; }
+        
+        .footer {
+            text-align: center; padding: 5px; font-size: 0.7rem; color: #aaa; background: #2c3e50; border-top: 1px solid #444;
+        }
+
+        /* MODAL */
+        #json-modal {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.7); z-index: 2000;
+            display: none; justify-content: center; align-items: center;
+        }
+        #json-modal-content {
+            background: white; padding: 20px; border-radius: 8px; width: 80%; max-width: 900px;
+            max-height: 80%; overflow: hidden;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            display: flex; flex-direction: column;
+        }
+        #json-output {
+            background: #f4f4f4; padding: 10px; border: 1px solid #ddd; border-radius: 4px;
+            white-space: pre-wrap; word-wrap: break-word; font-size: 0.8rem;
+            flex-grow: 1; overflow: auto; margin-top: 10px;
+        }
+        
+        #json-modal-content .button-group {
+            display: flex; gap: 10px; margin-top: 10px;
+        }
+        #json-modal-content .button-group .btn { width: 50%; margin-top: 0; }
+    </style>
+</head>
+<body>
+
+<div id="app">
+    <div id="sidebar">
+        <div class="header">
+            <h2>Baza Szlaków (Edytor v3.2)</h2>
+            <div class="data-source">Źródło: <span id="source-display" class="source-tag">Ładowanie...</span></div>
+            <div style="font-size: 0.8rem; margin-top:5px;">Postęp geometrii: <span id="stats-counter">0/0</span></div>
+        </div>
+
+        <div class="list-controls">
+            <div class="control-row">
+                <button class="btn btn-blue" onclick="addNewSegment()" style="width: 50%">+ Dodaj</button>
+                <button class="btn btn-orange" onclick="fixIds()" style="width: 50%" title="Numeruje ID kolejno od 1">🔧 Napraw ID</button>
+            </div>
+
+            <button id="btn-filter-geo" class="btn btn-grey" onclick="toggleGeoFilter()" style="margin-bottom: 2px; font-size: 0.75rem;">
+                <i class="fa-regular fa-square"></i> Pokaż tylko bez mapy
+            </button>
+
+            <input type="text" id="search-box" placeholder="Szukaj (np. Kalisz)..." onkeyup="renderList()">
+        </div>
+
+        <div id="list-container"></div>
+
+        <div id="edit-panel">
+            <div class="panel-row">
+                <label>Początek:</label>
+                <input type="text" id="edit-start" onchange="updateMeta()">
+            </div>
+            <div class="panel-row">
+                <label>Koniec:</label>
+                <input type="text" id="edit-end" onchange="updateMeta()">
+            </div>
+            <div class="panel-row">
+                <label>Przez:</label>
+                <input type="text" id="edit-via" onchange="updateMeta()">
+            </div>
+            
+            <hr style="border:0; border-top:1px solid #eee; margin:10px 0;">
+            
+            <button class="btn btn-orange" onclick="autoLocate()">📍 Znajdź stacje (Auto-Start)</button>
+            <button class="btn btn-green" onclick="saveGeometry()">💾 ZAPISZ GEOMETRIĘ</button>
+            <button class="btn btn-red" onclick="deleteSegment()">Usuń szlak</button>
+        </div>
+
+        <div style="padding:10px; background:#f8f9fa; border-top:1px solid #ccc;">
+            <div style="display: flex; gap: 5px;">
+                <button class="btn btn-grey" onclick="viewJSON()" style="width: 50%">👀 Podgląd</button>
+                <button class="btn btn-green" onclick="exportJSON()" style="width: 50%">📥 Pobierz</button>
+            </div>
+            <hr style="margin: 8px 0; border: 0; border-top: 1px solid #ddd;">
+            <input type="file" id="file-input" accept=".json" style="display: none;" onchange="importFromFile(this)">
+            <button class="btn btn-blue" onclick="document.getElementById('file-input').click()">
+                <i class="fa-solid fa-folder-open"></i> Wczytaj z pliku (Offline)
+            </button>
+        </div>
+
+        <div class="footer">
+            Wersja aplikacji: v3.2 | Współautorzy: Gemini & Piotr M 🚂
+        </div>
+    </div>
+
+    <div id="map"></div>
+</div>
+
+<div id="json-modal" onclick="closeModal(event)">
+    <div id="json-modal-content" onclick="event.stopPropagation()">
+        <h3>Podgląd szlaki_master.json</h3>
+        <pre id="json-output"></pre>
+        <div class="button-group">
+            <button class="btn btn-green" onclick="copyJSON()">📋 Kopiuj</button>
+            <button class="btn btn-blue" onclick="document.getElementById('json-modal').style.display='none'">Zamknij</button>
+        </div>
+    </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
+
+<script>
+    // --- 1. ZMIENNE GLOBALNE ---
+    let db = [];
+    let selectedId = null;
+    let filterMissingOnly = false; // Nowa zmienna stanu filtra
+
+    // --- MAPA ---
+    var map = L.map('map').setView([52.0, 19.2], 6);
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', { attribution: '&copy; OpenStreetMap &copy; CARTO' }).addTo(map);
+    L.tileLayer('https://{s}.tiles.openrailwaymap.org/standard/{z}/{x}/{y}.png', { maxZoom: 19, attribution: 'OpenRailwayMap' }).addTo(map);
+
+    var drawnItems = new L.FeatureGroup().addTo(map);
+    var drawControl = new L.Control.Draw({
+        edit: { featureGroup: drawnItems },
+        draw: {
+            polygon: false, rectangle: false, circle: false, circlemarker: false, marker: false,
+            polyline: { shapeOptions: { color: '#007bff', weight: 4 }, metric: true }
+        }
+    });
+    map.addControl(drawControl);
+
+    map.on(L.Draw.Event.CREATED, function (e) {
+        drawnItems.clearLayers();
+        drawnItems.addLayer(e.layer);
+    });
+
+    // --- INICJALIZACJA DANYCH ---
+    async function initData() {
+        const statusEl = document.getElementById('source-display');
+        
+        // 1. Pamięć lokalna
+        const local = localStorage.getItem('szlakiDB');
+        if (local) {
+            try {
+                db = JSON.parse(local);
+                statusEl.innerHTML = '<span style="color:orange"><i class="fa-solid fa-triangle-exclamation"></i> Pamięć przeglądarki</span>';
+                addResetButton();
+                renderList();
+                return;
+            } catch (e) { console.error("Błąd pamięci lokalnej", e); }
+        }
+
+        // 2. Serwer
+        try {
+            const response = await fetch('szlaki_master.json?t=' + new Date().getTime());
+            if (response.ok) {
+                const json = await response.json();
+                if(Array.isArray(json) && json.length > 0) {
+                    db = json;
+                    statusEl.innerText = "szlaki_master.json (Plik)";
+                    statusEl.style.color = "#4db6ac";
+                    renderList();
+                    return;
+                }
+            }
+        } catch(e) { console.log("Brak pliku na serwerze."); }
+
+        statusEl.innerText = "Brak danych / Nowa baza";
+    }
+
+    function addResetButton() {
+        const header = document.querySelector('.header');
+        if(!document.getElementById('reset-btn')) {
+            const resetBtn = document.createElement('button');
+            resetBtn.id = 'reset-btn';
+            resetBtn.className = 'mini-btn'; 
+            resetBtn.style.cssText = "float:right; margin-top:-20px; background:#dc3545; color:white; width:auto; padding:2px 8px; border:none;";
+            resetBtn.innerText = "Wyczyść pamięć";
+            resetBtn.onclick = () => {
+                if(confirm("Czy na pewno usunąć zmiany z pamięci przeglądarki?")) {
+                    localStorage.removeItem('szlakiDB');
+                    location.reload();
+                }
+            };
+            header.appendChild(resetBtn);
+        }
+    }
+
+    // --- IMPORT Z PLIKU ---
+    function importFromFile(input) {
+        const file = input.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const json = JSON.parse(e.target.result);
+                if (Array.isArray(json)) {
+                    if(confirm(`Wczytano ${json.length} szlaków. ZASTĄPIĆ bazę?`)) {
+                        db = json;
+                        saveAll();
+                        renderList();
+                        document.getElementById('source-display').innerHTML = '<span style="color:blue"><i class="fa-solid fa-file-import"></i> Wczytano z pliku</span>';
+                        addResetButton();
+                        alert("Baza zaktualizowana!");
+                    }
+                } else { alert("Błąd: Niepoprawny format JSON."); }
+            } catch (err) { alert("Błąd parsowania: " + err.message); }
+        };
+        reader.readAsText(file);
+        input.value = '';
+    }
+
+    // --- FILTR GEOMETRII (NOWOŚĆ) ---
+    function toggleGeoFilter() {
+        filterMissingOnly = !filterMissingOnly;
+        const btn = document.getElementById('btn-filter-geo');
+        if(filterMissingOnly) {
+            btn.className = 'btn btn-orange';
+            btn.innerHTML = '<i class="fa-solid fa-check-square"></i> Tylko bez mapy';
+        } else {
+            btn.className = 'btn btn-grey';
+            btn.innerHTML = '<i class="fa-regular fa-square"></i> Pokaż tylko bez mapy';
+        }
+        renderList();
+    }
+
+    // --- RENDEROWANIE LISTY ---
+    function renderList() {
+        const list = document.getElementById('list-container');
+        const filter = document.getElementById('search-box').value.toLowerCase();
+        list.innerHTML = '';
+        
+        let done = 0;
+        let visibleCount = 0;
+
+        db.forEach((item, index) => {
+            const hasGeo = item.geometry && item.geometry.coordinates && item.geometry.coordinates.length > 0;
+            if(hasGeo) done++;
+
+            // 1. Filtr Tekstowy
+            const txt = `${item.id} ${item.start} ${item.end} ${item.via || ''}`.toLowerCase();
+            const textMatch = txt.includes(filter);
+
+            // 2. Filtr "Bez Mapy" (NOWOŚĆ)
+            // Jeśli filtr jest włączony (filterMissingOnly=true), pokazujemy tylko gdy hasGeo=false
+            // Jeśli filtr wyłączony, pokazujemy wszystko.
+            const geoMatch = !filterMissingOnly || (filterMissingOnly && !hasGeo);
+
+            if (textMatch && geoMatch) {
+                visibleCount++;
+                const div = document.createElement('div');
+                div.className = `segment-item ${selectedId === item.id ? 'active' : ''}`;
+                
+                // Panel Przycisków
+                const btns = document.createElement('div');
+                btns.className = 'order-controls';
+                
+                if (index > 0) {
+                    const up = document.createElement('button');
+                    up.className = 'mini-btn';
+                    up.innerHTML = '<i class="fa-solid fa-angle-up"></i>';
+                    up.onclick = (e) => { e.stopPropagation(); moveItem(index, -1); };
+                    btns.appendChild(up);
+                }
+                
+                if (index < db.length - 1) {
+                    const down = document.createElement('button');
+                    down.className = 'mini-btn';
+                    down.innerHTML = '<i class="fa-solid fa-angle-down"></i>';
+                    down.onclick = (e) => { e.stopPropagation(); moveItem(index, 1); };
+                    btns.appendChild(down);
+                }
+
+                const insert = document.createElement('button');
+                insert.className = 'mini-btn insert-btn';
+                insert.innerHTML = '<i class="fa-solid fa-level-down-alt"></i>';
+                insert.title = "Wstaw za...";
+                insert.onclick = (e) => { e.stopPropagation(); moveAfter(index); };
+                btns.appendChild(insert);
+                
+                // Treść
+                const content = document.createElement('div');
+                content.className = 'segment-content';
+                content.onclick = () => selectSegment(item.id);
+                content.innerHTML = `
+                    <div style="display:flex; align-items:center;">
+                        <div class="status-dot ${hasGeo ? 'done' : ''}"></div>
+                        <span class="seg-title">#${item.id} ${item.start} - ${item.end}</span>
+                    </div>
+                    <span class="seg-via">${item.via !== '-' ? item.via : ''}</span>
+                `;
+
+                div.appendChild(btns);
+                div.appendChild(content);
+                list.appendChild(div);
+            }
+        });
+        document.getElementById('stats-counter').innerText = `${done} / ${db.length}`;
+        
+        // Jeśli lista pusta z powodu filtru
+        if(visibleCount === 0 && filterMissingOnly) {
+            list.innerHTML = '<div style="text-align:center; padding:20px; color:#888;">Wszystkie szlaki mają już geometrię! 🎉<br>Lub nie pasują do wyszukiwania.</div>';
+        }
+    }
+
+    // --- OBSŁUGA DANYCH ---
+    function moveItem(index, direction) {
+        const newIndex = index + direction;
+        if (newIndex < 0 || newIndex >= db.length) return;
+        [db[index], db[newIndex]] = [db[newIndex], db[index]];
+        saveAll();
+        renderList();
+    }
+
+    function moveAfter(currentIndex) {
+        const targetIdInput = prompt("Podaj ID szlaku, za który chcesz wstawić ten element:");
+        if (!targetIdInput) return;
+        const targetId = parseInt(targetIdInput);
+        
+        const itemToMove = db[currentIndex]; 
+        const targetIndex = db.findIndex(x => x.id === targetId);
+
+        if (targetIndex === -1) { alert("Nie znaleziono ID."); return; }
+        if (targetIndex === currentIndex) return;
+
+        db.splice(currentIndex, 1);
+        const newTargetIndex = db.findIndex(x => x.id === targetId);
+        db.splice(newTargetIndex + 1, 0, itemToMove);
+        saveAll();
+        renderList();
+    }
+
+    function fixIds() {
+        if (!confirm("Przenumerować ID od 1 do N?")) return;
+        db.forEach((item, index) => { item.id = index + 1; });
+        saveAll();
+        renderList();
+        if(selectedId) selectSegment(selectedId);
+    }
+
+    function selectSegment(id) {
+        selectedId = id;
+        renderList();
+        const item = db.find(x => x.id === id);
+        
+        document.getElementById('edit-panel').style.display = 'block';
+        document.getElementById('edit-start').value = item.start;
+        document.getElementById('edit-end').value = item.end;
+        document.getElementById('edit-via').value = item.via;
+
+        drawnItems.clearLayers();
+        if (item.geometry) {
+            L.geoJSON(item.geometry, {
+                onEachFeature: function(feature, layer) {
+                    if(layer instanceof L.Polyline) {
+                        const poly = L.polyline(layer.getLatLngs(), {color: '#007bff', weight: 4});
+                        drawnItems.addLayer(poly);
+                        map.fitBounds(poly.getBounds(), {padding:[50,50]});
+                    }
+                }
+            });
+        }
+    }
+
+    function updateMeta() {
+        if(!selectedId) return;
+        const item = db.find(x => x.id === selectedId);
+        item.start = document.getElementById('edit-start').value;
+        item.end = document.getElementById('edit-end').value;
+        item.via = document.getElementById('edit-via').value;
+        saveAll();
+    }
+
+    function saveGeometry() {
+        if(!selectedId) return;
+        const layers = drawnItems.getLayers();
+        const item = db.find(x => x.id === selectedId);
+        if(layers.length === 0) item.geometry = null;
+        else item.geometry = layers[0].toGeoJSON().geometry;
+        saveAll();
+        renderList();
+        // Opcjonalnie przełącz na następny brakujący, jeśli filtr aktywny?
+        // Na razie zostawiamy, aby nie mylić użytkownika.
+        alert("Zapisano!");
+    }
+
+    function addNewSegment() {
+        const maxId = db.reduce((max, item) => (item.id > max ? item.id : max), 0);
+        db.push({ id: maxId + 1, start: "Nowy", end: "Szlak", via: "-", geometry: null });
+        saveAll();
+        renderList();
+        const list = document.getElementById('list-container');
+        list.scrollTop = list.scrollHeight;
+    }
+
+    function deleteSegment() {
+        if(!selectedId || !confirm("Usunąć szlak?")) return;
+        db = db.filter(x => x.id !== selectedId);
+        selectedId = null;
+        document.getElementById('edit-panel').style.display = 'none';
+        drawnItems.clearLayers();
+        saveAll();
+        renderList();
+    }
+
+    function saveAll() {
+        localStorage.setItem('szlakiDB', JSON.stringify(db));
+    }
+
+    // --- AUTO-LOCATE ---
+    function delay(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
+    async function autoLocate() {
+        if(!selectedId) return;
+        const item = db.find(x => x.id === selectedId);
+        const stations = [item.start];
+        if (item.via && item.via !== '-') {
+            item.via.split(/,\s*/).forEach(s => { if(s.trim()) stations.push(s.trim()); });
+        }
+        stations.push(item.end);
+
+        if(confirm(`Szukam ${stations.length} stacji...`)) {
+            try {
+                const locations = [];
+                for (let i = 0; i < stations.length; i++) {
+                    const loc = await fetchLoc(stations[i] + ' station');
+                    locations.push(loc);
+                    if(i < stations.length - 1) await delay(1100); 
+                }
+                const validLocs = locations.filter(l => l !== null);
+                if(validLocs.length >= 2) {
+                    drawnItems.clearLayers();
+                    const line = L.polyline(validLocs, {color: '#007bff', weight: 4});
+                    drawnItems.addLayer(line);
+                    stations.forEach((name, idx) => {
+                        if(locations[idx]) L.marker(locations[idx]).addTo(drawnItems).bindPopup(name);
+                    });
+                    map.fitBounds(line.getBounds(), {padding:[50,50]});
+                    alert(`Znaleziono ${validLocs.length} stacji.`);
+                } else { alert("Za mało stacji."); }
+            } catch(e) { alert("Błąd API: " + e.message); }
+        }
+    }
+    async function fetchLoc(q) {
+        try {
+            const r = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&limit=1`);
+            const d = await r.json();
+            return d.length ? [parseFloat(d[0].lat), parseFloat(d[0].lon)] : null;
+        } catch(e) { return null; }
+    }
+
+    // --- EXPORT/IMPORT ---
+    function viewJSON() {
+        document.getElementById('json-output').textContent = JSON.stringify(db, null, 2);
+        document.getElementById('json-modal').style.display = 'flex';
+    }
+    function copyJSON() {
+        navigator.clipboard.writeText(document.getElementById('json-output').textContent)
+            .then(() => alert("Skopiowano!"))
+            .catch(() => alert("Błąd kopiowania."));
+    }
+    function closeModal(event) {
+        if (event.target.id === 'json-modal') event.target.style.display = 'none';
+    }
+    function exportJSON() {
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(db, null, 2));
+        const a = document.createElement('a');
+        a.href = dataStr;
+        a.download = "szlaki_master.json";
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+    }
+
+    // Fix icon
+    const style = document.createElement('style');
+    style.innerHTML = `.leaflet-draw-toolbar a { background-image: url('https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/images/spritesheet.png'); }`;
+    document.head.appendChild(style);
+
+    initData();
+</script>
+
+</body>
+</html>
