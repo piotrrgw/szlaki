@@ -1,0 +1,712 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Karta Znajomości Szlaków - Kontrolka</title>
+    
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-W05T4L1HFD"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'G-W05T4L1HFD');
+    </script>
+
+    <style>
+        :root {
+            --primary-color: #0056b3;
+            --accent-color: #ffc107;
+            --bg-color: #f8f9fa;
+            --text-color: #333;
+            --border-color: #dee2e6;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            line-height: 1.6;
+        }
+
+        header {
+            background-color: var(--primary-color);
+            color: white;
+            padding: 1rem;
+            text-align: center;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        /* --- KALENDARZ --- */
+        .calendar-controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .month-display {
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 5px;
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+        }
+
+        .calendar-day-header {
+            text-align: center;
+            font-weight: bold;
+            padding: 10px;
+            background-color: #e9ecef;
+        }
+
+        .calendar-day {
+            min-height: 100px;
+            border: 1px solid var(--border-color);
+            padding: 5px;
+            cursor: pointer;
+            position: relative;
+            background: white;
+            transition: background 0.2s;
+        }
+
+        .calendar-day:hover {
+            background-color: #f1f8ff;
+        }
+
+        .calendar-day.empty {
+            background-color: transparent;
+            border: none;
+            cursor: default;
+        }
+
+        .day-number {
+            font-weight: bold;
+            margin-bottom: 5px;
+            display: block;
+        }
+
+        .train-badge {
+            background-color: var(--primary-color);
+            color: white;
+            font-size: 0.75rem;
+            padding: 2px 5px;
+            border-radius: 4px;
+            margin-bottom: 2px;
+            display: block;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* --- TABELA WYNIKOWA --- */
+        .report-section {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        table.report-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        table.report-table th, table.report-table td {
+            border: 1px solid black;
+            padding: 8px;
+            text-align: left;
+        }
+
+        table.report-table th {
+            background-color: #e9ecef;
+        }
+
+        /* --- MODAL --- */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-content {
+            background-color: white;
+            padding: 25px;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 500px;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+
+        .form-group select, .form-group input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            margin-right: 10px;
+        }
+
+        .btn-primary { background-color: var(--primary-color); color: white; }
+        .btn-danger { background-color: #dc3545; color: white; }
+        .btn-secondary { background-color: #6c757d; color: white; }
+
+        .train-list-item {
+            background: #f8f9fa;
+            border: 1px solid var(--border-color);
+            padding: 10px;
+            margin-bottom: 5px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        footer {
+            margin-top: 40px;
+            text-align: center;
+            padding: 20px;
+            border-top: 1px solid var(--border-color);
+            font-size: 0.9rem;
+            color: #666;
+        }
+
+        /* --- DRUKOWANIE --- */
+        @media print {
+            body { background: white; }
+            header, .calendar-controls, .calendar-grid, footer, .no-print {
+                display: none !important;
+            }
+            .container { width: 100%; max-width: none; padding: 0; margin: 0; }
+            .report-section { box-shadow: none; padding: 0; }
+            table.report-table th, table.report-table td { font-size: 11px; padding: 4px; }
+            /* Force table header on new pages if needed */
+            thead { display: table-header-group; } 
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>Karta Znajomości Szlaków</h1>
+    <p>Generator Podsumowania Miesiąca</p>
+</header>
+
+<div class="container">
+    <div class="calendar-controls">
+        <button class="btn btn-secondary" onclick="changeMonth(-1)">Poprzedni</button>
+        <div class="month-display" id="monthDisplay">Styczeń 2026</div>
+        <button class="btn btn-secondary" onclick="changeMonth(1)">Następny</button>
+        <button class="btn btn-primary no-print" onclick="window.print()">🖨️ Drukuj Kartę</button>
+        <button class="btn btn-danger no-print" onclick="clearData()">🗑️ Wyczyść Dane</button>
+    </div>
+
+    <div class="calendar-grid" id="calendarGrid">
+        </div>
+
+    <div class="report-section">
+        <h2>Wykaz znajomości szlaków</h2>
+        <table class="report-table" id="reportTable">
+            <thead>
+                <tr>
+                    <th style="width: 50px;">LP</th>
+                    <th>Od</th>
+                    <th>Do</th>
+                    <th>Przez</th>
+                    <th style="width: 150px;">Data ost. przejazdu</th>
+                </tr>
+            </thead>
+            <tbody>
+                </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="modal" id="dayModal">
+    <div class="modal-content">
+        <h3 id="modalDateTitle">Edycja dnia: </h3>
+        
+        <div id="existingTrainsList">
+            </div>
+
+        <hr style="margin: 20px 0;">
+        
+        <h4>Dodaj pociąg</h4>
+        <div class="form-group">
+            <label for="trainSelect">Wybierz pociąg:</label>
+            <select id="trainSelect" onchange="updateStationSelectors()">
+                <option value="">-- Wybierz pociąg --</option>
+            </select>
+        </div>
+
+        <div class="form-group" id="routeSelectorContainer" style="display:none;">
+            <label for="startStation">Stacja początkowa (Twoja zmiana):</label>
+            <select id="startStation"></select>
+            
+            <label for="endStation" style="margin-top:10px;">Stacja końcowa (Twoja zmiana):</label>
+            <select id="endStation"></select>
+        </div>
+
+        <div style="text-align: right; margin-top: 20px;">
+            <button class="btn btn-secondary" onclick="closeModal()">Anuluj</button>
+            <button class="btn btn-primary" onclick="addTrainToDay()">Dodaj Pociąg</button>
+        </div>
+    </div>
+</div>
+
+<footer>
+    <p>Współautorzy: Gemini & Piotr M 🚂</p>
+    <p>Wersja aplikacji: v1.0</p>
+</footer>
+
+<script>
+    // --- ZMIENNE GLOBALNE ---
+    let currentDate = new Date();
+    let trainsData = [];
+    let masterSzlakiData = [];
+    let userSchedule = {}; // Struktura: { "YYYY-MM-DD": [ { trainId: "...", from: "...", to: "..." } ] }
+
+    // --- INICJALIZACJA ---
+    document.addEventListener('DOMContentLoaded', async () => {
+        await loadDataFiles();
+        loadFromLocalStorage();
+        renderCalendar();
+        generateReport(); // Generuj pustą tabelę na start
+    });
+
+    // --- ŁADOWANIE DANYCH ---
+    async function loadDataFiles() {
+        try {
+            const [trainsRes, masterRes] = await Promise.all([
+                fetch('./trains.json'),
+                fetch('./szlaki_master.json')
+            ]);
+
+            trainsData = await trainsRes.json();
+            masterSzlakiData = await masterRes.json();
+            
+            populateTrainSelect();
+            console.log("Dane załadowane pomyślnie.");
+        } catch (error) {
+            console.error("Błąd ładowania plików JSON:", error);
+            alert("Nie udało się załadować plików danych (trains.json, szlaki_master.json). Upewnij się, że są w tym samym folderze.");
+        }
+    }
+
+    function populateTrainSelect() {
+        const select = document.getElementById('trainSelect');
+        select.innerHTML = '<option value="">-- Wybierz pociąg --</option>';
+        
+        // Sortowanie pociągów po numerze
+        trainsData.sort((a, b) => a.number.localeCompare(b.number));
+
+        trainsData.forEach(train => {
+            const option = document.createElement('option');
+            option.value = train.id;
+            option.textContent = `${train.number} ${train.name} (${train.category})`;
+            select.appendChild(option);
+        });
+    }
+
+    // --- LOGIKA KALENDARZA ---
+    function renderCalendar() {
+        const grid = document.getElementById('calendarGrid');
+        const display = document.getElementById('monthDisplay');
+        grid.innerHTML = '';
+
+        const year = currentDate.getFullYear();
+        const month = currentDate.getMonth();
+
+        const monthNames = ["Styczeń", "Luty", "Marzec", "Kwiecień", "Maj", "Czerwiec", "Lipiec", "Sierpień", "Wrzesień", "Październik", "Listopad", "Grudzień"];
+        display.textContent = `${monthNames[month]} ${year}`;
+
+        const firstDayOfMonth = new Date(year, month, 1).getDay(); // 0 = Niedziela
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+        
+        // Nagłówki dni tygodnia
+        const daysOfWeek = ["Pon", "Wt", "Śr", "Czw", "Pt", "Sob", "Nd"];
+        daysOfWeek.forEach(day => {
+            const div = document.createElement('div');
+            div.className = 'calendar-day-header';
+            div.textContent = day;
+            grid.appendChild(div);
+        });
+
+        // Puste pola przed 1. dniem miesiąca (korekta: JS Sunday=0, Polska Pon=0 logicznie)
+        let emptySlots = firstDayOfMonth === 0 ? 6 : firstDayOfMonth - 1;
+        for (let i = 0; i < emptySlots; i++) {
+            const div = document.createElement('div');
+            div.className = 'calendar-day empty';
+            grid.appendChild(div);
+        }
+
+        // Dni miesiąca
+        for (let day = 1; day <= daysInMonth; day++) {
+            const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+            const div = document.createElement('div');
+            div.className = 'calendar-day';
+            div.onclick = () => openDayModal(dateStr);
+
+            const dayNum = document.createElement('span');
+            dayNum.className = 'day-number';
+            dayNum.textContent = day;
+            div.appendChild(dayNum);
+
+            // Wyświetl pociągi dodane tego dnia
+            if (userSchedule[dateStr]) {
+                userSchedule[dateStr].forEach(entry => {
+                    const train = trainsData.find(t => t.id == entry.trainId);
+                    if (train) {
+                        const badge = document.createElement('div');
+                        badge.className = 'train-badge';
+                        badge.textContent = `${train.number} (${entry.from}-${entry.to})`;
+                        div.appendChild(badge);
+                    }
+                });
+            }
+
+            grid.appendChild(div);
+        }
+    }
+
+    function changeMonth(offset) {
+        currentDate.setMonth(currentDate.getMonth() + offset);
+        renderCalendar();
+    }
+
+    // --- MODAL I EDYCJA ---
+    let selectedDate = null;
+
+    function openDayModal(dateStr) {
+        selectedDate = dateStr;
+        document.getElementById('modalDateTitle').textContent = `Edycja dnia: ${dateStr}`;
+        document.getElementById('dayModal').style.display = 'flex';
+        document.getElementById('trainSelect').value = "";
+        document.getElementById('routeSelectorContainer').style.display = 'none';
+        renderExistingTrainsList();
+    }
+
+    function closeModal() {
+        document.getElementById('dayModal').style.display = 'none';
+        selectedDate = null;
+    }
+
+    function updateStationSelectors() {
+        const trainId = document.getElementById('trainSelect').value;
+        const container = document.getElementById('routeSelectorContainer');
+        const startSelect = document.getElementById('startStation');
+        const endSelect = document.getElementById('endStation');
+
+        if (!trainId) {
+            container.style.display = 'none';
+            return;
+        }
+
+        const train = trainsData.find(t => t.id == trainId);
+        if (!train || !train.route || !train.route.segments) {
+            container.style.display = 'none';
+            return;
+        }
+
+        // Wyciągnij unikalne stacje z trasy pociągu (zachowując kolejność)
+        const stations = [];
+        // Dodaj start trasy
+        if (train.route.start) stations.push(train.route.start);
+        
+        train.route.segments.forEach(seg => {
+            if (!stations.includes(seg.from)) stations.push(seg.from); // Zabezpieczenie, choć logika segments jest from->to
+            if (!stations.includes(seg.to)) stations.push(seg.to);
+        });
+
+        // Wypełnij selecty
+        startSelect.innerHTML = '';
+        endSelect.innerHTML = '';
+
+        stations.forEach((st, index) => {
+            const opt1 = document.createElement('option');
+            opt1.value = st;
+            opt1.textContent = st;
+            startSelect.appendChild(opt1);
+
+            const opt2 = document.createElement('option');
+            opt2.value = st;
+            opt2.textContent = st;
+            endSelect.appendChild(opt2);
+        });
+
+        // Domyślnie zaznacz całą trasę
+        if (stations.length > 0) {
+            startSelect.selectedIndex = 0;
+            endSelect.selectedIndex = stations.length - 1;
+        }
+
+        container.style.display = 'block';
+    }
+
+    function addTrainToDay() {
+        if (!selectedDate) return;
+        const trainId = document.getElementById('trainSelect').value;
+        const startStation = document.getElementById('startStation').value;
+        const endStation = document.getElementById('endStation').value;
+
+        if (!trainId || !startStation || !endStation) {
+            alert("Wybierz pociąg i zakres trasy.");
+            return;
+        }
+
+        if (!userSchedule[selectedDate]) {
+            userSchedule[selectedDate] = [];
+        }
+
+        userSchedule[selectedDate].push({
+            trainId: trainId,
+            from: startStation,
+            to: endStation
+        });
+
+        saveToLocalStorage();
+        renderExistingTrainsList();
+        renderCalendar(); // Odśwież widok miesiąca
+        generateReport(); // Przelicz tabelę
+    }
+
+    function removeTrainFromDay(index) {
+        if (!selectedDate || !userSchedule[selectedDate]) return;
+        userSchedule[selectedDate].splice(index, 1);
+        if (userSchedule[selectedDate].length === 0) {
+            delete userSchedule[selectedDate];
+        }
+        saveToLocalStorage();
+        renderExistingTrainsList();
+        renderCalendar();
+        generateReport();
+    }
+
+    function renderExistingTrainsList() {
+        const container = document.getElementById('existingTrainsList');
+        container.innerHTML = '';
+
+        if (!userSchedule[selectedDate]) {
+            container.innerHTML = '<p style="color:#666; font-style:italic;">Brak pociągów tego dnia.</p>';
+            return;
+        }
+
+        userSchedule[selectedDate].forEach((entry, index) => {
+            const train = trainsData.find(t => t.id == entry.trainId);
+            const div = document.createElement('div');
+            div.className = 'train-list-item';
+            div.innerHTML = `
+                <span>
+                    <strong>${train ? train.number : '???'}</strong> 
+                    <br><small>${entry.from} ➔ ${entry.to}</small>
+                </span>
+                <button class="btn btn-danger" style="padding: 5px 10px; font-size:0.8rem;" onclick="removeTrainFromDay(${index})">Usuń</button>
+            `;
+            container.appendChild(div);
+        });
+    }
+
+    // --- LOGIKA RAPORTU (CORE) ---
+    function generateReport() {
+        const tbody = document.querySelector('#reportTable tbody');
+        tbody.innerHTML = '';
+
+        // Mapa przejazdów szlaków: { szlakId: "YYYY-MM-DD" (najnowsza) }
+        const segmentsDriven = {};
+
+        // 1. Iteruj po wszystkich wpisanych dniach
+        Object.keys(userSchedule).forEach(dateStr => {
+            userSchedule[dateStr].forEach(entry => {
+                const train = trainsData.find(t => t.id == entry.trainId);
+                if (!train) return;
+
+                // 2. Znajdź segmenty pociągu, które mieszczą się w wybranym zakresie (From -> To)
+                const relevantSegments = getSegmentsBetween(train, entry.from, entry.to);
+
+                // 3. Dopasuj segmenty pociągu do Master Szlaki
+                relevantSegments.forEach(trainSeg => {
+                    const masterId = matchToMaster(trainSeg);
+                    if (masterId) {
+                        // Aktualizuj datę, jeśli ta jest nowsza
+                        if (!segmentsDriven[masterId] || dateStr > segmentsDriven[masterId]) {
+                            segmentsDriven[masterId] = dateStr;
+                        }
+                    }
+                });
+            });
+        });
+
+        // 4. Renderuj tabelę na podstawie Master Szlaki
+        masterSzlakiData.forEach((master, index) => {
+            const tr = document.createElement('tr');
+            
+            // Formatowanie daty (lub puste)
+            const lastDate = segmentsDriven[master.id] || "";
+            
+            tr.innerHTML = `
+                <td>${index + 1}</td>
+                <td>${master.start}</td>
+                <td>${master.end}</td>
+                <td>${master.via === '-' ? '' : master.via}</td>
+                <td style="text-align:center; font-weight:bold;">${lastDate}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    // Pomocnicza: Wyciąga segmenty z trasy pociągu pomiędzy stacją A i B
+    function getSegmentsBetween(train, startStation, endStation) {
+        if (!train.route || !train.route.segments) return [];
+        
+        const allSegments = train.route.segments;
+        let startIndex = -1;
+        let endIndex = -1;
+
+        // Znajdź indeksy. Uwaga: pociąg jedzie sekwencyjnie.
+        // Segments: [A->B], [B->C], [C->D]. 
+        // Jeśli user wybrał A i C. To bierzemy A->B i B->C.
+        
+        // Budujemy listę przystanków po kolei, żeby znaleźć indeksy
+        // Ale segments to tablica obiektów.
+        // Spróbujmy znaleźć indeks segmentu, w którym 'from' == startStation
+        // Oraz indeks segmentu, w którym 'to' == endStation.
+        
+        for (let i = 0; i < allSegments.length; i++) {
+            if (allSegments[i].from === startStation) startIndex = i;
+            if (allSegments[i].to === endStation) endIndex = i;
+        }
+
+        // Obsługa kierunku jazdy (w razie gdyby lista była dziwna, ale zakładamy from->to)
+        if (startIndex !== -1 && endIndex !== -1 && startIndex <= endIndex) {
+            return allSegments.slice(startIndex, endIndex + 1);
+        }
+        
+        // Fallback: Jeśli nie znaleziono po indeksach segmentów (np. stacja pośrednia jako start), 
+        // to uproszczony model: filtruj wszystko co jest "wewnątrz". 
+        // Ale UI wymusza wybór z listy stacji, więc powinno działać. 
+        // Jeśli user wybierze odwrotnie (End -> Start), zwróć pustą lub odwróć (tu: pusta).
+        return [];
+    }
+
+    // Pomocnicza: Dopasowuje odcinek pociągu do ID z szlaki_master
+    function matchToMaster(trainSeg) {
+        // trainSeg ma: from, to, via
+        // master ma: start, end, via
+
+        // Normalizacja stringów (usuń spacje, lowercase)
+        const norm = (str) => str ? str.toLowerCase().trim() : "";
+
+        const tFrom = norm(trainSeg.from);
+        const tTo = norm(trainSeg.to);
+        
+        // Szukaj w master
+        const match = masterSzlakiData.find(m => {
+            const mStart = norm(m.start);
+            const mEnd = norm(m.end);
+            
+            // Sprawdź wprost (A->B) lub wspak (B->A)
+            const simpleMatch = (mStart === tFrom && mEnd === tTo) || (mStart === tTo && mEnd === tFrom);
+            
+            if (!simpleMatch) return false;
+
+            // Sprawdź VIA tylko jeśli jest istotne
+            // Jeśli master ma "-", to pasuje wszystko.
+            // Jeśli master ma konkretne via, trainSeg musi je mieć (lub podobne).
+            if (m.via !== "-") {
+                const mVia = norm(m.via);
+                const tVia = norm(trainSeg.via);
+                // Proste sprawdzenie czy via zawiera się w stringu
+                // Np. Master: "Łódź Dąbrowa", Train: "Łódź Dąbrowa" - OK.
+                // Train czasem ma "..., ..."
+                return tVia.includes(mVia) || mVia.includes(tVia);
+            }
+            
+            return true;
+        });
+
+        return match ? match.id : null;
+    }
+
+
+    // --- PERSISTENCE ---
+    function saveToLocalStorage() {
+        localStorage.setItem('kierownik_pociagu_grafik', JSON.stringify(userSchedule));
+    }
+
+    function loadFromLocalStorage() {
+        const saved = localStorage.getItem('kierownik_pociagu_grafik');
+        if (saved) {
+            try {
+                userSchedule = JSON.parse(saved);
+            } catch (e) {
+                console.error("Błąd odczytu localStorage", e);
+                userSchedule = {};
+            }
+        }
+    }
+
+    function clearData() {
+        if (confirm("Czy na pewno chcesz usunąć wszystkie wprowadzone dane?")) {
+            localStorage.removeItem('kierownik_pociagu_grafik');
+            userSchedule = {};
+            renderCalendar();
+            generateReport();
+            alert("Dane wyczyszczone.");
+        }
+    }
+
+    // Kliknięcie poza modalem zamyka go
+    window.onclick = function(event) {
+        const modal = document.getElementById('dayModal');
+        if (event.target == modal) {
+            closeModal();
+        }
+    }
+</script>
+
+</body>
+</html>
