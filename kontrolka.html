@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Karta Znajomości Szlaków v3.0</title>
+    <title>Karta Znajomości Szlaków v3.1</title>
     
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-W05T4L1HFD"></script> 
     <script> 
@@ -135,7 +135,7 @@
 <div class="disclaimer-bar">⚠️ Aplikacja pomocnicza. Kierownik Pociągu weryfikuje dane.</div>
 
 <header>
-    <h1>🚂 Karta Szlaków <span style="font-size:0.7rem; background:var(--primary); color:white; padding:2px 5px; border-radius:4px; margin-left:5px;">v3.0 Robust</span></h1>
+    <h1>🚂 Karta Szlaków <span style="font-size:0.7rem; background:var(--primary); color:white; padding:2px 5px; border-radius:4px; margin-left:5px;">v3.1 Fix</span></h1>
     <button class="help-btn" onclick="openModal('helpModal')">❓ Instrukcja</button>
 </header>
 
@@ -212,7 +212,7 @@
         <div class="print-footer"><p>.......................................................<br>(Podpis pracownika)</p></div>
         
         <div class="app-footer no-print">
-            Wersja aplikacji: v3.0 | Autorzy: Gemini & Piotr M 🚂
+            Wersja aplikacji: v3.1 | Autorzy: Gemini & Piotr M 🚂
         </div>
     </div>
 </div>
@@ -331,7 +331,7 @@
 </div>
 
 <script>
-    const DB_KEY = 'kierownik_v3_0_data'; // New key for robustness
+    const DB_KEY = 'kierownik_v3_1_data'; // Version updated to force clean start
     const MANUAL_TRAIN_ID = 'MANUAL';
 
     let appData = { schedule: {}, shifts: {}, customTrains: [], profile: { name: "", kp: "" } };
@@ -352,6 +352,12 @@
             if(!t.ok || !m.ok) throw new Error();
             dbTrains = await t.json();
             dbMaster = await m.json();
+            
+            // CRITICAL FIX: Assign internal UIDs to ensure reliability even if JSON lacks IDs
+            dbMaster.forEach((item, index) => {
+                item._uid = index; // Use index as guaranteed unique internal ID
+            });
+
             buildGraph();
             startSystem();
         } catch(e) { document.getElementById('fallback').style.display = 'block'; }
@@ -374,7 +380,12 @@
         const r1 = new FileReader(), r2 = new FileReader();
         let c=0; const check = ()=>{if(++c===2){document.getElementById('fallback').style.display='none'; buildGraph(); startSystem()}};
         r1.onload=e=>{dbTrains=JSON.parse(e.target.result);check()};
-        r2.onload=e=>{dbMaster=JSON.parse(e.target.result);check()};
+        r2.onload=e=>{
+            dbMaster=JSON.parse(e.target.result);
+            // CRITICAL FIX FOR MANUAL LOAD TOO
+            dbMaster.forEach((item, index) => { item._uid = index; });
+            check();
+        };
         r1.readAsText(f1); r2.readAsText(f2);
     }
 
@@ -399,6 +410,7 @@
     }
 
     // --- HELPER: MATCHING ---
+    // Improved normalization to handle trailing spaces or case diffs
     function checkMatch(seg, m) {
         const norm = str => str ? str.toLowerCase().trim() : "";
         const sf = norm(seg.from), st = norm(seg.to), sv = norm(seg.via);
@@ -407,6 +419,7 @@
         const stationsMatch = (sf===mf && st===mt) || (sf===mt && st===mf);
         if(!stationsMatch) return false;
 
+        // Check VIA (flexible check)
         if(mv.length > 1 && mv !== '-') {
             if(sv.length > 1 && sv !== '-') {
                 return sv.includes(mv) || mv.includes(sv);
@@ -415,14 +428,14 @@
         return true;
     }
 
-    function getCoveredMasterIds(entry) {
-        let covered = [];
+    function getCoveredMasterUids(entry) {
+        let coveredUids = [];
         const isManual = (entry.trainId === MANUAL_TRAIN_ID);
         
         if (isManual) {
             const seg = { from: entry.from, to: entry.to, via: entry.via || '-' };
             dbMaster.forEach(m => {
-                if(checkMatch(seg, m)) covered.push(m.id);
+                if(checkMatch(seg, m)) coveredUids.push(m._uid);
             });
         } else {
             const tr = dbTrains.find(t => t.id == entry.trainId);
@@ -432,18 +445,19 @@
                     if (seg.from === entry.from) active = true;
                     if (active) {
                         dbMaster.forEach(m => {
-                            if(checkMatch(seg, m)) covered.push(m.id);
+                            if(checkMatch(seg, m)) coveredUids.push(m._uid);
                         });
                     }
                     if (seg.to === entry.to) active = false;
                 });
             }
         }
-        return covered;
+        return coveredUids;
     }
 
     // --- CORE LOGIC: ANALYZE HISTORY ---
     function analyzeHistory(limitDate) {
+        // Map _uid -> dateString
         const result = {};
         const sortedDates = Object.keys(appData.schedule).sort();
 
@@ -452,9 +466,9 @@
             if (d > limitDate) return; 
 
             appData.schedule[dateStr].forEach(entry => {
-                const ids = getCoveredMasterIds(entry);
-                ids.forEach(id => {
-                    result[id] = dateStr;
+                const uids = getCoveredMasterUids(entry);
+                uids.forEach(uid => {
+                    result[uid] = dateStr;
                 });
             });
         });
@@ -511,7 +525,8 @@
 
         dbMaster.forEach((m, idx) => {
             const tr = document.createElement('tr');
-            const effectiveDate = latestDates[m.id];
+            // Use _uid to lookup
+            const effectiveDate = latestDates[m._uid];
             
             let dot = 'dot-red'; 
             if(effectiveDate) {
@@ -521,24 +536,24 @@
                 if (exp < viewEnd) dot = 'dot-red'; else if (warn < viewEnd) dot = 'dot-yellow'; else dot = 'dot-green';
             }
             
-            // FIXED: Passing only ID to openHistory. Name is fetched inside logic.
+            // Pass _uid to onclick (safe integer)
             tr.innerHTML = `
                 <td class="col-lp">${idx+1}</td>
-                <td><span class="status-dot ${dot}" title="Pokaż historię" onclick="openHistory('${m.id}')"></span>${m.start}</td>
+                <td><span class="status-dot ${dot}" title="Pokaż historię" onclick="openHistory(${m._uid})"></span>${m.start}</td>
                 <td>${m.end}</td>
                 <td>${m.via==='-'?'':m.via}</td>
-                <td class="col-date" onclick="openHistory('${m.id}')">
+                <td class="col-date" onclick="openHistory(${m._uid})">
                     ${effectiveDate || ""}
                 </td>`;
             tbody.appendChild(tr);
         });
     }
 
-    // --- HISTORY MODAL LOGIC (FIXED) ---
-    function openHistory(masterId) {
-        // Find the Master Route info safely
-        const m = dbMaster.find(x => x.id === masterId);
-        if(!m) return alert('Błąd: Nie znaleziono szlaku w bazie.');
+    // --- HISTORY MODAL LOGIC (FIXED via UID) ---
+    function openHistory(uid) {
+        // Find master route by internal UID
+        const m = dbMaster.find(x => x._uid === uid);
+        if(!m) return alert('Błąd: Nie znaleziono szlaku w bazie (UID mismatch).');
 
         const routeName = `${m.start} - ${m.end} ${m.via!=='-'?'('+m.via+')':''}`;
         document.getElementById('histTitle').innerText = "Historia przejazdów";
@@ -552,8 +567,8 @@
         sortedDates.forEach(dateStr => {
             appData.schedule[dateStr].forEach(entry => {
                 try {
-                    const ids = getCoveredMasterIds(entry);
-                    if(ids.includes(masterId)) {
+                    const uids = getCoveredMasterUids(entry);
+                    if(uids.includes(uid)) {
                         let info = '';
                         if(entry.trainId === MANUAL_TRAIN_ID) {
                             info = 'Wpis ręczny';
@@ -598,10 +613,11 @@
     function renderManualRouteList(filter) {
         const sel = document.getElementById('manualRouteSelect');
         sel.innerHTML = '';
-        dbMaster.forEach((m, index) => {
+        // Use index/uid as value
+        dbMaster.forEach((m) => {
             const text = `${m.start} - ${m.end} ${m.via !== '-' ? '(przez ' + m.via + ')' : ''}`;
             if(filter === '' || text.toLowerCase().includes(filter)) {
-                const opt = new Option(text, index);
+                const opt = new Option(text, m._uid); // VALUE IS UID
                 sel.appendChild(opt);
             }
         });
@@ -609,10 +625,13 @@
 
     function saveManualEntry() {
         const dateVal = document.getElementById('manualDate').value;
-        const idx = document.getElementById('manualRouteSelect').value;
-        if(!dateVal || idx === "") return alert("Wybierz datę i odcinek!");
-        const m = dbMaster[idx];
+        const uid = parseInt(document.getElementById('manualRouteSelect').value);
+        
+        if(!dateVal || isNaN(uid)) return alert("Wybierz datę i odcinek!");
+        
+        const m = dbMaster.find(x => x._uid === uid);
         if(!m) return;
+        
         if(!appData.schedule[dateVal]) appData.schedule[dateVal] = [];
         appData.schedule[dateVal].push({ trainId: MANUAL_TRAIN_ID, from: m.start, to: m.end, via: m.via });
         saveData(); renderCalendar(); renderReport(); closeModal('manualEntryModal');
@@ -676,7 +695,7 @@
     function loadData() {
         let r = localStorage.getItem(DB_KEY);
         if(!r) {
-            const olds = ['kierownik_v2_9_data', 'kierownik_v2_8_data', 'kierownik_v2_7_data', 'kierownik_v2_6_data'];
+            const olds = ['kierownik_v3_0_data', 'kierownik_v2_9_data', 'kierownik_v2_8_data'];
             for(let k of olds) { let x=localStorage.getItem(k); if(x){r=x; localStorage.setItem(DB_KEY, r); break;} }
         }
         if(r) {
