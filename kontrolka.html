@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Karta Znajomości Szlaków v3.9</title>
+    <title>Karta Znajomości Szlaków v3.9.1</title>
     
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-W05T4L1HFD"></script> 
     <script> 
@@ -123,7 +123,7 @@
 <div class="disclaimer-bar">⚠️ Aplikacja pomocnicza. Kierownik Pociągu zobowiązany jest do weryfikacji poprawności danych.</div>
 
 <header>
-    <h1>🚂 Karta Szlaków <span style="font-size:0.7rem; background:var(--primary); color:white; padding:2px 5px; border-radius:4px; margin-left:5px;">v3.9</span></h1>
+    <h1>🚂 Karta Szlaków <span style="font-size:0.7rem; background:var(--primary); color:white; padding:2px 5px; border-radius:4px; margin-left:5px;">v3.9.1</span></h1>
     <button class="help-btn" onclick="openModal('helpModal')">❓ Instrukcja</button>
 </header>
 
@@ -206,7 +206,7 @@
         </div>
         
         <div class="app-footer no-print">
-            Wersja aplikacji: v3.9 | Autorzy: Gemini & Piotr M 🚂
+            Wersja aplikacji: v3.9.1 | Autorzy: Gemini & Piotr M 🚂
         </div>
     </div>
 </div>
@@ -220,7 +220,7 @@
         
         <div style="font-size:0.95rem; line-height:1.6; padding-right:5px; overflow-y:auto; flex:1;">
             
-            <p><strong>Szlaki Kolejowe v3.9</strong> to narzędzie do ewidencji pracy i kontroli znajomości szlaków.</p>
+            <p><strong>Szlaki Kolejowe v3.9.1</strong> to narzędzie do ewidencji pracy i kontroli znajomości szlaków.</p>
 
             <h4 style="margin:15px 0 5px; color:var(--primary); border-left:4px solid var(--primary); padding-left:8px;">1. Import Grafiku</h4>
             <div style="background:#f8fafc; padding:10px; border-radius:6px; border:1px solid var(--border);">
@@ -392,7 +392,7 @@
 
 <script>
 /*
-   Wersja aplikacji: v3.9
+   Wersja aplikacji: v3.9.1
    Autorzy: Gemini & Piotr M 🚂
    Data aktualizacji: 2025-01-03
 */
@@ -527,25 +527,35 @@ async function downloadPdf() {
 
         const doc = new jsPDF();
         
-        // POBIERANIE CZCIONKI Z BARDZIEJ NIEZAWODNEGO ŹRÓDŁA (CDNJS PDFMAKE)
+        // --- LOGIKA CZCIONEK (FALLBACK) ---
+        // Domyślnie ustawiamy "helvetica" (odpowiednik Ariala w standardzie PDF), 
+        // co jest bezpiecznym wyborem (nie wymaga pobierania), ale nie ma polskich ogonków.
+        let activeFont = "helvetica"; 
+
         try {
+            // Próba pobrania polskiej czcionki (Roboto)
             const fontUrl = 'https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.66/fonts/Roboto/Roboto-Regular.ttf';
             const fontRes = await fetch(fontUrl);
             
-            if(!fontRes.ok) throw new Error("Błąd pobierania czcionki");
-            
-            const fontBuffer = await fontRes.arrayBuffer();
-            const fontBase64 = arrayBufferToBase64(fontBuffer);
-            
-            doc.addFileToVFS("Roboto.ttf", fontBase64);
-            doc.addFont("Roboto.ttf", "Roboto", "normal");
-            doc.setFont("Roboto");
-            
+            if(fontRes.ok) {
+                const fontBuffer = await fontRes.arrayBuffer();
+                const fontBase64 = arrayBufferToBase64(fontBuffer);
+                
+                doc.addFileToVFS("Roboto.ttf", fontBase64);
+                doc.addFont("Roboto.ttf", "Roboto", "normal");
+                
+                // Jeśli sukces - podmieniamy aktywną czcionkę na polską
+                activeFont = "Roboto";
+            }
         } catch(e) { 
-            console.error("Font error", e); 
-            alert("⚠️ UWAGA: Nie udało się pobrać polskiej czcionki. Raport zostanie wygenerowany, ale polskie znaki mogą być niepoprawne (krzaczki). Sprawdź połączenie z internetem.");
+            // W przypadku błędu (brak neta, CORS) - milcząco ignorujemy błąd 
+            // i zostajemy przy "helvetica" (fallback to Arial/System behavior).
+            console.warn("Nie udało się pobrać czcionki Roboto. Używam systemowej (Helvetica/Arial).", e);
         }
         
+        // Ustawienie aktywnej czcionki dla dokumentu
+        doc.setFont(activeFont);
+
         doc.setFontSize(16);
         doc.text("KARTA ZNAJOMOŚCI SZLAKÓW", 105, 15, { align: 'center' });
         
@@ -588,8 +598,8 @@ async function downloadPdf() {
             head: [['LP', 'Status', 'Odcinek (Od)', 'Odcinek (Do)', 'Przez', 'Ostatni przejazd']],
             body: tableBody.map(r => [r.lp, '', r.from, r.to, r.via, r.last]),
             theme: 'grid',
-            // Wymuszenie czcionki Roboto dla tabeli
-            styles: { fontSize: 9, cellPadding: 2, font: "Roboto", fontStyle: 'normal' },
+            // Użycie wybranej czcionki (Roboto lub Helvetica jako fallback dla Ariala/Calibri)
+            styles: { fontSize: 9, cellPadding: 2, font: activeFont, fontStyle: 'normal' },
             columnStyles: {
                 0: { cellWidth: 10, halign: 'center' },
                 1: { cellWidth: 15, halign: 'center' },
@@ -622,7 +632,7 @@ async function downloadPdf() {
         
         doc.setFontSize(8);
         doc.setTextColor(100);
-        doc.text(`Wersja aplikacji: v3.9 | Wygenerowano: ${new Date().toLocaleDateString('pl-PL')}`, 105, 290, { align: 'center' });
+        doc.text(`Wersja aplikacji: v3.9.1 | Wygenerowano: ${new Date().toLocaleDateString('pl-PL')}`, 105, 290, { align: 'center' });
 
         doc.save(`Raport_Szlakow_${type}_${year}.pdf`);
         closeModal('reportModal');
