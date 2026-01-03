@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Karta Znajomości Szlaków v3.1</title>
+    <title>Karta Znajomości Szlaków v3.4</title>
     
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-W05T4L1HFD"></script> 
     <script> 
@@ -17,13 +17,14 @@
         :root {
             --primary: #2563eb;
             --secondary: #64748b;
-            --success: #22c55e;
-            --warning: #f59e0b;
-            --danger: #ef4444;
+            --success: #22c55e; /* Zielony */
+            --warning: #f59e0b; /* Pomarańczowy */
+            --danger: #ef4444;  /* Czerwony */
             --bg: #f1f5f9;
             --surface: #ffffff;
             --text: #0f172a;
             --border: #e2e8f0;
+            --empty-dot: #cbd5e1;
         }
 
         * { box-sizing: border-box; outline: none; }
@@ -76,17 +77,19 @@
         .table-scroll { overflow: auto; flex: 1; }
         table.data-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
         table.data-table th { background: #f8fafc; padding: 10px; text-align: left; font-weight: 600; color: var(--secondary); border-bottom: 2px solid var(--border); position: sticky; top: 0; z-index: 5; }
-        table.data-table td { padding: 8px 10px; border-bottom: 1px solid var(--border); color: var(--text); }
+        table.data-table td { padding: 8px 10px; border-bottom: 1px solid var(--border); color: var(--text); vertical-align: middle; }
         .col-lp { width: 40px; text-align: center; }
-        .col-date { width: 140px; text-align: center; font-family: monospace; font-weight: 600; white-space: nowrap; cursor: pointer; }
+        .col-status { width: 40px; text-align: center; }
+        .col-date { width: 160px; text-align: left; font-family: monospace; font-weight: 600; white-space: nowrap; cursor: pointer; }
         .col-date:hover { background: #f1f5f9; color: var(--primary); text-decoration: underline; }
         
-        .status-dot { display: inline-block; width: 12px; height: 12px; border-radius: 50%; margin-right: 6px; border:1px solid rgba(0,0,0,0.1); cursor: pointer; transition: transform 0.2s; }
-        .status-dot:hover { transform: scale(1.3); }
+        /* DOTS */
+        .status-dot { display: inline-block; width: 12px; height: 12px; border-radius: 50%; border: 1px solid rgba(0,0,0,0.1); flex-shrink: 0; }
         .dot-green { background: var(--success); }
-        .dot-yellow { background: var(--warning); }
+        .dot-orange { background: var(--warning); }
         .dot-red { background: var(--danger); }
-        
+        .dot-empty { background: white; border: 1px solid var(--empty-dot); }
+
         /* VARIANT SELECTOR */
         #variantSelector { display: none; background: #fff7ed; border: 1px solid #fdba74; padding: 10px; border-radius: 6px; margin-top: 10px; }
         .variant-btn { display: block; width: 100%; text-align: left; padding: 8px; margin-top: 5px; background: white; border: 1px solid #fed7aa; border-radius: 4px; cursor: pointer; font-size: 0.85rem; }
@@ -135,7 +138,7 @@
 <div class="disclaimer-bar">⚠️ Aplikacja pomocnicza. Kierownik Pociągu weryfikuje dane.</div>
 
 <header>
-    <h1>🚂 Karta Szlaków <span style="font-size:0.7rem; background:var(--primary); color:white; padding:2px 5px; border-radius:4px; margin-left:5px;">v3.1 Fix</span></h1>
+    <h1>🚂 Karta Szlaków <span style="font-size:0.7rem; background:var(--primary); color:white; padding:2px 5px; border-radius:4px; margin-left:5px;">v3.4</span></h1>
     <button class="help-btn" onclick="openModal('helpModal')">❓ Instrukcja</button>
 </header>
 
@@ -190,11 +193,18 @@
         </div>
 
         <div class="no-print" style="margin-bottom:15px;">
-            <div style="background:white; padding:10px; border-radius:8px; border:1px solid var(--border); font-size:0.9rem; display:flex; gap:15px; flex-wrap:wrap; align-items:center;">
-                <span>🟢 <strong>Zielona:</strong> Ważny</span>
-                <span>🟡 <strong>Żółta:</strong> <30 dni</span>
-                <span>🔴 <strong>Czerwona:</strong> Brak/Wygasł</span>
-                <span style="border-left:1px solid #ddd; padding-left:15px; color:var(--primary);">ℹ️ Kliknij kropkę lub datę, aby zobaczyć historię.</span>
+            <div style="background:white; padding:10px; border-radius:8px; border:1px solid var(--border); font-size:0.85rem; display:flex; flex-direction:column; gap:8px;">
+                <div style="font-weight:bold; border-bottom:1px solid #eee; padding-bottom:4px;">LEWA STRONA (Ważność szlaku):</div>
+                <div style="display:flex; gap:15px; flex-wrap:wrap;">
+                    <span style="display:flex; align-items:center; gap:5px;"><span class="status-dot dot-green"></span> Ważny (&lt;11 m-cy)</span>
+                    <span style="display:flex; align-items:center; gap:5px;"><span class="status-dot dot-orange"></span> Wygasa (11-12 m-cy)</span>
+                    <span style="display:flex; align-items:center; gap:5px;"><span class="status-dot dot-red"></span> Nieważny (&gt;12 m-cy)</span>
+                </div>
+                <div style="font-weight:bold; border-bottom:1px solid #eee; padding-bottom:4px; margin-top:5px;">PRAWA STRONA (Ten miesiąc):</div>
+                <div style="display:flex; gap:15px; flex-wrap:wrap;">
+                    <span style="display:flex; align-items:center; gap:5px;"><span class="status-dot dot-green"></span> Przejechany</span>
+                    <span style="display:flex; align-items:center; gap:5px;"><span class="status-dot dot-empty"></span> Brak</span>
+                </div>
             </div>
         </div>
 
@@ -202,7 +212,14 @@
             <div class="table-scroll">
                 <table class="data-table" id="reportTable">
                     <thead>
-                        <tr><th class="col-lp">LP</th><th>Odcinek (Od)</th><th>Odcinek (Do)</th><th>Przez</th><th class="col-date">Ważność (Ostatni)</th></tr>
+                        <tr>
+                            <th class="col-lp">LP</th>
+                            <th class="col-status">Status</th>
+                            <th>Odcinek (Od)</th>
+                            <th>Odcinek (Do)</th>
+                            <th>Przez</th>
+                            <th class="col-date">Przejazd w m-cu</th>
+                        </tr>
                     </thead>
                     <tbody></tbody>
                 </table>
@@ -212,7 +229,62 @@
         <div class="print-footer"><p>.......................................................<br>(Podpis pracownika)</p></div>
         
         <div class="app-footer no-print">
-            Wersja aplikacji: v3.1 | Autorzy: Gemini & Piotr M 🚂
+            Wersja aplikacji: v3.4 | Autorzy: Gemini & Piotr M 🚂
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="helpModal">
+    <div class="modal" style="max-width:650px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #eee; padding-bottom:10px;">
+            <h2 style="margin:0; color:var(--primary);">📖 Instrukcja Obsługi</h2>
+            <button class="btn btn-secondary" onclick="closeModal('helpModal')">X</button>
+        </div>
+        
+        <div style="font-size:0.95rem; line-height:1.6; padding-right:5px; overflow-y:auto; flex:1;">
+            
+            <p><strong>Szlaki Kolejowe v3.4</strong> to narzędzie do ewidencji pracy i kontroli znajomości szlaków.</p>
+
+            <h4 style="margin:15px 0 5px; color:var(--primary); border-left:4px solid var(--primary); padding-left:8px;">1. Import Grafiku</h4>
+            <div style="background:#f8fafc; padding:10px; border-radius:6px; border:1px solid var(--border);">
+                Pobierz swój grafik w formacie <code>.ics</code> ze strony: <br>
+                👉 <a href="https://irena1.intercity.pl" target="_blank" style="color:var(--primary); font-weight:bold;">www.irena1.intercity.pl</a>
+                <br><br>
+                Następnie w aplikacji kliknij przycisk <span class="btn btn-warning" style="padding:2px 6px; font-size:0.7em;">📅 Import</span> i wybierz pobrany plik.
+            </div>
+
+            <h4 style="margin:15px 0 5px; color:var(--primary); border-left:4px solid var(--primary); padding-left:8px;">2. Tabela i Oznaczenia</h4>
+            <p>Tabela pokazuje wszystkie możliwe szlaki. Posiada dwie strefy informacji:</p>
+            <ul>
+                <li>
+                    <strong>LEWA STRONA (Kropka Statusu):</strong> Informuje, czy masz ważne uprawnienia na szlak (liczone od ostatniego przejazdu w ogóle).
+                    <ul style="font-size:0.9em; margin-top:5px; color:#555;">
+                        <li>🟢 <strong>Zielona:</strong> Szlak ważny (ostatni przejazd < 11 miesięcy temu).</li>
+                        <li>🟠 <strong>Pomarańczowa:</strong> Kończy się ważność (11 - 12 miesięcy temu).</li>
+                        <li>🔴 <strong>Czerwona:</strong> Szlak nieważny/wygasł (ponad 12 miesięcy temu).</li>
+                    </ul>
+                </li>
+                <li>
+                    <strong>PRAWA STRONA (Data i Kropka):</strong> Informuje o aktywności w <strong>wybranym miesiącu</strong>.
+                    <ul style="font-size:0.9em; margin-top:5px; color:#555;">
+                        <li>🟢 + Data: Wykonałeś przejazd w tym miesiącu.</li>
+                        <li>⚪ Puste: Nie jechałeś tym szlakiem w tym miesiącu.</li>
+                    </ul>
+                </li>
+            </ul>
+
+            <h4 style="margin:15px 0 5px; color:var(--primary); border-left:4px solid var(--primary); padding-left:8px;">3. Dodawanie/Edycja</h4>
+            <ul>
+                <li>Kliknij na dzień w kalendarzu, aby dodać pociąg.</li>
+                <li>Jeśli pociągu nie ma na liście, użyj <span class="btn btn-success" style="padding:2px 6px; font-size:0.7em;">➕ Pociąg</span>.</li>
+                <li>Aby dodać stary przejazd (np. sprzed roku) bez szukania numeru pociągu, użyj <span class="btn btn-info" style="padding:2px 6px; font-size:0.7em;">✍️ Wprowadź ręcznie</span>.</li>
+            </ul>
+
+            <h4 style="margin:15px 0 5px; color:var(--primary); border-left:4px solid var(--primary); padding-left:8px;">4. Bezpieczeństwo</h4>
+            <p>Dane są zapisywane tylko w Twojej przeglądarce. Regularnie rób kopię zapasową przyciskiem <span class="btn btn-secondary" style="padding:2px 6px; font-size:0.7em;">💾 Kopia</span>.</p>
+        </div>
+        <div style="text-align:right; margin-top:20px; border-top:1px solid #eee; padding-top:10px;">
+            <button class="btn btn-primary" onclick="closeModal('helpModal')">Rozumiem, zamknij</button>
         </div>
     </div>
 </div>
@@ -308,30 +380,8 @@
     </div>
 </div>
 
-<div class="modal-overlay" id="helpModal">
-    <div class="modal" style="max-width:600px;">
-        <h2>📖 Instrukcja Obsługi</h2>
-        <div style="font-size:0.9rem; line-height:1.6; max-height:70vh; overflow-y:auto; padding-right:10px;">
-            <h4 style="margin:10px 0 5px; color:var(--primary);">1. Ważność a Kalendarz</h4>
-            <ul style="padding-left:20px; margin:0;">
-                <li><strong>Kalendarz (Kratki):</strong> Pokazuje aktywność TYLKO w wybranym miesiącu.</li>
-                <li><strong>Tabela:</strong> Pokazuje <strong>ostatnią datę przejazdu</strong> (nawet jeśli była rok temu), abyś wiedział, czy szlak jest nadal ważny.</li>
-            </ul>
-            <h4 style="margin:10px 0 5px; color:var(--primary);">2. Historia Przejazdów</h4>
-            <ul style="padding-left:20px; margin:0;">
-                <li>Kliknij w <strong style="color:green">●</strong> (kropkę) lub datę przy szlaku, aby zobaczyć pełną listę przejazdów tym odcinkiem.</li>
-            </ul>
-            <h4 style="margin:10px 0 5px; color:var(--primary);">3. Wprowadzanie ręczne</h4>
-            <ul style="padding-left:20px; margin:0;">
-                <li>Użyj przycisku <strong>"✍️ Wprowadź przejazd ręcznie"</strong>, aby dodać historyczne zaliczenie szlaku.</li>
-            </ul>
-        </div>
-        <div style="text-align:right; margin-top:20px;"><button class="btn btn-primary" onclick="closeModal('helpModal')">Zamknij</button></div>
-    </div>
-</div>
-
 <script>
-    const DB_KEY = 'kierownik_v3_1_data'; // Version updated to force clean start
+    const DB_KEY = 'kierownik_v3_1_data'; 
     const MANUAL_TRAIN_ID = 'MANUAL';
 
     let appData = { schedule: {}, shifts: {}, customTrains: [], profile: { name: "", kp: "" } };
@@ -353,9 +403,8 @@
             dbTrains = await t.json();
             dbMaster = await m.json();
             
-            // CRITICAL FIX: Assign internal UIDs to ensure reliability even if JSON lacks IDs
             dbMaster.forEach((item, index) => {
-                item._uid = index; // Use index as guaranteed unique internal ID
+                item._uid = index; 
             });
 
             buildGraph();
@@ -382,7 +431,6 @@
         r1.onload=e=>{dbTrains=JSON.parse(e.target.result);check()};
         r2.onload=e=>{
             dbMaster=JSON.parse(e.target.result);
-            // CRITICAL FIX FOR MANUAL LOAD TOO
             dbMaster.forEach((item, index) => { item._uid = index; });
             check();
         };
@@ -410,7 +458,6 @@
     }
 
     // --- HELPER: MATCHING ---
-    // Improved normalization to handle trailing spaces or case diffs
     function checkMatch(seg, m) {
         const norm = str => str ? str.toLowerCase().trim() : "";
         const sf = norm(seg.from), st = norm(seg.to), sv = norm(seg.via);
@@ -419,7 +466,6 @@
         const stationsMatch = (sf===mf && st===mt) || (sf===mt && st===mf);
         if(!stationsMatch) return false;
 
-        // Check VIA (flexible check)
         if(mv.length > 1 && mv !== '-') {
             if(sv.length > 1 && sv !== '-') {
                 return sv.includes(mv) || mv.includes(sv);
@@ -456,18 +502,19 @@
     }
 
     // --- CORE LOGIC: ANALYZE HISTORY ---
+    // Calculates the LATEST date for each route up to limitDate
     function analyzeHistory(limitDate) {
-        // Map _uid -> dateString
-        const result = {};
+        const result = {}; // uid -> "YYYY-MM-DD"
         const sortedDates = Object.keys(appData.schedule).sort();
 
         sortedDates.forEach(dateStr => {
             const d = new Date(dateStr);
-            if (d > limitDate) return; 
+            if (limitDate && d > limitDate) return; 
 
             appData.schedule[dateStr].forEach(entry => {
                 const uids = getCoveredMasterUids(entry);
                 uids.forEach(uid => {
+                    // Always overwrite with newer date because list is sorted ascending
                     result[uid] = dateStr;
                 });
             });
@@ -514,44 +561,86 @@
         document.getElementById('printMonthInfo').innerText = `Miesiąc: ${currentDate.toLocaleDateString('pl-PL',{month:'long',year:'numeric'})}`;
     }
 
-    // --- REPORT RENDER ---
+    // --- REPORT RENDER (DUAL DOT SYSTEM) ---
     function renderReport() {
         const tbody = document.querySelector('#reportTable tbody'); tbody.innerHTML='';
         const viewY = currentDate.getFullYear();
         const viewM = currentDate.getMonth();
-        const viewEnd = new Date(viewY, viewM + 1, 0); 
+        
+        // 1. Get ALL-TIME latest dates for Validity (Left Dot)
+        // using a far future date to ensure we get everything up to today/future
+        const allTimeHistory = analyzeHistory(null); 
+        const today = new Date();
 
-        const latestDates = analyzeHistory(viewEnd);
+        let lpCounter = 1;
 
-        dbMaster.forEach((m, idx) => {
-            const tr = document.createElement('tr');
-            // Use _uid to lookup
-            const effectiveDate = latestDates[m._uid];
+        dbMaster.forEach((m) => {
+            // -- LEFT DOT LOGIC (Validity) --
+            const lastDrivenDateStr = allTimeHistory[m._uid];
+            let validityDot = 'dot-red';
             
-            let dot = 'dot-red'; 
-            if(effectiveDate) {
-                const ld = new Date(effectiveDate);
-                const exp = new Date(ld); exp.setFullYear(ld.getFullYear() + 1); 
-                const warn = new Date(exp); warn.setMonth(exp.getMonth() - 1); 
-                if (exp < viewEnd) dot = 'dot-red'; else if (warn < viewEnd) dot = 'dot-yellow'; else dot = 'dot-green';
+            if(lastDrivenDateStr) {
+                const lastDriven = new Date(lastDrivenDateStr);
+                // Calculate difference in months roughly
+                const diffTime = Math.abs(today - lastDriven);
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
+                
+                // Logic: 
+                // < 11 months (~335 days) -> Green
+                // 11-12 months (335-365 days) -> Orange
+                // > 12 months (>365 days) -> Red
+                if(diffDays <= 335) validityDot = 'dot-green';
+                else if(diffDays <= 365) validityDot = 'dot-orange';
+                else validityDot = 'dot-red';
             }
+
+            // -- RIGHT DOT LOGIC (Monthly Activity) --
+            // Find if this route was driven in the CURRENTLY VIEWED month
+            // We can't rely just on allTimeHistory because that only gives the absolute latest.
+            // We need to check if there is an entry in viewY/viewM.
             
-            // Pass _uid to onclick (safe integer)
+            let monthlyDateStr = '';
+            let monthlyDot = 'dot-empty';
+            
+            // Check specific month for this route
+            // Optimization: Iterate days of viewed month
+            const daysInMonth = new Date(viewY, viewM + 1, 0).getDate();
+            for(let d=1; d<=daysInMonth; d++) {
+                const checkDate = `${viewY}-${String(viewM+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+                if(appData.schedule[checkDate]) {
+                    // Check if any train on this day covered this route
+                    const dayEntries = appData.schedule[checkDate];
+                    for(let entry of dayEntries) {
+                        const uids = getCoveredMasterUids(entry);
+                        if(uids.includes(m._uid)) {
+                            monthlyDateStr = checkDate;
+                            monthlyDot = 'dot-green';
+                            break; // found one for this route in this month
+                        }
+                    }
+                }
+                if(monthlyDot === 'dot-green') break;
+            }
+
+            const tr = document.createElement('tr');
             tr.innerHTML = `
-                <td class="col-lp">${idx+1}</td>
-                <td><span class="status-dot ${dot}" title="Pokaż historię" onclick="openHistory(${m._uid})"></span>${m.start}</td>
+                <td class="col-lp">${lpCounter++}</td>
+                <td class="col-status"><span class="status-dot ${validityDot}" title="Status ważności"></span></td>
+                <td>${m.start}</td>
                 <td>${m.end}</td>
                 <td>${m.via==='-'?'':m.via}</td>
                 <td class="col-date" onclick="openHistory(${m._uid})">
-                    ${effectiveDate || ""}
+                    <span style="display:flex; align-items:center; gap:8px;">
+                        <span class="status-dot ${monthlyDot}"></span>
+                        ${monthlyDateStr || '<span style="color:#cbd5e1">-</span>'}
+                    </span>
                 </td>`;
             tbody.appendChild(tr);
         });
     }
 
-    // --- HISTORY MODAL LOGIC (FIXED via UID) ---
+    // --- HISTORY MODAL LOGIC ---
     function openHistory(uid) {
-        // Find master route by internal UID
         const m = dbMaster.find(x => x._uid === uid);
         if(!m) return alert('Błąd: Nie znaleziono szlaku w bazie (UID mismatch).');
 
@@ -613,11 +702,10 @@
     function renderManualRouteList(filter) {
         const sel = document.getElementById('manualRouteSelect');
         sel.innerHTML = '';
-        // Use index/uid as value
         dbMaster.forEach((m) => {
             const text = `${m.start} - ${m.end} ${m.via !== '-' ? '(przez ' + m.via + ')' : ''}`;
             if(filter === '' || text.toLowerCase().includes(filter)) {
-                const opt = new Option(text, m._uid); // VALUE IS UID
+                const opt = new Option(text, m._uid); 
                 sel.appendChild(opt);
             }
         });
