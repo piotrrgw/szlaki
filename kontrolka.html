@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Karta Znajomości Szlaków v2.5</title>
+    <title>Karta Znajomości Szlaków v2.6</title>
     
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-W05T4L1HFD"></script>
-    <script>
-        window.dataLayer = window.dataLayer || [];
-        function gtag(){dataLayer.push(arguments);}
-        gtag('js', new Date());
-        gtag('config', 'G-W05T4L1HFD');
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-W05T4L1HFD"></script> 
+    <script> 
+        window.dataLayer = window.dataLayer || []; 
+        function gtag(){dataLayer.push(arguments);} 
+        gtag('js', new Date()); 
+        gtag('config', 'G-W05T4L1HFD'); 
     </script>
 
     <style>
@@ -45,7 +45,7 @@
 
         .input-group { margin-bottom: 10px; }
         .input-group label { display: block; font-size: 0.75rem; color: var(--secondary); margin-bottom: 2px; }
-        input[type="text"], select { width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 6px; font-size: 0.9rem; }
+        input[type="text"], select, input[type="date"] { width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 6px; font-size: 0.9rem; }
         
         .btn-group { display: flex; flex-wrap: wrap; gap: 6px; }
         .btn { padding: 8px 10px; border: none; border-radius: 6px; cursor: pointer; font-size: 0.85rem; font-weight: 500; display: inline-flex; align-items: center; justify-content: center; gap: 4px; color: white; flex: 1; }
@@ -76,13 +76,17 @@
         table.data-table th { background: #f8fafc; padding: 10px; text-align: left; font-weight: 600; color: var(--secondary); border-bottom: 2px solid var(--border); position: sticky; top: 0; z-index: 5; }
         table.data-table td { padding: 8px 10px; border-bottom: 1px solid var(--border); color: var(--text); }
         .col-lp { width: 40px; text-align: center; }
-        .col-date { width: 110px; text-align: center; font-family: monospace; font-weight: 600; white-space: nowrap; }
+        .col-date { width: 130px; text-align: center; font-family: monospace; font-weight: 600; white-space: nowrap; cursor: pointer; transition: background 0.2s; }
+        .col-date:hover { background-color: #f1f5f9; text-decoration: underline; color: var(--primary); }
+        
         .status-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; border:1px solid rgba(0,0,0,0.1); }
         .dot-green { background: var(--success); }
         .dot-yellow { background: var(--warning); }
         .dot-red { background: var(--danger); }
+        
+        .manual-icon { font-size: 0.8em; margin-left: 4px; color: var(--secondary); }
 
-        /* VARIANT SELECTOR (New in v2.5) */
+        /* VARIANT SELECTOR */
         #variantSelector { 
             display: none; background: #fff7ed; border: 1px solid #fdba74; 
             padding: 10px; border-radius: 6px; margin-top: 10px; 
@@ -97,6 +101,16 @@
         .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 100; justify-content: center; align-items: center; }
         .modal { background: white; width: 95%; max-width: 500px; padding: 20px; border-radius: 8px; max-height: 90vh; overflow-y: auto; }
 
+        .app-footer {
+            margin-top: auto;
+            padding: 10px;
+            text-align: center;
+            font-size: 0.75rem;
+            color: var(--secondary);
+            border-top: 1px solid var(--border);
+            background: #fff;
+        }
+
         @media (max-width: 900px) {
             .app-container { display: block; overflow: auto; height: auto; }
             .sidebar { border-right: none; border-bottom: 1px solid var(--border); }
@@ -106,7 +120,7 @@
         @media print {
             @page { size: A4; margin: 1cm; }
             body { display: block; height: auto; background: white; font-size: 8pt; color: black; }
-            .sidebar, header, .disclaimer-bar, .no-print, .btn, .help-btn { display: none !important; }
+            .sidebar, header, .disclaimer-bar, .no-print, .btn, .help-btn, .app-footer { display: none !important; }
             .app-container { display: block; height: auto; overflow: visible; }
             .content-area { padding: 0; overflow: visible; background: white; }
             .table-wrapper { border: none; overflow: visible; }
@@ -118,6 +132,8 @@
             table.data-table th, table.data-table td { border: 1px solid black; padding: 2px 4px; }
             thead { display: table-header-group; } tr { page-break-inside: avoid; }
             .print-footer { display: block !important; margin-top: 20px; text-align: right; font-size: 10pt; page-break-inside: avoid; }
+            /* Hide interactive elements in print */
+            .col-date:hover { text-decoration: none; background: none; }
         }
         .print-header, .print-footer { display: none; }
     </style>
@@ -127,7 +143,7 @@
 <div class="disclaimer-bar">⚠️ Aplikacja pomocnicza. Kierownik Pociągu weryfikuje dane.</div>
 
 <header>
-    <h1>🚂 Karta Szlaków <span style="font-size:0.7rem; background:var(--primary); color:white; padding:2px 5px; border-radius:4px; margin-left:5px;">v2.5 Routes</span></h1>
+    <h1>🚂 Karta Szlaków <span style="font-size:0.7rem; background:var(--primary); color:white; padding:2px 5px; border-radius:4px; margin-left:5px;">v2.6 Routes</span></h1>
     <button class="help-btn" onclick="openModal('helpModal')">❓ Instrukcja</button>
 </header>
 
@@ -180,10 +196,11 @@
         </div>
 
         <div class="no-print" style="margin-bottom:15px;">
-            <div style="background:white; padding:10px; border-radius:8px; border:1px solid var(--border); font-size:0.9rem; display:flex; gap:15px; flex-wrap:wrap;">
+            <div style="background:white; padding:10px; border-radius:8px; border:1px solid var(--border); font-size:0.9rem; display:flex; gap:15px; flex-wrap:wrap; align-items:center;">
                 <span>🟢 <strong>Zielona:</strong> Ważny</span>
                 <span>🟡 <strong>Żółta:</strong> <30 dni</span>
                 <span>🔴 <strong>Czerwona:</strong> Brak/Wygasł</span>
+                <span style="border-left:1px solid #ddd; padding-left:15px;">Kliknij w datę, aby zmienić ręcznie ✍️</span>
             </div>
         </div>
 
@@ -199,6 +216,10 @@
         </div>
 
         <div class="print-footer"><p>.......................................................<br>(Podpis pracownika)</p></div>
+        
+        <div class="app-footer no-print">
+            Wersja aplikacji: v2.6 | Autorzy: Gemini & Piotr M 🚂
+        </div>
     </div>
 </div>
 
@@ -259,33 +280,62 @@
     <div class="modal" style="max-width:600px;">
         <h2>📖 Instrukcja Obsługi</h2>
         <div style="font-size:0.9rem; line-height:1.6; max-height:70vh; overflow-y:auto; padding-right:10px;">
-            <h4 style="margin:10px 0 5px; color:var(--primary);">1. Kreator Pociągu (Nowość!)</h4>
+            <h4 style="margin:10px 0 5px; color:var(--primary);">1. Kreator Pociągu</h4>
             <ul style="padding-left:20px; margin:0;">
                 <li>Budujesz trasę od stacji do stacji.</li>
-                <li>Jeśli między dwiema stacjami jest kilka dróg (np. Łódź Widzew - Łódź Chojny przez Dąbrowę LUB Olechów), aplikacja poprosi Cię o wybór właściwego wariantu.</li>
-                <li>Gwarantuje to poprawne zaliczenie właściwego szlaku.</li>
+                <li>Jeśli między dwiema stacjami jest kilka dróg, aplikacja poprosi o wybór wariantu.</li>
             </ul>
             <h4 style="margin:10px 0 5px; color:var(--primary);">2. Raport i Kolory</h4>
             <ul style="padding-left:20px; margin:0;">
                 <li>🟢 <strong>Zielona:</strong> Uprawnienia ważne (przejazd < 11 msc).</li>
                 <li>🟡 <strong>Żółta:</strong> Termin mija (< 30 dni).</li>
-                <li>🔴 <strong>Czerwona:</strong> Uprawnienia nieważne (brak przejazdu od roku).</li>
+                <li>🔴 <strong>Czerwona:</strong> Uprawnienia nieważne.</li>
+            </ul>
+             <h4 style="margin:10px 0 5px; color:var(--primary);">3. Ręczna edycja (Nowość v2.6)</h4>
+            <ul style="padding-left:20px; margin:0;">
+                <li>Możesz ręcznie wpisać datę zaliczenia szlaku, jeśli nie wynika ona z grafiku.</li>
+                <li>Kliknij w komórkę z datą w tabeli, aby otworzyć edycję.</li>
+                <li>Ręczne wpisy są oznaczone ikoną ✍️.</li>
             </ul>
         </div>
         <div style="text-align:right; margin-top:20px;"><button class="btn btn-primary" onclick="closeModal('helpModal')">Zamknij</button></div>
     </div>
 </div>
 
+<div class="modal-overlay" id="manualEditModal">
+    <div class="modal">
+        <h3>Ręczna edycja szlaku</h3>
+        <p style="font-size:0.85rem; color:var(--secondary);">
+            Odcinek: <strong id="manualRouteName"></strong>
+        </p>
+        <input type="hidden" id="manualRouteId">
+        
+        <div class="input-group">
+            <label>Data przejazdu (manualna):</label>
+            <input type="date" id="manualDateInput">
+        </div>
+        <p style="font-size:0.8rem; color:var(--warning);">
+            Wpisanie daty tutaj nadpisze datę wynikającą z dodanych pociągów dla tego konkretnego szlaku.
+        </p>
+
+        <div style="text-align:right; margin-top:15px; display:flex; gap:5px; justify-content:flex-end;">
+            <button class="btn btn-secondary" onclick="closeModal('manualEditModal')">Anuluj</button>
+            <button class="btn btn-danger" onclick="clearManualRoute()">Przywróć automat</button>
+            <button class="btn btn-primary" onclick="saveManualRoute()">Zapisz</button>
+        </div>
+    </div>
+</div>
+
 <script>
-    const DB_KEY = 'kierownik_v2_5_data';
+    const DB_KEY = 'kierownik_v2_6_data'; // Updated version key
     
-    let appData = { schedule: {}, shifts: {}, customTrains: [], profile: { name: "", kp: "" } };
+    // appData structure updated with manualRoutes
+    let appData = { schedule: {}, shifts: {}, customTrains: [], manualRoutes: {}, profile: { name: "", kp: "" } };
     let dbTrains = [], dbMaster = [];
     let currentDate = new Date();
     let selectedDateStr = null;
-    // Smart Route vars
-    let tempCustRoute = []; // Array of station names
-    let tempCustSegments = []; // Array of {from, to, via} objects
+    let tempCustRoute = []; 
+    let tempCustSegments = []; 
     let stationGraph = {}; 
 
     document.addEventListener('DOMContentLoaded', async () => {
@@ -378,8 +428,8 @@
         const viewM = currentDate.getMonth();
         const viewEnd = new Date(viewY, viewM+1, 0);
 
-        const vGlobal = {}; const vMonthly = {};
-
+        const vGlobal = {}; 
+        // Logic: Calculate automatic dates from schedule
         Object.keys(appData.schedule).forEach(dateStr => {
             const d = new Date(dateStr);
             if(d > viewEnd) return; 
@@ -390,7 +440,7 @@
                 if(tr.route && tr.route.segments) {
                     for(let seg of tr.route.segments) {
                         if(seg.from === entry.from) active=true;
-                        if(active) matchRoute(seg, dateStr, vGlobal, vMonthly, viewY, viewM);
+                        if(active) matchRoute(seg, dateStr, vGlobal);
                         if(seg.to === entry.to) { active=false; break; }
                     }
                 }
@@ -399,21 +449,39 @@
 
         dbMaster.forEach((m, idx) => {
             const tr = document.createElement('tr');
-            const lastG = vGlobal[m.id];
+            
+            // Priority: Manual date > Automatic Date
+            const manualDate = appData.manualRoutes ? appData.manualRoutes[m.id] : null;
+            const autoDate = vGlobal[m.id];
+            
+            const effectiveDate = manualDate || autoDate;
+            
             let dot = 'dot-red'; 
-            if(lastG) {
-                const ld = new Date(lastG);
+            if(effectiveDate) {
+                const ld = new Date(effectiveDate);
                 const exp = new Date(ld); exp.setFullYear(ld.getFullYear() + 1); 
                 const warn = new Date(exp); warn.setMonth(exp.getMonth() - 1); 
                 if (exp < viewEnd) dot = 'dot-red'; else if (warn < viewEnd) dot = 'dot-yellow'; else dot = 'dot-green';
             }
-            const dateTxt = vMonthly[m.id] || "";
-            tr.innerHTML = `<td class="col-lp">${idx+1}</td><td><span class="status-dot ${dot}"></span>${m.start}</td><td>${m.end}</td><td>${m.via==='-'?'':m.via}</td><td class="col-date">${dateTxt}</td>`;
+            
+            const dateDisplay = effectiveDate || "";
+            const isManual = !!manualDate;
+            const manualIcon = isManual ? '<span class="manual-icon" title="Edycja ręczna">✍️</span>' : '';
+
+            // Add onclick to trigger manual edit
+            tr.innerHTML = `
+                <td class="col-lp">${idx+1}</td>
+                <td><span class="status-dot ${dot}"></span>${m.start}</td>
+                <td>${m.end}</td>
+                <td>${m.via==='-'?'':m.via}</td>
+                <td class="col-date" onclick="openManualEdit('${m.id}', '${m.start} - ${m.end} ${m.via!=='-'?'('+m.via+')':''}', '${effectiveDate||''}')">
+                    ${dateDisplay}${manualIcon}
+                </td>`;
             tbody.appendChild(tr);
         });
     }
 
-    function matchRoute(seg, dateStr, vG, vM, vY, vMonth) {
+    function matchRoute(seg, dateStr, vG) {
         const norm = s => s ? s.toLowerCase().trim() : "";
         const f = norm(seg.from), t = norm(seg.to);
         const segVia = norm(seg.via);
@@ -421,33 +489,55 @@
         const match = dbMaster.find(m => {
             const mf = norm(m.start), mt = norm(m.end);
             const mVia = norm(m.via);
-            
-            // 1. Sprawdź stacje (kierunek dowolny)
             const stationsMatch = (mf===f && mt===t) || (mf===t && mt===f);
             if(!stationsMatch) return false;
-
-            // 2. PRECYZYJNE SPRAWDZANIE WARIANTU (VIA)
-            // Jeśli szlak master ma zdefiniowane 'via' (inne niż '-'), to segment pociągu MUSI to zawierać
             if(mVia.length > 1 && mVia !== '-') {
                 if(segVia.length > 1 && segVia !== '-') {
                     return segVia.includes(mVia) || mVia.includes(segVia);
-                } else {
-                    // Pociąg nie ma info o via, a szlak ma. To NIE JEST ten szlak (chyba że to jedyna opcja, ale tu zakładamy precyzję)
-                    return false; 
-                }
+                } else return false; 
             }
-            // Jeśli szlak master NIE MA via, a pociąg MA - to też może nie pasować, ale zazwyczaj szlaki "główne" mają via '-'
-            // Dla uproszczenia: jeśli master via is '-', uznajemy to za match podstawowy
             return true; 
         });
 
         if(match) {
             if(!vG[match.id] || dateStr > vG[match.id]) vG[match.id]=dateStr;
-            const d = new Date(dateStr);
-            if(d.getFullYear() === vY && d.getMonth() === vMonth) {
-                if(!vM[match.id] || dateStr > vM[match.id]) vM[match.id]=dateStr;
-            }
         }
+    }
+
+    // --- MANUAL EDIT LOGIC ---
+    function openManualEdit(id, name, currentDateStr) {
+        document.getElementById('manualRouteId').value = id;
+        document.getElementById('manualRouteName').innerText = name;
+        // Check if there is a manual entry specifically
+        const existingManual = appData.manualRoutes && appData.manualRoutes[id];
+        document.getElementById('manualDateInput').value = existingManual || currentDateStr || '';
+        
+        openModal('manualEditModal');
+    }
+
+    function saveManualRoute() {
+        const id = document.getElementById('manualRouteId').value;
+        const val = document.getElementById('manualDateInput').value;
+        if(val) {
+            if(!appData.manualRoutes) appData.manualRoutes = {};
+            appData.manualRoutes[id] = val;
+            saveData();
+            renderReport();
+            closeModal('manualEditModal');
+        } else {
+            // Empty value acts like clear
+            clearManualRoute();
+        }
+    }
+
+    function clearManualRoute() {
+        const id = document.getElementById('manualRouteId').value;
+        if(appData.manualRoutes && appData.manualRoutes[id]) {
+            delete appData.manualRoutes[id];
+            saveData();
+            renderReport();
+        }
+        closeModal('manualEditModal');
     }
 
     // --- DAY EDIT ---
@@ -526,14 +616,11 @@
     }
 
     function addCustSt() {
-        // Reset variant view
         const vDiv = document.getElementById('variantSelector');
         vDiv.style.display = 'none';
-        
         const nextSt = document.getElementById('custNextSt').value;
         if(!nextSt) return;
 
-        // Jeśli to pierwsza stacja
         if(tempCustRoute.length === 0) {
             tempCustRoute.push(nextSt);
             renderCustRoute();
@@ -541,20 +628,15 @@
             return;
         }
 
-        // Jeśli to kolejna stacja, sprawdzamy warianty
         const lastSt = tempCustRoute[tempCustRoute.length-1];
-        
-        // Znajdź możliwe szlaki w dbMaster
         const possibleRoutes = dbMaster.filter(m => {
             const mf = m.start, mt = m.end;
             return (mf===lastSt && mt===nextSt) || (mf===nextSt && mt===lastSt);
         });
 
         if(possibleRoutes.length > 1) {
-            // KONFLIKT! Pokaż wybór
             vDiv.style.display = 'block';
             const vOpts = document.getElementById('variantOptions'); vOpts.innerHTML = '';
-            
             possibleRoutes.forEach(r => {
                 const btn = document.createElement('div');
                 btn.className = 'variant-btn';
@@ -562,11 +644,9 @@
                 btn.onclick = () => confirmVariant(nextSt, r.via);
                 vOpts.appendChild(btn);
             });
-            // Wyłącz przycisk dodawania, czekamy na wybór
             document.getElementById('btnAddSt').disabled = true;
 
         } else {
-            // Tylko jedna droga lub brak info (domyślny '-')
             let viaVal = '-';
             if(possibleRoutes.length === 1) viaVal = possibleRoutes[0].via;
             confirmVariant(nextSt, viaVal);
@@ -576,11 +656,9 @@
     function confirmVariant(nextSt, viaVal) {
         document.getElementById('variantSelector').style.display = 'none';
         document.getElementById('btnAddSt').disabled = false;
-
         const lastSt = tempCustRoute[tempCustRoute.length-1];
         tempCustRoute.push(nextSt);
         tempCustSegments.push({ from: lastSt, to: nextSt, via: viaVal });
-        
         renderCustRoute();
         renderCustNextSelect();
     }
@@ -614,15 +692,11 @@
     function saveCust() {
         const n=document.getElementById('custNum').value;
         if(tempCustRoute.length<2||!n) return alert('Wymagany numer i min. 2 stacje');
-        
         const obj={
             id:'c'+Date.now(), 
             number:n, 
             isCustom:true, 
-            route:{
-                start:tempCustRoute[0], 
-                segments:tempCustSegments 
-            }
+            route:{ start:tempCustRoute[0], segments:tempCustSegments }
         };
         appData.customTrains.push(obj); dbTrains.push(obj);
         fillTrainSelect(); saveData(); closeModal('customModal');
@@ -632,7 +706,8 @@
     function loadData() {
         let r = localStorage.getItem(DB_KEY);
         if(!r) {
-            const olds = ['kierownik_v2_4_data', 'kierownik_v2_3_data'];
+            // Migration check
+            const olds = ['kierownik_v2_5_data', 'kierownik_v2_4_data', 'kierownik_v2_3_data'];
             for(let k of olds) { let x=localStorage.getItem(k); if(x){r=x; localStorage.setItem(DB_KEY, r); break;} }
         }
         if(r) {
@@ -642,6 +717,7 @@
                 if(d.shifts) appData.shifts=d.shifts;
                 if(d.customTrains) appData.customTrains=d.customTrains;
                 if(d.profile) appData.profile=d.profile;
+                if(d.manualRoutes) appData.manualRoutes=d.manualRoutes; // Load manual routes
             } catch(e){}
         }
     }
@@ -658,6 +734,7 @@
                 if(d.schedule) Object.assign(appData.schedule, d.schedule);
                 if(d.shifts) Object.assign(appData.shifts, d.shifts);
                 if(d.profile) appData.profile = d.profile;
+                if(d.manualRoutes) Object.assign(appData.manualRoutes, d.manualRoutes);
                 if(d.customTrains) d.customTrains.forEach(ct=>{if(!appData.customTrains.find(x=>x.id==ct.id)){appData.customTrains.push(ct);dbTrains.push(ct)}});
                 startSystem(); saveData(); alert('Wczytano');
             } catch(err){alert('Błąd pliku')}
