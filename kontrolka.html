@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Karta Znajomości Szlaków v2.8</title>
+    <title>Karta Znajomości Szlaków v2.9</title>
     
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-W05T4L1HFD"></script> 
     <script> 
@@ -135,7 +135,7 @@
 <div class="disclaimer-bar">⚠️ Aplikacja pomocnicza. Kierownik Pociągu weryfikuje dane.</div>
 
 <header>
-    <h1>🚂 Karta Szlaków <span style="font-size:0.7rem; background:var(--primary); color:white; padding:2px 5px; border-radius:4px; margin-left:5px;">v2.8 History</span></h1>
+    <h1>🚂 Karta Szlaków <span style="font-size:0.7rem; background:var(--primary); color:white; padding:2px 5px; border-radius:4px; margin-left:5px;">v2.9 Fix</span></h1>
     <button class="help-btn" onclick="openModal('helpModal')">❓ Instrukcja</button>
 </header>
 
@@ -194,7 +194,7 @@
                 <span>🟢 <strong>Zielona:</strong> Ważny</span>
                 <span>🟡 <strong>Żółta:</strong> <30 dni</span>
                 <span>🔴 <strong>Czerwona:</strong> Brak/Wygasł</span>
-                <span style="border-left:1px solid #ddd; padding-left:15px; color:var(--primary);">ℹ️ Kliknij kropkę, aby zobaczyć historię przejazdów.</span>
+                <span style="border-left:1px solid #ddd; padding-left:15px; color:var(--primary);">ℹ️ Kliknij kropkę lub datę, aby zobaczyć historię.</span>
             </div>
         </div>
 
@@ -212,7 +212,7 @@
         <div class="print-footer"><p>.......................................................<br>(Podpis pracownika)</p></div>
         
         <div class="app-footer no-print">
-            Wersja aplikacji: v2.8 | Autorzy: Gemini & Piotr M 🚂
+            Wersja aplikacji: v2.9 | Autorzy: Gemini & Piotr M 🚂
         </div>
     </div>
 </div>
@@ -312,7 +312,7 @@
     <div class="modal" style="max-width:600px;">
         <h2>📖 Instrukcja Obsługi</h2>
         <div style="font-size:0.9rem; line-height:1.6; max-height:70vh; overflow-y:auto; padding-right:10px;">
-            <h4 style="margin:10px 0 5px; color:var(--primary);">1. Historia Przejazdów (Nowość v2.8)</h4>
+            <h4 style="margin:10px 0 5px; color:var(--primary);">1. Historia Przejazdów</h4>
             <ul style="padding-left:20px; margin:0;">
                 <li>Kliknij w <strong style="color:green">●</strong> (kropkę) lub datę przy szlaku, aby zobaczyć pełną listę przejazdów tym odcinkiem.</li>
                 <li>Data w tabeli głównej pokazuje zawsze <strong>najświeższy</strong> przejazd (nawet jeśli był 5 miesięcy temu).</li>
@@ -327,7 +327,7 @@
 </div>
 
 <script>
-    const DB_KEY = 'kierownik_v2_7_data'; // Keeping data compatible
+    const DB_KEY = 'kierownik_v2_9_data'; // Version updated to force refresh if needed, generally safe to use previous data
     const MANUAL_TRAIN_ID = 'MANUAL';
 
     let appData = { schedule: {}, shifts: {}, customTrains: [], profile: { name: "", kp: "" } };
@@ -394,6 +394,78 @@
         document.getElementById('printKP').innerText = appData.profile.kp;
     }
 
+    // --- HELPER: MATCHING ---
+    // Returns true if segment 'seg' ({from,to,via}) covers master route 'm'
+    function checkMatch(seg, m) {
+        const norm = str => str ? str.toLowerCase().trim() : "";
+        const sf = norm(seg.from), st = norm(seg.to), sv = norm(seg.via);
+        const mf = norm(m.start), mt = norm(m.end), mv = norm(m.via);
+
+        const stationsMatch = (sf===mf && st===mt) || (sf===mt && st===mf);
+        if(!stationsMatch) return false;
+
+        // Check VIA
+        if(mv.length > 1 && mv !== '-') {
+            // Master requires VIA
+            if(sv.length > 1 && sv !== '-') {
+                return sv.includes(mv) || mv.includes(sv);
+            } else return false; 
+        }
+        return true;
+    }
+
+    // Helper: Identify which MasterIDs are covered by a specific schedule entry
+    function getCoveredMasterIds(entry) {
+        let covered = [];
+        const isManual = (entry.trainId === MANUAL_TRAIN_ID);
+        
+        if (isManual) {
+            // Manual: Check direct match against all Master routes
+            const seg = { from: entry.from, to: entry.to, via: entry.via || '-' };
+            dbMaster.forEach(m => {
+                if(checkMatch(seg, m)) covered.push(m.id);
+            });
+        } else {
+            // Train: Check train segments
+            const tr = dbTrains.find(t => t.id == entry.trainId);
+            if(tr && tr.route && tr.route.segments) {
+                // Find active segments between entry.from and entry.to
+                let active = false;
+                tr.route.segments.forEach(seg => {
+                    if (seg.from === entry.from) active = true;
+                    if (active) {
+                        // Check if this train segment matches any master route
+                        dbMaster.forEach(m => {
+                            if(checkMatch(seg, m)) covered.push(m.id);
+                        });
+                    }
+                    if (seg.to === entry.to) active = false;
+                });
+            }
+        }
+        return covered;
+    }
+
+    // --- CORE LOGIC: ANALYZE HISTORY ---
+    // Scans all schedule data up to 'limitDate' and returns map: { masterId: 'YYYY-MM-DD' }
+    function analyzeHistory(limitDate) {
+        const result = {};
+        const sortedDates = Object.keys(appData.schedule).sort(); // Chronological 'YYYY-MM-DD'
+
+        sortedDates.forEach(dateStr => {
+            const d = new Date(dateStr);
+            if (d > limitDate) return; // Ignore future relative to view
+
+            appData.schedule[dateStr].forEach(entry => {
+                const ids = getCoveredMasterIds(entry);
+                ids.forEach(id => {
+                    result[id] = dateStr; // Overwrite with newer date
+                });
+            });
+        });
+        return result;
+    }
+
     // --- CALENDAR ---
     function renderCalendar() {
         const grid = document.getElementById('calendarGrid'); grid.innerHTML='';
@@ -433,172 +505,75 @@
         document.getElementById('printMonthInfo').innerText = `Miesiąc: ${currentDate.toLocaleDateString('pl-PL',{month:'long',year:'numeric'})}`;
     }
 
-    // --- CORE MATCHING LOGIC ---
-    // Returns true if schedule segment (s) matches master route (m)
-    function checkMatch(s, m) {
-        const norm = str => str ? str.toLowerCase().trim() : "";
-        const sf = norm(s.from), st = norm(s.to), sv = norm(s.via);
-        const mf = norm(m.start), mt = norm(m.end), mv = norm(m.via);
-
-        const stationsMatch = (sf===mf && st===mt) || (sf===mt && st===mf);
-        if(!stationsMatch) return false;
-
-        // Check VIA if present in Master
-        if(mv.length > 1 && mv !== '-') {
-            if(sv.length > 1 && sv !== '-') {
-                return sv.includes(mv) || mv.includes(sv);
-            } else return false; // Via required but not present/matching
-        }
-        return true;
-    }
-
-    // --- REPORT GENERATION ---
+    // --- REPORT RENDER ---
     function renderReport() {
         const tbody = document.querySelector('#reportTable tbody'); tbody.innerHTML='';
+        
+        // Determine end of the current view month
         const viewY = currentDate.getFullYear();
         const viewM = currentDate.getMonth();
-        const viewEnd = new Date(viewY, viewM+1, 0); // Last day of viewed month
+        const viewEnd = new Date(viewY, viewM + 1, 0); // Last day of month
 
-        // vGlobal stores the latest date for each route ID found in history
-        const vGlobal = {}; 
-
-        Object.keys(appData.schedule).forEach(dateStr => {
-            const d = new Date(dateStr);
-            // Crucial: We look at ALL history up to the end of the currently viewed month.
-            // If the user travels in 2024, it should count for validity in 2025.
-            if(d > viewEnd) return; 
-
-            appData.schedule[dateStr].forEach(entry => {
-                const isManual = (entry.trainId === MANUAL_TRAIN_ID);
-                const seg = { from: entry.from, to: entry.to, via: entry.via || '-' };
-                
-                // If it's a real train, we need to check its full route segments against Master
-                if(!isManual) {
-                    const tr = dbTrains.find(t=>t.id==entry.trainId);
-                    if(tr && tr.route && tr.route.segments) {
-                         // Check every segment of the train against DB Master to see what was covered
-                         // Optimization: Iterating segments then Master is slow (NxM). 
-                         // Better: We only care if this specific train segment covered a Master route.
-                         // But here we are building the Global Map.
-                         // Let's iterate Master once? No. 
-                         // Current approach: Iterate Schedule -> Iterate Train Segments -> Find Match in Master.
-                         
-                         // Check which Master route is covered by this segment
-                         // Note: We need to loop dbMaster for every segment to find the ID.
-                         // To optimize, we just iterate segments and call match helper.
-                         tr.route.segments.forEach(tSeg => {
-                             // Check if this segment is part of the train's journey in this schedule entry
-                             // Simplified: If entry says A->C, we check segments between A and C.
-                             // For now, assuming entry matches a segment logic or full train logic.
-                             // Let's stick to the previous v2.7 logic: check if segment is "active" between entry points.
-                             let active = false;
-                             // We need to re-loop segments for "activation" logic
-                             // This is slightly complex inside the loop.
-                             // Let's simplify:
-                         });
-                         
-                         // Re-implementing the robust scan from v2.7:
-                         let active = false;
-                         for(let s of tr.route.segments) {
-                             if(s.from === entry.from) active=true;
-                             if(active) {
-                                 // Now check which Master ID corresponds to this segment 's'
-                                 const matchedMaster = dbMaster.find(m => checkMatch(s, m));
-                                 if(matchedMaster) {
-                                     if(!vGlobal[matchedMaster.id] || dateStr > vGlobal[matchedMaster.id]) {
-                                         vGlobal[matchedMaster.id] = dateStr;
-                                     }
-                                 }
-                             }
-                             if(s.to === entry.to) { active=false; break; }
-                         }
-                    }
-                } else {
-                    // Manual entry
-                    const matchedMaster = dbMaster.find(m => checkMatch(seg, m));
-                    if(matchedMaster) {
-                        if(!vGlobal[matchedMaster.id] || dateStr > vGlobal[matchedMaster.id]) {
-                            vGlobal[matchedMaster.id] = dateStr;
-                        }
-                    }
-                }
-            });
-        });
+        // Get latest dates for all routes
+        const latestDates = analyzeHistory(viewEnd);
 
         dbMaster.forEach((m, idx) => {
             const tr = document.createElement('tr');
-            const effectiveDate = vGlobal[m.id];
+            const effectiveDate = latestDates[m.id];
             
             let dot = 'dot-red'; 
             if(effectiveDate) {
                 const ld = new Date(effectiveDate);
                 const exp = new Date(ld); exp.setFullYear(ld.getFullYear() + 1); 
                 const warn = new Date(exp); warn.setMonth(exp.getMonth() - 1); 
+                // Check validity against TODAY or View End? Usually View End to see status in that month.
                 if (exp < viewEnd) dot = 'dot-red'; else if (warn < viewEnd) dot = 'dot-yellow'; else dot = 'dot-green';
             }
             
-            // Generate clickable cell
+            // Safe strings for onclick
+            const safeName = (m.start + ' - ' + m.end).replace(/'/g, "\\'");
+            const safeId = m.id;
+
             tr.innerHTML = `
                 <td class="col-lp">${idx+1}</td>
-                <td><span class="status-dot ${dot}" title="Pokaż historię" onclick="openHistory('${m.id}', '${m.start} - ${m.end}')"></span>${m.start}</td>
+                <td><span class="status-dot ${dot}" title="Pokaż historię" onclick="openHistory('${safeId}', '${safeName}')"></span>${m.start}</td>
                 <td>${m.end}</td>
                 <td>${m.via==='-'?'':m.via}</td>
-                <td class="col-date" onclick="openHistory('${m.id}', '${m.start} - ${m.end}')">
+                <td class="col-date" onclick="openHistory('${safeId}', '${safeName}')">
                     ${effectiveDate || ""}
                 </td>`;
             tbody.appendChild(tr);
         });
     }
 
-    // --- HISTORY MODAL LOGIC (New v2.8) ---
+    // --- HISTORY MODAL LOGIC ---
     function openHistory(masterId, routeName) {
         document.getElementById('histTitle').innerText = "Historia przejazdów";
         document.getElementById('histSubtitle').innerText = routeName;
         const ul = document.getElementById('historyList'); ul.innerHTML = '';
         
-        const masterRoute = dbMaster.find(x => x.id === masterId);
-        if(!masterRoute) return;
-
         let history = [];
+        const sortedDates = Object.keys(appData.schedule).sort();
 
-        // Scan ALL schedule data
-        Object.keys(appData.schedule).forEach(dateStr => {
+        sortedDates.forEach(dateStr => {
             appData.schedule[dateStr].forEach(entry => {
-                let matches = false;
-                let info = '';
-
-                if(entry.trainId === MANUAL_TRAIN_ID) {
-                    const seg = { from: entry.from, to: entry.to, via: entry.via || '-' };
-                    if(checkMatch(seg, masterRoute)) {
-                        matches = true;
+                const ids = getCoveredMasterIds(entry);
+                if(ids.includes(masterId)) {
+                    // Match found!
+                    let info = '';
+                    if(entry.trainId === MANUAL_TRAIN_ID) {
                         info = 'Wpis ręczny';
+                    } else {
+                        const tr = dbTrains.find(t=>t.id == entry.trainId);
+                        info = tr ? `Pociąg ${tr.number}` : 'Pociąg ?';
                     }
-                } else {
-                    const tr = dbTrains.find(t=>t.id==entry.trainId);
-                    if(tr && tr.route && tr.route.segments) {
-                        let active = false;
-                        for(let s of tr.route.segments) {
-                             if(s.from === entry.from) active=true;
-                             if(active) {
-                                 if(checkMatch(s, masterRoute)) {
-                                     matches = true;
-                                     info = `Pociąg ${tr.number}`;
-                                     break; // Found match in this train
-                                 }
-                             }
-                             if(s.to === entry.to) { active=false; break; }
-                        }
-                    }
-                }
-
-                if(matches) {
                     history.push({ date: dateStr, info: info });
                 }
             });
         });
 
-        // Sort desc
-        history.sort((a,b) => b.date.localeCompare(a.date));
+        // Sort descending (newest first)
+        history.reverse();
 
         if(history.length === 0) {
             ul.innerHTML = '<li style="padding:10px; color:gray; text-align:center">Brak zarejestrowanych przejazdów.</li>';
@@ -610,7 +585,6 @@
                 ul.appendChild(li);
             });
         }
-
         openModal('historyModal');
     }
 
@@ -708,7 +682,7 @@
     function loadData() {
         let r = localStorage.getItem(DB_KEY);
         if(!r) {
-            const olds = ['kierownik_v2_6_data', 'kierownik_v2_5_data', 'kierownik_v2_4_data', 'kierownik_v2_3_data'];
+            const olds = ['kierownik_v2_7_data', 'kierownik_v2_6_data', 'kierownik_v2_5_data'];
             for(let k of olds) { let x=localStorage.getItem(k); if(x){r=x; localStorage.setItem(DB_KEY, r); break;} }
         }
         if(r) {
