@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Karta Znajomości Szlaków v4.2</title>
+    <title>Asystent Karty Znajomości Szlaków v4.2</title>
     
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-W05T4L1HFD"></script> 
     <script> 
@@ -211,7 +211,7 @@
 <div class="disclaimer-bar">⚠️ Aplikacja pomocnicza. Kierownik Pociągu zobowiązany jest do weryfikacji poprawności danych.</div>
 
 <header>
-    <h1>🚂 Karta Szlaków <span style="font-size:0.7rem; background:var(--primary); color:white; padding:2px 5px; border-radius:4px; margin-left:5px;">v4.2</span></h1>
+    <h1>🚂 ASYSTENT UZUPEŁNIANIA - Karty Szlaków <span style="font-size:0.7rem; background:var(--primary); color:white; padding:2px 5px; border-radius:4px; margin-left:5px;">v4.2</span></h1>
     <button class="help-btn" onclick="openModal('helpModal')">❓ Instrukcja</button>
 </header>
 
@@ -260,7 +260,7 @@
 
     <div class="content-area">
         <div class="print-header">
-            <div class="print-title">KARTA ZNAJOMOŚCI SZLAKÓW</div>
+            <div class="print-title">ZESTAWIENIE KARTY ZNAJOMOŚCI SZLAKÓW</div>
             <div class="print-subtitle" id="phTitle">Zestawienie: Roczne 2025</div>
             <div class="print-meta">
                 <span id="phUser">Pracownik: ...</span>
@@ -314,17 +314,65 @@
             <h2 style="margin:0; color:var(--primary);">📖 Instrukcja Obsługi</h2>
             <button class="btn btn-secondary" onclick="closeModal('helpModal')">X</button>
         </div>
+        
         <div style="font-size:0.95rem; line-height:1.6; padding-right:5px; overflow-y:auto; flex:1;">
-            <p><strong>Szlaki Kolejowe v4.2</strong></p>
-            <h4 style="margin:15px 0 5px; color:var(--primary);">Drukowanie / PDF</h4>
-            <p>Kliknij przycisk <strong>🖨️ DRUKUJ / ZAPISZ PDF</strong>. Otworzy się systemowe okno, w którym możesz:</p>
+            
+            <p><strong>Aplikacja do ewidencji pracy i kontroli znajomości szlaków (v4.2).</strong></p>
+
+            <h4 style="margin:15px 0 5px; color:var(--primary);">1. Import Grafiku</h4>
+            <div style="background:#f8fafc; padding:10px; border-radius:6px; border:1px solid var(--border);">
+                Możesz automatycznie wczytać swoje służby z systemu IVU:
+                <ul>
+                    <li>Zaloguj się do systemu: 👉 <a href="https://irena1.intercity.pl" target="_blank" style="color:var(--primary); font-weight:bold;">irena1.intercity.pl</a></li>
+                    <li>Pobierz swój grafik w formacie <code>.ics</code>.</li>
+                    <li>W aplikacji kliknij przycisk <span class="btn btn-warning" style="padding:2px 6px; font-size:0.7em;">📅 Import</span> i wskaż pobrany plik.</li>
+                </ul>
+            </div>
+
+            <h4 style="margin:15px 0 5px; color:var(--primary);">2. Zarządzanie Kalendarzem</h4>
+            <p>Kalendarz po lewej stronie służy do nawigacji i edycji.</p>
             <ul>
-                <li>Wybrać drukarkę fizyczną.</li>
-                <li>Wybrać opcję <strong>"Zapisz jako PDF"</strong> (Microsoft Print to PDF / Save as PDF).</li>
+                <li><strong>Widok miesiąca:</strong> Zmieniaj miesiące strzałkami ◀ ▶.</li>
+                <li><strong>Edycja dnia:</strong> Kliknij w dowolny dzień (kwadrat z numerem), aby otworzyć okno edycji. Możesz tam <strong>dodać pociąg</strong> z bazy lub <strong>usunąć</strong> błędny wpis.</li>
             </ul>
+
+            <h4 style="margin:15px 0 5px; color:var(--primary);">3. Narzędzia Ręczne</h4>
+            <p>Jeśli potrzebujesz uzupełnić dane, których nie ma w grafiku:</p>
+            <ul>
+                <li><strong>Wprowadź przejazd ręcznie:</strong> Pozwala dodać przejazd historyczny (np. sprzed roku) lub nietypowy przejazd (Luz, Pociąg specjalny) wybierając odcinek bezpośrednio z listy szlaków.</li>
+                <li><strong>Dodaj własny pociąg:</strong> Jeśli w bazie brakuje jakiegoś numeru pociągu, możesz go zdefiniować podając numer, nazwę i stacje pośrednie.</li>
+            </ul>
+
+            <h4 style="margin:15px 0 5px; color:var(--primary);">4. Tabela i Statusy</h4>
+            <p>Główna tabela pokazuje status znajomości dla wszystkich odcinków:</p>
+            <ul>
+                <li>🟢 <strong>Zielona kropka:</strong> Szlak ważny.</li>
+                <li>🟠 <strong>Pomarańczowa kropka:</strong> Ważność kończy się w ciągu 30 dni.</li>
+                <li>🔴 <strong>Czerwona kropka:</strong> Szlak nieważny / brak przejazdu w ciągu 12 miesięcy.</li>
+                <li><strong>Historia:</strong> Kliknij w datę w kolumnie "Ostatni przejazd", aby zobaczyć pełną listę przejazdów na danym odcinku.</li>
+            </ul>
+
+            <h4 style="margin:15px 0 5px; color:var(--primary);">5. Kopia Zapasowa i Reset</h4>
+            <div style="background:#fffbeb; padding:10px; border:1px solid #fcd34d; border-radius:4px;">
+                Dane są zapisywane w przeglądarce. <strong>Regularnie rób kopię zapasową!</strong>
+            </div>
+            <ul>
+                <li><strong>💾 Kopia:</strong> Pobiera plik <code>.json</code> z całą Twoją historią. Zapisz go na dysku lub wyślij sobie na maila.</li>
+                <li><strong>📂 Wczytaj:</strong> Pozwala przywrócić dane z pliku kopii (np. na innym urządzeniu).</li>
+                <li><strong>🗑️ Reset:</strong> Usuwa WSZYSTKIE dane aplikacji i przywraca ją do stanu początkowego. Wymusza ponowne pobranie danych systemowych z serwera.</li>
+            </ul>
+
+            <h4 style="margin:15px 0 5px; color:var(--primary);">6. Drukowanie / PDF</h4>
+            <p>Aby wygenerować raport:</p>
+            <ul>
+                <li>Kliknij <strong>🖨️ DRUKUJ / ZAPISZ PDF</strong>.</li>
+                <li>Wybierz rodzaj raportu (Miesięczny lub Roczny) i datę.</li>
+                <li>W systemowym oknie drukowania wybierz drukarkę lub opcję <strong>"Zapisz jako PDF"</strong>.</li>
+            </ul>
+
         </div>
         <div style="text-align:right; margin-top:20px; border-top:1px solid #eee; padding-top:10px;">
-            <button class="btn btn-primary" onclick="closeModal('helpModal')">Rozumiem</button>
+            <button class="btn btn-primary" onclick="closeModal('helpModal')">Rozumiem, zamknij</button>
         </div>
     </div>
 </div>
@@ -862,7 +910,18 @@ function importData(input) {
     r.onload = e => { appData=JSON.parse(e.target.result); fixLegacyData(); saveData(); startSystem(); alert("OK"); };
     r.readAsText(f);
 }
-function clearData() { if(confirm("Reset?")) { localStorage.removeItem(DB_KEY); location.reload(); } }
+function clearData() {
+    const msg = "⚠️ PEŁNY RESET DANYCH ⚠️\n\n" +
+                "Czy na pewno chcesz usunąć WSZYSTKIE dane (historię, profil, grafik, własne pociągi)?\n\n" +
+                "Ta operacja jest NIEODWRACALNA.\n" +
+                "Aplikacja zostanie zrestartowana i spróbuje ponownie pobrać dane bazowe.";
+
+    if(confirm(msg)) {
+        localStorage.removeItem(DB_KEY);
+        localStorage.clear();
+        location.reload();
+    }
+}
 function openCustomModal(){openModal('customTrainModal')}
 function addCustomStopInput(){document.getElementById('customStops').innerHTML+='<div style="display:flex;gap:5px"><input type="text" placeholder="Stacja" class="cust-stop"></div>'}
 function saveCustomTrain(){
