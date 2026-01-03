@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Karta Znajomości Szlaków v3.4</title>
+    <title>Karta Znajomości Szlaków v3.6</title>
     
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-W05T4L1HFD"></script> 
     <script> 
@@ -17,14 +17,18 @@
         :root {
             --primary: #2563eb;
             --secondary: #64748b;
-            --success: #22c55e; /* Zielony */
-            --warning: #f59e0b; /* Pomarańczowy */
-            --danger: #ef4444;  /* Czerwony */
+            --success: #22c55e;
+            --warning: #f59e0b;
+            --danger: #ef4444;
             --bg: #f1f5f9;
             --surface: #ffffff;
             --text: #0f172a;
             --border: #e2e8f0;
             --empty-dot: #cbd5e1;
+            
+            /* Zmienne do druku (dynamiczne) */
+            --print-font-size: 10pt;
+            --print-margin: 0.5cm;
         }
 
         * { box-sizing: border-box; outline: none; }
@@ -46,7 +50,7 @@
 
         .input-group { margin-bottom: 10px; }
         .input-group label { display: block; font-size: 0.75rem; color: var(--secondary); margin-bottom: 2px; }
-        input[type="text"], select, input[type="date"] { width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 6px; font-size: 0.9rem; }
+        input[type="text"], select, input[type="date"], input[type="number"] { width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 6px; font-size: 0.9rem; }
         
         .btn-group { display: flex; flex-wrap: wrap; gap: 6px; }
         .btn { padding: 8px 10px; border: none; border-radius: 6px; cursor: pointer; font-size: 0.85rem; font-weight: 500; display: inline-flex; align-items: center; justify-content: center; gap: 4px; color: white; flex: 1; }
@@ -78,12 +82,13 @@
         table.data-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
         table.data-table th { background: #f8fafc; padding: 10px; text-align: left; font-weight: 600; color: var(--secondary); border-bottom: 2px solid var(--border); position: sticky; top: 0; z-index: 5; }
         table.data-table td { padding: 8px 10px; border-bottom: 1px solid var(--border); color: var(--text); vertical-align: middle; }
-        .col-lp { width: 40px; text-align: center; }
-        .col-status { width: 40px; text-align: center; }
-        .col-date { width: 160px; text-align: left; font-family: monospace; font-weight: 600; white-space: nowrap; cursor: pointer; }
-        .col-date:hover { background: #f1f5f9; color: var(--primary); text-decoration: underline; }
         
-        /* DOTS */
+        .col-lp { width: 35px; text-align: center; }
+        .col-status { width: 35px; text-align: center; }
+        .col-date { width: 140px; text-align: left; font-family: monospace; font-weight: 600; white-space: nowrap; cursor: pointer; }
+        /* Ucinanie tekstu w kolumnie "Przez" */
+        .col-via { max-width: 150px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--secondary); font-size: 0.9em; }
+
         .status-dot { display: inline-block; width: 12px; height: 12px; border-radius: 50%; border: 1px solid rgba(0,0,0,0.1); flex-shrink: 0; }
         .dot-green { background: var(--success); }
         .dot-orange { background: var(--warning); }
@@ -114,21 +119,62 @@
             .table-wrapper { overflow-x: auto; } table.data-table { min-width: 600px; }
         }
 
+        /* --- STYLES FOR PRINT --- */
         @media print {
-            @page { size: A4; margin: 1cm; }
-            body { display: block; height: auto; background: white; font-size: 8pt; color: black; }
-            .sidebar, header, .disclaimer-bar, .no-print, .btn, .help-btn, .app-footer { display: none !important; }
+            @page { 
+                size: A4; 
+                margin: var(--print-margin);
+            }
+            body { display: block; height: auto; background: white; color: black; }
+            
+            /* Ukrywanie elementów interfejsu */
+            .sidebar, header, .disclaimer-bar, .no-print, .btn, .help-btn, .app-footer, .modal-overlay { display: none !important; }
+            
+            /* Layout strony */
             .app-container { display: block; height: auto; overflow: visible; }
-            .content-area { padding: 0; overflow: visible; background: white; }
-            .table-wrapper { border: none; overflow: visible; }
-            .table-scroll { overflow: visible; }
+            .content-area { padding: 0; overflow: visible; background: white; display: block; }
+            
+            /* POPRAWKA: Wyłączenie flexboxa dla kontenera tabeli */
+            .table-wrapper { display: block; border: none; overflow: visible; margin-bottom: 20px; }
+            .table-scroll { overflow: visible; display: block; }
+            
+            /* Nagłówek */
             .print-header { display: block !important; border-bottom: 2px solid black; margin-bottom: 10px; padding-bottom: 5px; }
             .print-row { display: flex; justify-content: space-between; margin-bottom: 4px; font-size: 10pt; }
             .print-title { text-align: center; text-transform: uppercase; font-size: 14pt; font-weight: bold; margin: 5px 0; }
-            table.data-table { font-size: 8pt; width: 100%; border-collapse: collapse; }
-            table.data-table th, table.data-table td { border: 1px solid black; padding: 2px 4px; }
-            thead { display: table-header-group; } tr { page-break-inside: avoid; }
-            .print-footer { display: block !important; margin-top: 20px; text-align: right; font-size: 10pt; page-break-inside: avoid; }
+            
+            /* Stopka z podpisem - POPRAWIONE POZYCJONOWANIE */
+            .print-footer { 
+                display: block !important; 
+                margin-top: 30px; 
+                text-align: right; 
+                font-size: 10pt; 
+                page-break-inside: avoid; 
+                break-inside: avoid;
+                width: 100%;
+                clear: both; /* Ważne: czyści opływanie */
+            }
+
+            /* Tabela */
+            table.data-table { 
+                font-size: var(--print-font-size); 
+                width: 100%; 
+                border-collapse: collapse; 
+            }
+            table.data-table th, table.data-table td { 
+                border: 1px solid black; 
+                padding: 4px; 
+            }
+            
+            /* Zapobieganie łamaniu wierszy w połowie */
+            tr { 
+                break-inside: avoid; 
+                page-break-inside: avoid; 
+            }
+            thead { display: table-header-group; } 
+            
+            /* Zwężenie kolumny w druku */
+            .col-via { max-width: 120px; }
         }
         .print-header, .print-footer { display: none; }
     </style>
@@ -138,7 +184,7 @@
 <div class="disclaimer-bar">⚠️ Aplikacja pomocnicza. Kierownik Pociągu weryfikuje dane.</div>
 
 <header>
-    <h1>🚂 Karta Szlaków <span style="font-size:0.7rem; background:var(--primary); color:white; padding:2px 5px; border-radius:4px; margin-left:5px;">v3.4</span></h1>
+    <h1>🚂 Karta Szlaków <span style="font-size:0.7rem; background:var(--primary); color:white; padding:2px 5px; border-radius:4px; margin-left:5px;">v3.6</span></h1>
     <button class="help-btn" onclick="openModal('helpModal')">❓ Instrukcja</button>
 </header>
 
@@ -174,7 +220,7 @@
                 <button class="btn btn-secondary" onclick="document.getElementById('backupInput').click()">📂 Wczytaj</button>
                 <button class="btn btn-danger" onclick="clearData()">🗑️ Reset</button>
             </div>
-             <button class="btn btn-primary" style="width:100%; margin-top:8px;" onclick="window.print()">🖨️ DRUKUJ</button>
+             <button class="btn btn-primary" style="width:100%; margin-top:8px;" onclick="openPrintModal()">🖨️ DRUKUJ</button>
         </div>
         
         <div id="fallback" style="display:none; color:red; font-size:0.8rem; text-align:center; padding:10px; border:1px dashed red;">
@@ -217,7 +263,7 @@
                             <th class="col-status">Status</th>
                             <th>Odcinek (Od)</th>
                             <th>Odcinek (Do)</th>
-                            <th>Przez</th>
+                            <th class="col-via">Przez</th>
                             <th class="col-date">Przejazd w m-cu</th>
                         </tr>
                     </thead>
@@ -229,7 +275,7 @@
         <div class="print-footer"><p>.......................................................<br>(Podpis pracownika)</p></div>
         
         <div class="app-footer no-print">
-            Wersja aplikacji: v3.4 | Autorzy: Gemini & Piotr M 🚂
+            Wersja aplikacji: v3.6 | Autorzy: Gemini & Piotr M 🚂
         </div>
     </div>
 </div>
@@ -243,7 +289,7 @@
         
         <div style="font-size:0.95rem; line-height:1.6; padding-right:5px; overflow-y:auto; flex:1;">
             
-            <p><strong>Szlaki Kolejowe v3.4</strong> to narzędzie do ewidencji pracy i kontroli znajomości szlaków.</p>
+            <p><strong>Szlaki Kolejowe v3.6</strong> to narzędzie do ewidencji pracy i kontroli znajomości szlaków.</p>
 
             <h4 style="margin:15px 0 5px; color:var(--primary); border-left:4px solid var(--primary); padding-left:8px;">1. Import Grafiku</h4>
             <div style="background:#f8fafc; padding:10px; border-radius:6px; border:1px solid var(--border);">
@@ -266,18 +312,15 @@
                 </li>
                 <li>
                     <strong>PRAWA STRONA (Data i Kropka):</strong> Informuje o aktywności w <strong>wybranym miesiącu</strong>.
-                    <ul style="font-size:0.9em; margin-top:5px; color:#555;">
-                        <li>🟢 + Data: Wykonałeś przejazd w tym miesiącu.</li>
-                        <li>⚪ Puste: Nie jechałeś tym szlakiem w tym miesiącu.</li>
-                    </ul>
                 </li>
             </ul>
 
-            <h4 style="margin:15px 0 5px; color:var(--primary); border-left:4px solid var(--primary); padding-left:8px;">3. Dodawanie/Edycja</h4>
+            <h4 style="margin:15px 0 5px; color:var(--primary); border-left:4px solid var(--primary); padding-left:8px;">3. Drukowanie</h4>
+            <p>Po kliknięciu "Drukuj", pojawi się okno, w którym możesz ustawić:</p>
             <ul>
-                <li>Kliknij na dzień w kalendarzu, aby dodać pociąg.</li>
-                <li>Jeśli pociągu nie ma na liście, użyj <span class="btn btn-success" style="padding:2px 6px; font-size:0.7em;">➕ Pociąg</span>.</li>
-                <li>Aby dodać stary przejazd (np. sprzed roku) bez szukania numeru pociągu, użyj <span class="btn btn-info" style="padding:2px 6px; font-size:0.7em;">✍️ Wprowadź ręcznie</span>.</li>
+                <li><strong>Wielkość czcionki:</strong> (domyślnie 10pkt) - zmniejsz, jeśli tabela nie mieści się na stronie.</li>
+                <li><strong>Marginesy:</strong> (domyślnie 0.5cm) - dostosuj do swojej drukarki.</li>
+                <li>Kolumna "Przez" jest automatycznie ucinana, aby zachować czytelność dat.</li>
             </ul>
 
             <h4 style="margin:15px 0 5px; color:var(--primary); border-left:4px solid var(--primary); padding-left:8px;">4. Bezpieczeństwo</h4>
@@ -285,6 +328,32 @@
         </div>
         <div style="text-align:right; margin-top:20px; border-top:1px solid #eee; padding-top:10px;">
             <button class="btn btn-primary" onclick="closeModal('helpModal')">Rozumiem, zamknij</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="printModal">
+    <div class="modal" style="max-width:400px;">
+        <h3>🖨️ Ustawienia Wydruku</h3>
+        <p style="color:var(--secondary); font-size:0.9rem;">Dostosuj wygląd tabeli przed wydrukiem.</p>
+        
+        <div class="input-group">
+            <label>Wielkość czcionki (pkt):</label>
+            <input type="number" id="printFontSize" value="10" min="6" max="14" step="0.5">
+        </div>
+        
+        <div class="input-group">
+            <label>Marginesy strony (cm):</label>
+            <input type="number" id="printMargin" value="0.5" min="0" max="5" step="0.1">
+        </div>
+
+        <div style="background:#fffbeb; padding:10px; border:1px solid #fcd34d; border-radius:4px; font-size:0.8rem; margin-top:10px;">
+            💡 <strong>Wskazówka:</strong> Kolumna "Przez" może zostać ucięta, aby zmieścić najważniejsze dane.
+        </div>
+
+        <div style="text-align:right; margin-top:20px; display:flex; justify-content:flex-end; gap:10px;">
+            <button class="btn btn-secondary" onclick="closeModal('printModal')">Anuluj</button>
+            <button class="btn btn-primary" onclick="confirmPrint()">Drukuj</button>
         </div>
     </div>
 </div>
@@ -457,6 +526,22 @@
         document.getElementById('printKP').innerText = appData.profile.kp;
     }
 
+    // --- PRINT FUNCTIONS ---
+    function openPrintModal() {
+        openModal('printModal');
+    }
+
+    function confirmPrint() {
+        const fs = document.getElementById('printFontSize').value;
+        const mg = document.getElementById('printMargin').value;
+        
+        document.documentElement.style.setProperty('--print-font-size', fs + 'pt');
+        document.documentElement.style.setProperty('--print-margin', mg + 'cm');
+        
+        closeModal('printModal');
+        setTimeout(() => window.print(), 200);
+    }
+
     // --- HELPER: MATCHING ---
     function checkMatch(seg, m) {
         const norm = str => str ? str.toLowerCase().trim() : "";
@@ -502,9 +587,8 @@
     }
 
     // --- CORE LOGIC: ANALYZE HISTORY ---
-    // Calculates the LATEST date for each route up to limitDate
     function analyzeHistory(limitDate) {
-        const result = {}; // uid -> "YYYY-MM-DD"
+        const result = {}; 
         const sortedDates = Object.keys(appData.schedule).sort();
 
         sortedDates.forEach(dateStr => {
@@ -514,7 +598,6 @@
             appData.schedule[dateStr].forEach(entry => {
                 const uids = getCoveredMasterUids(entry);
                 uids.forEach(uid => {
-                    // Always overwrite with newer date because list is sorted ascending
                     result[uid] = dateStr;
                 });
             });
@@ -561,14 +644,12 @@
         document.getElementById('printMonthInfo').innerText = `Miesiąc: ${currentDate.toLocaleDateString('pl-PL',{month:'long',year:'numeric'})}`;
     }
 
-    // --- REPORT RENDER (DUAL DOT SYSTEM) ---
+    // --- REPORT RENDER ---
     function renderReport() {
         const tbody = document.querySelector('#reportTable tbody'); tbody.innerHTML='';
         const viewY = currentDate.getFullYear();
         const viewM = currentDate.getMonth();
         
-        // 1. Get ALL-TIME latest dates for Validity (Left Dot)
-        // using a far future date to ensure we get everything up to today/future
         const allTimeHistory = analyzeHistory(null); 
         const today = new Date();
 
@@ -581,41 +662,29 @@
             
             if(lastDrivenDateStr) {
                 const lastDriven = new Date(lastDrivenDateStr);
-                // Calculate difference in months roughly
                 const diffTime = Math.abs(today - lastDriven);
                 const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
                 
-                // Logic: 
-                // < 11 months (~335 days) -> Green
-                // 11-12 months (335-365 days) -> Orange
-                // > 12 months (>365 days) -> Red
                 if(diffDays <= 335) validityDot = 'dot-green';
                 else if(diffDays <= 365) validityDot = 'dot-orange';
                 else validityDot = 'dot-red';
             }
 
             // -- RIGHT DOT LOGIC (Monthly Activity) --
-            // Find if this route was driven in the CURRENTLY VIEWED month
-            // We can't rely just on allTimeHistory because that only gives the absolute latest.
-            // We need to check if there is an entry in viewY/viewM.
-            
             let monthlyDateStr = '';
             let monthlyDot = 'dot-empty';
             
-            // Check specific month for this route
-            // Optimization: Iterate days of viewed month
             const daysInMonth = new Date(viewY, viewM + 1, 0).getDate();
             for(let d=1; d<=daysInMonth; d++) {
                 const checkDate = `${viewY}-${String(viewM+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
                 if(appData.schedule[checkDate]) {
-                    // Check if any train on this day covered this route
                     const dayEntries = appData.schedule[checkDate];
                     for(let entry of dayEntries) {
                         const uids = getCoveredMasterUids(entry);
                         if(uids.includes(m._uid)) {
                             monthlyDateStr = checkDate;
                             monthlyDot = 'dot-green';
-                            break; // found one for this route in this month
+                            break; 
                         }
                     }
                 }
@@ -628,7 +697,7 @@
                 <td class="col-status"><span class="status-dot ${validityDot}" title="Status ważności"></span></td>
                 <td>${m.start}</td>
                 <td>${m.end}</td>
-                <td>${m.via==='-'?'':m.via}</td>
+                <td class="col-via" title="${m.via}">${m.via==='-'?'':m.via}</td>
                 <td class="col-date" onclick="openHistory(${m._uid})">
                     <span style="display:flex; align-items:center; gap:8px;">
                         <span class="status-dot ${monthlyDot}"></span>
