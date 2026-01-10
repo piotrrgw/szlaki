@@ -2,8 +2,8 @@
 <html lang="pl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Asystent Karty Znajomości Szlaków v4.2</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Asystent Karty Znajomości Szlaków v4.3</title>
     <link rel="icon" type="image/svg+xml" href="favicon_kontrolka.svg">
     <link rel="apple-touch-icon" href="apple-touch-icon_kontrolka.png">
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-W05T4L1HFD"></script> 
@@ -101,7 +101,9 @@
         /* HISTORY LIST */
         .history-list { list-style: none; padding: 0; margin: 0; }
         .history-item { padding: 8px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; font-size: 0.9rem; }
-        .app-footer { margin-top: auto; padding: 10px; text-align: center; font-size: 0.75rem; color: var(--secondary); border-top: 1px solid var(--border); background: #fff; }
+        
+        /* FOOTER (NOWOŚĆ) */
+        .app-footer { margin-top: auto; padding: 10px; text-align: center; font-size: 0.75rem; color: var(--secondary); border-top: 1px solid var(--border); background: #fff; width: 100%; }
 
         @media (max-width: 900px) {
             .app-container { display: block; overflow: auto; height: auto; }
@@ -212,7 +214,7 @@
 <div class="disclaimer-bar">⚠️ Aplikacja pomocnicza. Kierownik Pociągu zobowiązany jest do weryfikacji poprawności danych.</div>
 
 <header>
-    <h1>🚂 ASYSTENT UZUPEŁNIANIA - Karty Szlaków <span style="font-size:0.7rem; background:var(--primary); color:white; padding:2px 5px; border-radius:4px; margin-left:5px;">v4.2</span></h1>
+    <h1>🚂 ASYSTENT UZUPEŁNIANIA - Karty Szlaków <span style="font-size:0.7rem; background:var(--primary); color:white; padding:2px 5px; border-radius:4px; margin-left:5px;">v4.3</span></h1>
     <button class="help-btn" onclick="openModal('helpModal')">❓ Instrukcja</button>
 </header>
 
@@ -300,11 +302,11 @@
 
         <div class="print-footer">
             <div class="signature-line">(Podpis pracownika)</div>
-            <div class="print-version">Wersja aplikacji: v4.2 | Wygenerowano: <span id="printDate"></span></div>
+            <div class="print-version">Wersja aplikacji: v4.3 | Wygenerowano: <span id="printDate"></span></div>
         </div>
         
         <div class="app-footer no-print">
-            Wersja aplikacji: v4.2 | Autorzy: Gemini & Piotr M 🚂
+            Wersja aplikacji: v4.3 | Autorzy: Gemini & Piotr M 🚂
         </div>
     </div>
 </div>
@@ -318,7 +320,8 @@
         
         <div style="font-size:0.95rem; line-height:1.6; padding-right:5px; overflow-y:auto; flex:1;">
             
-            <p><strong>Aplikacja do ewidencji pracy i kontroli znajomości szlaków (v4.2).</strong></p>
+            <p><strong>Aplikacja do ewidencji pracy i kontroli znajomości szlaków (v4.3).</strong></p>
+            <p><em>Nowość: Automatyczne filtrowanie pociągów po dacie kursowania!</em></p>
 
             <h4 style="margin:15px 0 5px; color:var(--primary);">1. Import Grafiku</h4>
             <div style="background:#f8fafc; padding:10px; border-radius:6px; border:1px solid var(--border);">
@@ -487,9 +490,10 @@
 
 <script>
 /*
-   Wersja aplikacji: v4.2
+   Wersja aplikacji: v4.3
    Autorzy: Gemini & Piotr M 🚂
-   Data aktualizacji: 2025-01-03
+   Data aktualizacji: 2026-01-10
+   Zmiany: Filtrowanie pociągów po dacie, stopka.
 */
 
 const MANUAL_TRAIN_ID = 'MANUAL';
@@ -545,7 +549,10 @@ function startSystem() {
     dbTrains = [...dbTrains, ...appData.customTrains];
     document.getElementById('userName').value = appData.profile.name || "";
     document.getElementById('userKP').value = appData.profile.kp || "";
-    fillTrainSelect();
+    
+    // Inicjalnie wypełnij bez filtrowania lub z dzisiejszą datą
+    fillTrainSelect(); 
+    
     renderCalendar();
     
     // Ustawienie widoku domyślnego na bieżący miesiąc
@@ -646,7 +653,6 @@ function getCoveredMasterUids(scheduleEntry) {
     return [...new Set(uids)];
 }
 
-// Funkcja 1: Szuka daty do STATUSU (Ważność szlaku - patrzy wstecz do daty limit)
 function getLastDateForStatus(uid, limitDate) {
     let last = null;
     const sortedDates = Object.keys(appData.schedule).sort();
@@ -663,13 +669,11 @@ function getLastDateForStatus(uid, limitDate) {
     return last;
 }
 
-// Funkcja 2: Szuka daty do WYŚWIETLENIA (Tylko w wybranym przedziale)
 function getDateInRange(uid, startDate, endDate) {
     let last = null;
     const sortedDates = Object.keys(appData.schedule).sort();
     for(const dateStr of sortedDates) {
         const d = new Date(dateStr);
-        // Ścisłe sprawdzanie zakresu
         if(d < startDate || d > endDate) continue;
         
         appData.schedule[dateStr].forEach(entry => {
@@ -685,7 +689,6 @@ function getDateInRange(uid, startDate, endDate) {
 // --- RENDER TABLE ---
 
 function updateViewReport() {
-    // Ustawia zakres na widok aktualnego miesiąca w kalendarzu
     const y = currentDate.getFullYear();
     const m = currentDate.getMonth();
     const startDate = new Date(y, m, 1);
@@ -698,7 +701,6 @@ function renderReport(startDate, endDate) {
     tbody.innerHTML = '';
     
     dbMaster.forEach((m, idx) => {
-        // 1. Oblicz STATUS (Kropka) - na podstawie daty końcowej raportu
         const statusDate = getLastDateForStatus(m._uid, endDate);
         let statusClass = 'dot-red';
         
@@ -708,7 +710,6 @@ function renderReport(startDate, endDate) {
             else if (diffMonths < 12) statusClass = 'dot-orange';
         }
 
-        // 2. Oblicz DATĘ DO DRUKU (Tekst) - ściśle w zakresie startDate - endDate
         const displayDateObj = getDateInRange(m._uid, startDate, endDate);
         const displayDateStr = displayDateObj ? displayDateObj.toISOString().slice(0,10) : '';
 
@@ -725,6 +726,7 @@ function renderReport(startDate, endDate) {
 }
 
 // --- CALENDAR & HISTORY ---
+// Funkcja pozostawiona BEZ ZMIAN z wersji v4.2 użytkownika
 function renderCalendar() {
     const grid = document.getElementById('calendarGrid');
     grid.innerHTML='';
@@ -762,7 +764,7 @@ function renderCalendar() {
 function changeMonth(delta) { 
     currentDate.setMonth(currentDate.getMonth() + delta); 
     renderCalendar(); 
-    updateViewReport(); // Odśwież tabelę dla nowego miesiąca
+    updateViewReport(); 
 }
 
 function openHistory(uid) {
@@ -847,9 +849,18 @@ function handleIcs(input) {
 function openDayEdit(dateStr) {
     selectedDateStr = dateStr;
     document.getElementById('modalDateTitle').innerText = dateStr;
+    
+    // NOWA FUNKCJONALNOŚĆ v4.3:
+    // Odśwież listę pociągów filtrując dla tej konkretnej daty
+    fillTrainSelect(dateStr); 
+    // Dodatkowo wyczyść filtr tekstowy (opcjonalne)
+    document.getElementById('trainFilter').value = '';
+    filterTrains(); 
+
     openModal('dayModal');
     renderDayList();
 }
+
 function renderDayList() {
     const c = document.getElementById('dayTrainsList');
     c.innerHTML = '';
@@ -862,11 +873,28 @@ function renderDayList() {
         d.appendChild(b); c.appendChild(d);
     });
 }
-function fillTrainSelect() {
-    const s = document.getElementById('trainSelect'); s.innerHTML='';
+
+// ZMODYFIKOWANA FUNKCJA: WYPEŁNIANIE LISTY POCIĄGÓW (v4.3)
+// Przyjmuje opcjonalny argument filterDate
+function fillTrainSelect(filterDate = null) {
+    const s = document.getElementById('trainSelect'); 
+    s.innerHTML='';
     dbTrains.sort((a,b)=>a.number.localeCompare(b.number));
-    dbTrains.forEach(t=>{ const o=new Option(`${t.number} ${t.name||''}`,t.id); o.dataset.s=`${t.number} ${t.name||''}`.toLowerCase(); s.appendChild(o); });
+    
+    dbTrains.forEach(t=>{ 
+        // LOGIKA FILTROWANIA DATAMI:
+        // Jeśli pociąg ma zdefiniowaną tablicę 'dates' i podano datę filtrowania...
+        if(filterDate && t.dates && Array.isArray(t.dates)) {
+            // ... sprawdź czy data jest w tablicy. Jeśli nie, pomiń pociąg.
+            if(!t.dates.includes(filterDate)) return;
+        }
+
+        const o=new Option(`${t.number} ${t.name||''}`,t.id); 
+        o.dataset.s=`${t.number} ${t.name||''}`.toLowerCase(); 
+        s.appendChild(o); 
+    });
 }
+
 function filterTrains() { const v=document.getElementById('trainFilter').value.toLowerCase(); [...document.getElementById('trainSelect').options].forEach(o=>o.style.display=o.dataset.s.includes(v)?'':'none'); }
 function updateRoute() {
     const tid=document.getElementById('trainSelect').value;
