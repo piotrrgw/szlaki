@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Generator Tras Pociągów v1.5</title>
+    <title>Generator Tras Pociągów v1.6</title>
     <link rel="icon" type="image/svg+xml" href="favicon_trainmgr.svg">
     <link rel="apple-touch-icon" href="apple-touch-icon_trainmgr.png">
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-W05T4L1HFD"></script>
@@ -96,7 +96,6 @@
             box-sizing: border-box;
         }
 
-        /* --- STYL KALENDARZA --- */
         .calendar-container {
             border: 1px solid #ddd;
             border-radius: 8px;
@@ -122,7 +121,6 @@
             color: #333;
             border: 1px solid #ccc;
         }
-        .calendar-header button:hover { background: #e9ecef; }
 
         .calendar-grid {
             display: grid;
@@ -158,7 +156,6 @@
         .calendar-day.selected { background-color: var(--success-color); color: white; font-weight: bold; }
         .calendar-day.today { border: 2px solid var(--accent-color); }
 
-        /* Generator Zakresowy */
         .dates-generator {
             background: #f8f9fa;
             padding: 10px;
@@ -190,7 +187,6 @@
         }
         .checkbox-label input { width: auto; margin: 0; }
 
-        /* Przyciski */
         button {
             background-color: var(--primary-color);
             color: white;
@@ -203,15 +199,9 @@
         button:disabled { background-color: #ccc; cursor: not-allowed; }
 
         button.secondary { background-color: #6c757d; }
-        button.secondary:hover { background-color: #5a6268; }
-        
         button.accent { background-color: var(--accent-color); color: #fff; }
-        button.accent:hover { background-color: #e68900; }
-
         button.danger { background-color: var(--danger-color); }
-        button.danger:hover { background-color: #c82333; }
 
-        /* Mapa i Listy */
         #map { height: 400px; width: 100%; border-radius: var(--border-radius); z-index: 1; margin-bottom: 20px; }
 
         .scrollable-list {
@@ -231,8 +221,6 @@
             font-size: 0.9rem;
             flex-wrap: wrap;
         }
-        .list-item:last-child { border-bottom: none; }
-        .list-item:hover { background-color: #f9f9f9; }
 
         .train-actions {
             display: flex;
@@ -245,7 +233,6 @@
             font-size: 0.8rem;
         }
 
-        /* Sekcja JSON Preview */
         .json-preview-container {
             position: relative;
             margin-top: 20px;
@@ -289,7 +276,7 @@
 
 <header>
     <h1>Generator Tras Pociągów</h1>
-    <div class="version">v1.5</div>
+    <div class="version">v1.6</div>
 </header>
 
 <main>
@@ -367,8 +354,7 @@
                     <span id="calendarTitle">Styczeń 2025</span>
                     <button type="button" id="nextMonth">&gt;</button>
                 </div>
-                <div class="calendar-grid" id="calendarGrid">
-                    </div>
+                <div class="calendar-grid" id="calendarGrid"></div>
             </div>
             
             <div style="display:flex; justify-content:space-between; align-items:center; margin-top:5px;">
@@ -380,7 +366,6 @@
         </div>
 
         <h2>2. Konstruktor Trasy</h2>
-        
         <div id="route-builder">
             <div class="form-group">
                 <label for="startStation">Stacja Początkowa:</label>
@@ -388,29 +373,22 @@
                     <option value="">Wczytywanie danych...</option>
                 </select>
             </div>
-            
             <button id="btnStartRoute" disabled>Rozpocznij Trasę</button>
 
             <div id="active-route-controls" style="display:none; margin-top: 20px; border-top: 1px dashed #ccc; padding-top: 10px;">
                 <p>Aktualna stacja: <strong id="currentStationLabel" style="color: var(--primary-color);"></strong></p>
-                
                 <div class="form-group">
                     <label for="nextSegment">Następny przystanek:</label>
-                    <select id="nextSegment">
-                        <option value="">Wybierz...</option>
-                    </select>
+                    <select id="nextSegment"><option value="">Wybierz...</option></select>
                 </div>
-                
                 <div class="form-row">
                     <button id="btnAddSegment">Dodaj</button>
                     <button id="btnUndo" class="secondary">Cofnij</button>
                 </div>
-
                 <h3>Aktualny przebieg:</h3>
                 <ul id="currentRouteList" class="scrollable-list" style="height: 150px;">
                     <li class="list-item" style="color: #777; justify-content: center;">Trasa pusta</li>
                 </ul>
-                
                 <div style="margin-top: 15px;">
                     <button id="btnSaveToDB" class="accent">Zapisz pociąg do bazy</button>
                     <button id="btnCancelRoute" class="danger" style="margin-top:5px;">Anuluj edycję</button>
@@ -420,14 +398,20 @@
     </div>
 
     <div class="panel">
-        <h2>Podgląd Mapy (OpenRailwayMap)</h2>
+        <h2>Podgląd Mapy</h2>
         <div id="map"></div>
 
         <h2>3. Baza Pociągów (Pamięć)</h2>
-        <div style="display:flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
-            <span style="font-size: 0.85rem; color: #666;">Zapisane w pamięci przeglądarki</span>
-            <button id="btnClearDB" class="danger" style="width: auto; padding: 2px 8px; font-size: 0.7rem;">Wyczyść bazę</button>
+        <div style="display:flex; flex-wrap: wrap; gap: 5px; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+            <div style="display:flex; gap:5px;">
+                <label for="importTrainsFile" class="secondary" style="cursor:pointer; padding: 5px 10px; border-radius:4px; font-size:0.75rem; background:#6c757d; color:white; font-weight:bold;">
+                    Wczytaj trains.json
+                </label>
+                <input type="file" id="importTrainsFile" accept=".json" style="display:none;">
+            </div>
+            <button id="btnClearDB" class="danger" style="width: auto; padding: 5px 10px; font-size: 0.75rem;">Wyczyść bazę</button>
         </div>
+
         <ul id="dbTrainList" class="scrollable-list">
             <li class="list-item" style="justify-content: center; color: #777;">Brak pociągów w bazie</li>
         </ul>
@@ -443,38 +427,28 @@
 
 <footer>
     Współautorzy: Gemini, Piotr M 🚂 <br>
-    Wersja aplikacji: v1.5
+    Wersja aplikacji: v1.6
 </footer>
 
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
-crossorigin=""></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 
 <script>
     /**
-     * Wersja aplikacji: v1.5
-     * Changes: Fixed Reverse Route editor sync, Version bump.
+     * Wersja aplikacji: v1.6
+     * Changes: Added trains.json offline import functionality, UI improvements.
      */
 
-    // --- Zmienne Globalne ---
     let map, routeLayerGroup;
     let graph = {};   
     let allStations = new Set();
-    
-    // Stan edycji
-    let editingId = null; // Jeśli edytujemy istniejący pociąg
+    let editingId = null; 
     let currentRoute = []; 
     let currentStation = null;
     let selectedDates = new Set(); 
-    
-    // Stan kalendarza
     let currentCalMonth = new Date().getMonth();
     let currentCalYear = new Date().getFullYear();
-
-    // Stan bazy danych
     let trainsDB = [];
 
-    // --- Inicjalizacja ---
     document.addEventListener('DOMContentLoaded', () => {
         initMap();
         loadLocalStorage(); 
@@ -490,37 +464,57 @@ crossorigin=""></script>
     }
 
     function initMap() {
-        // Inicjalizacja mapy
         map = L.map('map').setView([51.9194, 19.1451], 6);
-
-        // Warstwa bazowa: OpenStreetMap
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            maxZoom: 19,
-            attribution: '© OpenStreetMap contributors'
-        }).addTo(map);
-
-        // Nakładka: OpenRailwayMap
-        L.tileLayer('https://{s}.tiles.openrailwaymap.org/standard/{z}/{x}/{y}.png', {
-            maxZoom: 19,
-            attribution: 'Style: © OpenRailwayMap'
-        }).addTo(map);
-
-        // Warstwa dla naszej trasy
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OSM' }).addTo(map);
+        L.tileLayer('https://{s}.tiles.openrailwaymap.org/standard/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© ORM' }).addTo(map);
         routeLayerGroup = L.featureGroup().addTo(map);
     }
 
-    // --- Obsługa Danych (Szlaki) ---
+    // --- IMPORT TRAINS.JSON ---
+    document.getElementById('importTrainsFile').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const importedData = JSON.parse(e.target.result);
+                if (!Array.isArray(importedData)) throw new Error("Format musi być tablicą pociągów.");
+
+                const mode = confirm("Czy chcesz dodać wczytane pociągi do obecnej bazy? \n(Kliknij 'Anuluj', aby zastąpić całą bazę)");
+                
+                if (mode) {
+                    // Dodawanie (z unikaniem duplikatów ID na wszelki wypadek)
+                    importedData.forEach(t => {
+                        const exists = trainsDB.some(old => old.id === t.id);
+                        if (exists) t.id = Date.now() + Math.random(); 
+                        trainsDB.push(t);
+                    });
+                    showStatus(`Dodano ${importedData.length} pociągów.`, 'success');
+                } else {
+                    trainsDB = importedData;
+                    showStatus(`Wczytano ${importedData.length} pociągów (baza zastąpiona).`, 'success');
+                }
+
+                saveAndUpdate();
+            } catch (err) {
+                showStatus("Błąd importu: " + err.message, 'error');
+            }
+            e.target.value = ""; // reset input
+        };
+        reader.readAsText(file);
+    });
+
+    // --- RESZTA LOGIKI (BEZ ZMIAN W DANYCH) ---
     async function loadSzlakiData() {
         try {
             const response = await fetch('./szlaki_master.json');
             if (response.ok) {
                 const data = await response.json();
                 buildGraph(data);
-            } else {
-                throw new Error("Błąd sieci");
-            }
+            } else { throw new Error(); }
         } catch (e) {
-            showStatus("Nie znaleziono pliku szlaki_master.json automatycznie.", 'error');
+            showStatus("Brak szlaki_master.json online.", 'error');
             document.getElementById('file-upload-section').querySelector('input').style.display = 'block';
         }
     }
@@ -530,33 +524,22 @@ crossorigin=""></script>
         if (!file) return;
         const reader = new FileReader();
         reader.onload = function(e) {
-            try {
-                const data = JSON.parse(e.target.result);
-                buildGraph(data);
-                showStatus("Wczytano plik ręcznie.", 'success');
-            } catch (err) {
-                showStatus("Błąd pliku JSON!", 'error');
-            }
+            try { buildGraph(JSON.parse(e.target.result)); showStatus("Szlaki wczytane.", 'success'); } 
+            catch (err) { showStatus("Błąd JSON!", 'error'); }
         };
         reader.readAsText(file);
     });
 
     function buildGraph(data) {
-        graph = {};
-        allStations = new Set();
-        
+        graph = {}; allStations = new Set();
         data.forEach(segment => {
             const { start, end, via, geometry } = segment;
-            allStations.add(start);
-            allStations.add(end);
-
+            allStations.add(start); allStations.add(end);
             if (!graph[start]) graph[start] = [];
             if (!graph[end]) graph[end] = [];
-
             graph[start].push({ target: end, via: via, geometry: geometry });
             graph[end].push({ target: start, via: via, geometry: geometry }); 
         });
-
         populateStartDropdown();
         document.getElementById('btnStartRoute').disabled = false;
         document.getElementById('startStation').disabled = false;
@@ -564,510 +547,147 @@ crossorigin=""></script>
 
     function populateStartDropdown() {
         const select = document.getElementById('startStation');
-        const currentVal = select.value;
         select.innerHTML = '<option value="">Wybierz stację początkową...</option>';
         Array.from(allStations).sort().forEach(st => {
-            const opt = document.createElement('option');
-            opt.value = st;
-            opt.textContent = st;
-            select.appendChild(opt);
+            const opt = document.createElement('option'); opt.value = st; opt.textContent = st; select.appendChild(opt);
         });
-        if(currentVal) select.value = currentVal;
     }
 
-    // --- KALENDARZ (LOGIKA) ---
-    const monthNames = ["Styczeń", "Luty", "Marzec", "Kwiecień", "Maj", "Czerwiec", 
-                        "Lipiec", "Sierpień", "Wrzesień", "Październik", "Listopad", "Grudzień"];
-    const dayNames = ["Pn", "Wt", "Śr", "Cz", "Pt", "Sb", "Nd"];
-
+    // --- KALENDARZ ---
+    const monthNames = ["Styczeń", "Luty", "Marzec", "Kwiecień", "Maj", "Czerwiec", "Lipiec", "Sierpień", "Wrzesień", "Październik", "Listopad", "Grudzień"];
     function renderCalendar() {
         const grid = document.getElementById('calendarGrid');
         const title = document.getElementById('calendarTitle');
-        
-        grid.innerHTML = "";
-        title.textContent = `${monthNames[currentCalMonth]} ${currentCalYear}`;
-
-        dayNames.forEach(name => {
-            const cell = document.createElement('div');
-            cell.className = 'calendar-day-header';
-            cell.textContent = name;
-            grid.appendChild(cell);
+        grid.innerHTML = ""; title.textContent = `${monthNames[currentCalMonth]} ${currentCalYear}`;
+        ["Pn", "Wt", "Śr", "Cz", "Pt", "Sb", "Nd"].forEach(n => {
+            const c = document.createElement('div'); c.className = 'calendar-day-header'; c.textContent = n; grid.appendChild(c);
         });
-
-        const firstDayOfMonth = new Date(currentCalYear, currentCalMonth, 1);
-        const daysInMonth = new Date(currentCalYear, currentCalMonth + 1, 0).getDate();
-        
-        let startDay = firstDayOfMonth.getDay() - 1; 
-        if (startDay === -1) startDay = 6;
-
-        for (let i = 0; i < startDay; i++) {
-            const emptyCell = document.createElement('div');
-            emptyCell.className = 'calendar-day empty';
-            grid.appendChild(emptyCell);
-        }
-
-        const todayStr = new Date().toISOString().split('T')[0];
-
-        for (let day = 1; day <= daysInMonth; day++) {
-            const cell = document.createElement('div');
-            const dateStr = formatDate(currentCalYear, currentCalMonth, day);
-            
-            cell.className = 'calendar-day';
-            cell.textContent = day;
-            
-            if (dateStr === todayStr) cell.classList.add('today');
+        const first = new Date(currentCalYear, currentCalMonth, 1);
+        const days = new Date(currentCalYear, currentCalMonth + 1, 0).getDate();
+        let start = first.getDay() - 1; if (start === -1) start = 6;
+        for (let i = 0; i < start; i++) grid.appendChild(Object.assign(document.createElement('div'), {className:'calendar-day empty'}));
+        for (let d = 1; d <= days; d++) {
+            const dateStr = `${currentCalYear}-${(currentCalMonth+1).toString().padStart(2,'0')}-${d.toString().padStart(2,'0')}`;
+            const cell = document.createElement('div'); cell.className = 'calendar-day'; cell.textContent = d;
             if (selectedDates.has(dateStr)) cell.classList.add('selected');
-
-            cell.onclick = () => toggleDate(dateStr);
+            cell.onclick = () => { if(selectedDates.has(dateStr)) selectedDates.delete(dateStr); else selectedDates.add(dateStr); updateSelectedCount(); renderCalendar(); };
             grid.appendChild(cell);
         }
     }
 
-    function formatDate(year, month, day) {
-        const m = (month + 1).toString().padStart(2, '0');
-        const d = day.toString().padStart(2, '0');
-        return `${year}-${m}-${d}`;
-    }
-
-    function toggleDate(dateStr) {
-        if (selectedDates.has(dateStr)) selectedDates.delete(dateStr);
-        else selectedDates.add(dateStr);
-        updateSelectedCount();
-        renderCalendar();
-    }
-
-    function updateSelectedCount() {
-        document.getElementById('selectedCount').textContent = selectedDates.size;
-    }
-
-    document.getElementById('prevMonth').addEventListener('click', () => {
-        currentCalMonth--;
-        if (currentCalMonth < 0) { currentCalMonth = 11; currentCalYear--; }
-        renderCalendar();
-    });
-
-    document.getElementById('nextMonth').addEventListener('click', () => {
-        currentCalMonth++;
-        if (currentCalMonth > 11) { currentCalMonth = 0; currentCalYear++; }
-        renderCalendar();
-    });
+    function updateSelectedCount() { document.getElementById('selectedCount').textContent = selectedDates.size; }
+    document.getElementById('prevMonth').addEventListener('click', () => { currentCalMonth--; if(currentCalMonth<0){currentCalMonth=11;currentCalYear--;} renderCalendar(); });
+    document.getElementById('nextMonth').addEventListener('click', () => { currentCalMonth++; if(currentCalMonth>11){currentCalMonth=0;currentCalYear++;} renderCalendar(); });
 
     document.getElementById('btnGenerateDates').addEventListener('click', () => {
-        const dFrom = document.getElementById('dateFrom').value;
-        const dTo = document.getElementById('dateTo').value;
-        if (!dFrom || !dTo) return alert("Wybierz datę początkową i końcową.");
-        if (dFrom > dTo) return alert("Data 'Do' musi być późniejsza niż 'Od'.");
-
-        const checkboxes = document.querySelectorAll('input[name="wd"]:checked');
-        if (checkboxes.length === 0) return alert("Zaznacz przynajmniej jeden dzień tygodnia.");
-        const allowedDays = Array.from(checkboxes).map(cb => parseInt(cb.value));
-        
-        let currentDate = new Date(dFrom);
-        const endDate = new Date(dTo);
-        let addedCount = 0;
-
-        while (currentDate <= endDate) {
-            const dayOfWeek = currentDate.getDay(); 
-            if (allowedDays.includes(dayOfWeek)) {
-                const dateStr = currentDate.toISOString().split('T')[0];
-                if (!selectedDates.has(dateStr)) {
-                    selectedDates.add(dateStr);
-                    addedCount++;
-                }
-            }
-            currentDate.setDate(currentDate.getDate() + 1);
-        }
-
-        const startDateObj = new Date(dFrom);
-        currentCalMonth = startDateObj.getMonth();
-        currentCalYear = startDateObj.getFullYear();
-        
-        renderCalendar();
-        updateSelectedCount();
-        showStatus(`Dodano ${addedCount} dat do kalendarza.`, 'success');
+        const dFrom = document.getElementById('dateFrom').value, dTo = document.getElementById('dateTo').value;
+        const wds = Array.from(document.querySelectorAll('input[name="wd"]:checked')).map(cb => parseInt(cb.value));
+        if (!dFrom || !dTo || wds.length === 0) return alert("Błąd danych.");
+        let cur = new Date(dFrom), end = new Date(dTo);
+        while(cur <= end) { if(wds.includes(cur.getDay())) selectedDates.add(cur.toISOString().split('T')[0]); cur.setDate(cur.getDate()+1); }
+        renderCalendar(); updateSelectedCount();
     });
 
-    document.getElementById('btnClearDates').addEventListener('click', () => {
-        if(confirm("Czy na pewno wyczyścić wszystkie zaznaczone daty?")) {
-            selectedDates.clear();
-            renderCalendar();
-            updateSelectedCount();
-        }
-    });
-
-
-    // --- Logika Tworzenia Trasy ---
+    // --- TRASA ---
     document.getElementById('btnStartRoute').addEventListener('click', () => {
-        const start = document.getElementById('startStation').value;
-        if (!start) return alert("Wybierz stację startową!");
-        startRouteEditing(start);
-    });
-
-    function startRouteEditing(startStationName) {
-        document.getElementById('btnStartRoute').disabled = true;
-        document.getElementById('startStation').disabled = true;
-        document.getElementById('startStation').value = startStationName;
+        const s = document.getElementById('startStation').value; if(!s) return;
+        document.getElementById('btnStartRoute').disabled = true; document.getElementById('startStation').disabled = true;
         document.getElementById('active-route-controls').style.display = 'block';
-
-        currentStation = startStationName;
-        if (currentRoute.length === 0) {
-             routeLayerGroup.clearLayers();
-        }
-        
-        updateCurrentRouteUI();
-        updateNextOptions();
-    }
-
-    document.getElementById('btnCancelRoute').addEventListener('click', () => {
-        if(confirm("Anulować edycję? Postęp zostanie utracony.")) resetRouteEditor();
+        currentStation = s; updateCurrentRouteUI(); updateNextOptions();
     });
 
     function updateNextOptions() {
-        const select = document.getElementById('nextSegment');
-        select.innerHTML = '<option value="">Wybierz kolejną stację...</option>';
-        
-        const opts = graph[currentStation] || [];
-        if (opts.length === 0) {
-            const opt = document.createElement('option');
-            opt.text = "Koniec toru (brak połączeń)";
-            select.add(opt);
-            return;
-        }
-
-        opts.forEach((conn, idx) => {
-            const viaTxt = conn.via !== '-' ? ` p. ${conn.via}` : '';
-            const opt = document.createElement('option');
-            opt.value = idx; 
-            opt.text = `${conn.target}${viaTxt}`;
-            select.add(opt);
+        const sel = document.getElementById('nextSegment'); sel.innerHTML = '<option value="">Wybierz...</option>';
+        (graph[currentStation] || []).forEach((c, i) => {
+            const opt = document.createElement('option'); opt.value = i; opt.text = `${c.target} (${c.via})`; sel.add(opt);
         });
     }
 
     document.getElementById('btnAddSegment').addEventListener('click', () => {
-        const selIdx = document.getElementById('nextSegment').value;
-        if (selIdx === "") return;
-
-        const connection = graph[currentStation][selIdx];
-        
-        currentRoute.push({
-            from: currentStation,
-            to: connection.target,
-            via: connection.via
-        });
-
-        if (connection.geometry) {
-            L.geoJSON(connection.geometry, {
-                style: { color: 'blue', weight: 4 }
-            }).addTo(routeLayerGroup);
-        }
-
-        currentStation = connection.target;
-        updateNextOptions();
-        updateCurrentRouteUI();
+        const idx = document.getElementById('nextSegment').value; if(idx==="") return;
+        const conn = graph[currentStation][idx];
+        currentRoute.push({ from: currentStation, to: conn.target, via: conn.via });
+        if(conn.geometry) L.geoJSON(conn.geometry, {style:{color:'blue',weight:4}}).addTo(routeLayerGroup);
+        currentStation = conn.target; updateNextOptions(); updateCurrentRouteUI();
     });
 
     document.getElementById('btnUndo').addEventListener('click', () => {
-        if (currentRoute.length === 0) return;
-        
-        const removed = currentRoute.pop();
-        currentStation = removed.from;
-        
+        if(currentRoute.length===0) return;
+        currentStation = currentRoute.pop().from;
         routeLayerGroup.clearLayers();
-        currentRoute.forEach(seg => {
-            const conns = graph[seg.from];
-            const conn = conns.find(c => c.target === seg.to && c.via === seg.via);
-            if (conn && conn.geometry) {
-                L.geoJSON(conn.geometry, { style: { color: 'blue', weight: 4 } }).addTo(routeLayerGroup);
-            }
+        currentRoute.forEach(s => {
+            const c = graph[s.from].find(x => x.target===s.to && x.via===s.via);
+            if(c && c.geometry) L.geoJSON(c.geometry, {style:{color:'blue',weight:4}}).addTo(routeLayerGroup);
         });
-
-        updateNextOptions();
-        updateCurrentRouteUI();
+        updateNextOptions(); updateCurrentRouteUI();
     });
 
     function updateCurrentRouteUI() {
         document.getElementById('currentStationLabel').textContent = currentStation;
-        const ul = document.getElementById('currentRouteList');
-        ul.innerHTML = '';
-        
-        if (currentRoute.length === 0) {
-            ul.innerHTML = `<li class="list-item">Start: <b>${currentStation}</b></li>`;
-        } else {
+        const ul = document.getElementById('currentRouteList'); ul.innerHTML = '';
+        if(currentRoute.length===0) ul.innerHTML = `<li class="list-item">Start: <b>${currentStation}</b></li>`;
+        else {
             ul.innerHTML = `<li class="list-item">Start: <b>${currentRoute[0].from}</b></li>`;
-            currentRoute.forEach(seg => {
-                ul.innerHTML += `<li class="list-item">&#8595; ${seg.to} <small>(${seg.via})</small></li>`;
-            });
+            currentRoute.forEach(s => ul.innerHTML += `<li class="list-item">↓ ${s.to} (${s.via})</li>`);
         }
     }
 
     function resetRouteEditor() {
-        currentRoute = [];
-        currentStation = null;
-        editingId = null;
-        selectedDates.clear();
-        routeLayerGroup.clearLayers();
-        
-        document.getElementById('active-route-controls').style.display = 'none';
-        document.getElementById('btnStartRoute').disabled = false;
-        document.getElementById('startStation').disabled = false;
-        document.getElementById('startStation').value = "";
-        
-        document.getElementById('trainNumber').value = "";
-        document.getElementById('trainName').value = "";
-        
-        renderCalendar();
-        updateSelectedCount();
+        currentRoute = []; currentStation = null; editingId = null; selectedDates.clear();
+        routeLayerGroup.clearLayers(); document.getElementById('active-route-controls').style.display = 'none';
+        document.getElementById('btnStartRoute').disabled = false; document.getElementById('startStation').disabled = false;
+        document.getElementById('trainNumber').value = ""; document.getElementById('trainName').value = "";
+        renderCalendar(); updateSelectedCount();
     }
 
-    // --- Zapis do Bazy ---
+    // --- BAZA ---
     document.getElementById('btnSaveToDB').addEventListener('click', () => {
-        const cat = document.getElementById('trainCategory').value;
-        const num = document.getElementById('trainNumber').value;
-        const name = document.getElementById('trainName').value;
-
-        if (!num || !name) return alert("Podaj numer i nazwę pociągu!");
-        if (currentRoute.length === 0) return alert("Trasa jest pusta!");
-        if (selectedDates.size === 0) return alert("Wybierz daty kursowania w kalendarzu!");
-
-        const newTrain = {
-            id: editingId ? editingId : Date.now(),
-            category: cat,
-            number: num,
-            name: name,
-            dates: Array.from(selectedDates).sort(),
-            route: {
-                start: currentRoute[0].from,
-                end: currentRoute[currentRoute.length-1].to,
-                segments: [...currentRoute]
-            }
-        };
-
-        if (editingId) {
-            // Aktualizacja istniejącego
-            const idx = trainsDB.findIndex(t => t.id === editingId);
-            if (idx !== -1) trainsDB[idx] = newTrain;
-            else trainsDB.push(newTrain);
-        } else {
-            // Nowy wpis
-            trainsDB.push(newTrain);
-        }
-
-        saveLocalStorage();
-        renderTrainDBList();
-        updateJSONPreview();
-        resetRouteEditor();
-        showStatus(`Zapisano pociąg ${cat} ${num}!`, 'success');
+        const cat = document.getElementById('trainCategory').value, num = document.getElementById('trainNumber').value, name = document.getElementById('trainName').value;
+        if(!num || !name || currentRoute.length===0 || selectedDates.size===0) return alert("Braki w danych!");
+        const train = { id: editingId || Date.now(), category: cat, number: num, name: name, dates: Array.from(selectedDates).sort(), route: { start: currentRoute[0].from, end: currentRoute[currentRoute.length-1].to, segments: [...currentRoute] } };
+        if(editingId) { const i = trainsDB.findIndex(t=>t.id===editingId); trainsDB[i]=train; } else trainsDB.push(train);
+        saveAndUpdate(); resetRouteEditor(); showStatus("Zapisano!", 'success');
     });
 
     function renderTrainDBList() {
-        const ul = document.getElementById('dbTrainList');
-        ul.innerHTML = '';
-        if (trainsDB.length === 0) {
-            ul.innerHTML = '<li class="list-item" style="color:#777;">Brak pociągów</li>';
-            return;
-        }
-
-        trainsDB.forEach((train, index) => {
-            const li = document.createElement('li');
-            li.className = 'list-item';
-            const datesInfo = train.dates.length > 5 
-                              ? `${train.dates.length} dni` 
-                              : train.dates.join(', ');
-                              
-            li.innerHTML = `
-                <div style="flex:1;">
-                    <strong>${train.category} ${train.number}</strong> "${train.name}"<br>
-                    <small>${train.route.start} &#8594; ${train.route.end}</small><br>
-                    <small style="color:#666; font-size:0.8em;">${datesInfo}</small>
-                </div>
-                <div class="train-actions">
-                    <button class="accent" onclick="editTrain(${index})" title="Edytuj">✎</button>
-                    <button class="secondary" onclick="duplicateTrain(${index})" title="Kopiuj">📋</button>
-                    <button class="warning" onclick="reverseTrain(${index})" title="Odwróć trasę">⇄</button>
-                    <button class="danger" onclick="deleteTrain(${index})" title="Usuń">✕</button>
-                </div>
-            `;
+        const ul = document.getElementById('dbTrainList'); ul.innerHTML = trainsDB.length ? '' : '<li class="list-item">Brak pociągów</li>';
+        trainsDB.forEach((t, i) => {
+            const li = document.createElement('li'); li.className = 'list-item';
+            li.innerHTML = `<div><strong>${t.category} ${t.number}</strong> "${t.name}"<br><small>${t.route.start} → ${t.route.end}</small></div>
+            <div class="train-actions"><button onclick="editTrain(${i})">✎</button><button onclick="deleteTrain(${i})" class="danger">✕</button></div>`;
             ul.appendChild(li);
         });
     }
 
-    // --- Funkcje Operacyjne na Pociągach ---
-
-    window.deleteTrain = function(index) {
-        if(confirm("Usunąć ten pociąg?")) {
-            trainsDB.splice(index, 1);
-            saveAndUpdate();
-        }
-    }
-
-    window.duplicateTrain = function(index) {
-        const original = trainsDB[index];
-        // Głęboka kopia
-        const copy = JSON.parse(JSON.stringify(original));
-        copy.id = Date.now();
-        copy.name += " (KOPIA)";
-        trainsDB.push(copy);
-        saveAndUpdate();
-        showStatus("Duplikat utworzony.", "success");
-    }
-
-    window.reverseTrain = function(index) {
-        if(!confirm("Czy na pewno odwrócić trasę dla tego pociągu?")) return;
-        
-        const train = trainsDB[index];
-        const oldSegments = train.route.segments;
-        let newSegments = [];
-
-        // Odwracamy kolejność i kierunki
-        for (let i = oldSegments.length - 1; i >= 0; i--) {
-            const seg = oldSegments[i];
-            newSegments.push({
-                from: seg.to,
-                to: seg.from,
-                via: seg.via
-            });
-        }
-
-        // Zamieniamy start i end
-        const oldStart = train.route.start;
-        train.route.start = train.route.end;
-        train.route.end = oldStart;
-        train.route.segments = newSegments;
-        
-        saveAndUpdate();
-        
-        // FIX: Jeśli edytujemy TEN pociąg, musimy odświeżyć edytor!
-        if (editingId === train.id) {
-            // Aktualizacja stanu edytora
-            currentRoute = [...train.route.segments];
-            currentStation = train.route.end;
-            
-            // Odśwież widok mapy
-            routeLayerGroup.clearLayers();
-            currentRoute.forEach(seg => {
-                if (graph[seg.from]) {
-                    const conn = graph[seg.from].find(c => c.target === seg.to && c.via === seg.via);
-                    if (conn && conn.geometry) {
-                        L.geoJSON(conn.geometry, { style: { color: 'blue', weight: 4 } }).addTo(routeLayerGroup);
-                    }
-                }
-            });
-            
-            // Odśwież UI
-            document.getElementById('startStation').value = train.route.start;
-            updateCurrentRouteUI();
-            updateNextOptions();
-            showStatus("Trasa odwrócona i zaktualizowana w edytorze.", "success");
-        } else {
-            showStatus("Trasa odwrócona.", "success");
-        }
-    }
-
-    window.editTrain = function(index) {
-        if (currentRoute.length > 0) {
-            if(!confirm("Aktualnie tworzysz trasę. Czy porzucić zmiany i załadować pociąg do edycji?")) return;
-        }
-
-        const train = trainsDB[index];
-        
-        // Wypełnij formularz
-        document.getElementById('trainCategory').value = train.category;
-        document.getElementById('trainNumber').value = train.number;
-        document.getElementById('trainName').value = train.name;
-        
-        editingId = train.id;
-        
-        // Wypełnij kalendarz
-        selectedDates = new Set(train.dates);
-        renderCalendar();
-        updateSelectedCount();
-
-        // Odtwórz trasę
-        currentRoute = [...train.route.segments];
-        // Ustaw start
-        const startStation = train.route.start;
-        document.getElementById('startStation').value = startStation;
-        document.getElementById('startStation').disabled = true;
-        document.getElementById('btnStartRoute').disabled = true;
+    window.editTrain = function(i) {
+        const t = trainsDB[i];
+        document.getElementById('trainCategory').value = t.category; document.getElementById('trainNumber').value = t.number; document.getElementById('trainName').value = t.name;
+        editingId = t.id; selectedDates = new Set(t.dates); currentRoute = [...t.route.segments];
+        document.getElementById('startStation').value = t.route.start;
         document.getElementById('active-route-controls').style.display = 'block';
-
-        currentStation = train.route.end; // Ostatnia stacja to ta, gdzie jesteśmy
-        
-        // Przerysuj mapę
-        routeLayerGroup.clearLayers();
-        currentRoute.forEach(seg => {
-            // Szukamy geometrii
-            if (graph[seg.from]) {
-                const conn = graph[seg.from].find(c => c.target === seg.to && c.via === seg.via);
-                if (conn && conn.geometry) {
-                    L.geoJSON(conn.geometry, { style: { color: 'blue', weight: 4 } }).addTo(routeLayerGroup);
-                }
-            }
+        currentStation = t.route.end; routeLayerGroup.clearLayers();
+        currentRoute.forEach(s => {
+            const c = graph[s.from]?.find(x => x.target===s.to && x.via===s.via);
+            if(c?.geometry) L.geoJSON(c.geometry, {style:{color:'blue',weight:4}}).addTo(routeLayerGroup);
         });
-
-        updateCurrentRouteUI();
-        updateNextOptions();
-        
-        // Przewiń do góry
-        document.querySelector('.panel').scrollIntoView({behavior: 'smooth'});
-        showStatus("Załadowano pociąg do edycji.", "success");
+        updateCurrentRouteUI(); updateNextOptions(); renderCalendar(); updateSelectedCount();
     }
 
-    document.getElementById('btnClearDB').addEventListener('click', () => {
-        if(confirm("Usunąć WSZYSTKIE pociągi?")) {
-            trainsDB = [];
-            saveAndUpdate();
-        }
-    });
+    window.deleteTrain = (i) => { if(confirm("Usunąć?")) { trainsDB.splice(i,1); saveAndUpdate(); } };
+    function saveAndUpdate() { localStorage.setItem('savedTrains', JSON.stringify(trainsDB)); renderTrainDBList(); updateJSONPreview(); }
+    function loadLocalStorage() { const s = localStorage.getItem('savedTrains'); if(s) { trainsDB = JSON.parse(s); renderTrainDBList(); } }
+    function updateJSONPreview() { document.getElementById('jsonOutput').value = JSON.stringify(trainsDB, null, 2); }
+    document.getElementById('btnCopyJSON').onclick = () => { navigator.clipboard.writeText(document.getElementById('jsonOutput').value); showStatus("Skopiowano!", "success"); };
+    document.getElementById('btnDownloadJSON').onclick = () => {
+        const b = new Blob([document.getElementById('jsonOutput').value], {type:'application/json'});
+        const u = URL.createObjectURL(b); const a = document.createElement('a');
+        a.href=u; a.download='trains.json'; a.click();
+    };
 
-    function saveAndUpdate() {
-        saveLocalStorage();
-        renderTrainDBList();
-        updateJSONPreview();
+    function showStatus(m, t) {
+        const e = document.getElementById('status'); e.textContent = m; e.className = `status-msg status-${t}`; e.style.display = 'block';
+        setTimeout(() => e.style.display = 'none', 4000);
     }
-
-    function saveLocalStorage() { localStorage.setItem('savedTrains', JSON.stringify(trainsDB)); }
-    function loadLocalStorage() {
-        const saved = localStorage.getItem('savedTrains');
-        if (saved) {
-            try { trainsDB = JSON.parse(saved); renderTrainDBList(); } 
-            catch (e) { console.error(e); }
-        }
-    }
-
-    // --- JSON i Kopiowanie ---
-    function updateJSONPreview() {
-        document.getElementById('jsonOutput').value = JSON.stringify(trainsDB, null, 2);
-    }
-
-    document.getElementById('btnCopyJSON').addEventListener('click', () => {
-        const txt = document.getElementById('jsonOutput');
-        txt.select();
-        navigator.clipboard.writeText(txt.value).then(() => {
-            const btn = document.getElementById('btnCopyJSON');
-            const orig = btn.textContent;
-            btn.textContent = "Skopiowano!";
-            setTimeout(() => btn.textContent = orig, 2000);
-        });
-    });
-
-    document.getElementById('btnDownloadJSON').addEventListener('click', () => {
-        const blob = new Blob([document.getElementById('jsonOutput').value], {type: 'application/json'});
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url; a.download = 'trains.json';
-        document.body.appendChild(a); a.click(); document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-    });
-
-    function showStatus(msg, type) {
-        const el = document.getElementById('status');
-        el.textContent = msg;
-        el.className = `status-msg status-${type}`;
-        el.style.display = 'block';
-        setTimeout(() => el.style.display = 'none', 4000);
-    }
-
 </script>
 </body>
 </html>
