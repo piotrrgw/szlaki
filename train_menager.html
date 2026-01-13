@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Generator Tras Pociągów v1.6</title>
+    <title>Generator Tras Pociągów v1.7</title>
     <link rel="icon" type="image/svg+xml" href="favicon_trainmgr.svg">
     <link rel="apple-touch-icon" href="apple-touch-icon_trainmgr.png">
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-W05T4L1HFD"></script>
@@ -200,6 +200,7 @@
 
         button.secondary { background-color: #6c757d; }
         button.accent { background-color: var(--accent-color); color: #fff; }
+        button.warning { background-color: var(--warning-color); color: #333; }
         button.danger { background-color: var(--danger-color); }
 
         #map { height: 400px; width: 100%; border-radius: var(--border-radius); z-index: 1; margin-bottom: 20px; }
@@ -276,7 +277,7 @@
 
 <header>
     <h1>Generator Tras Pociągów</h1>
-    <div class="version">v1.6</div>
+    <div class="version">v1.7</div>
 </header>
 
 <main>
@@ -427,15 +428,15 @@
 
 <footer>
     Współautorzy: Gemini, Piotr M 🚂 <br>
-    Wersja aplikacji: v1.6
+    Wersja aplikacji: v1.7
 </footer>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 
 <script>
     /**
-     * Wersja aplikacji: v1.6
-     * Changes: Added trains.json offline import functionality, UI improvements.
+     * Wersja aplikacji: v1.7
+     * Changes: Restored Duplicate and Reverse functionality, maintained JSON import.
      */
 
     let map, routeLayerGroup;
@@ -470,49 +471,35 @@
         routeLayerGroup = L.featureGroup().addTo(map);
     }
 
-    // --- IMPORT TRAINS.JSON ---
+    // --- IMPORT/EXPORT TRAINS.JSON ---
     document.getElementById('importTrainsFile').addEventListener('change', function(e) {
         const file = e.target.files[0];
         if (!file) return;
-        
         const reader = new FileReader();
         reader.onload = function(e) {
             try {
                 const importedData = JSON.parse(e.target.result);
-                if (!Array.isArray(importedData)) throw new Error("Format musi być tablicą pociągów.");
-
-                const mode = confirm("Czy chcesz dodać wczytane pociągi do obecnej bazy? \n(Kliknij 'Anuluj', aby zastąpić całą bazę)");
-                
+                if (!Array.isArray(importedData)) throw new Error("Format musi być tablicą.");
+                const mode = confirm("Dodać do obecnej bazy? (Anuluj = zastąp)");
                 if (mode) {
-                    // Dodawanie (z unikaniem duplikatów ID na wszelki wypadek)
                     importedData.forEach(t => {
                         const exists = trainsDB.some(old => old.id === t.id);
                         if (exists) t.id = Date.now() + Math.random(); 
                         trainsDB.push(t);
                     });
-                    showStatus(`Dodano ${importedData.length} pociągów.`, 'success');
-                } else {
-                    trainsDB = importedData;
-                    showStatus(`Wczytano ${importedData.length} pociągów (baza zastąpiona).`, 'success');
-                }
-
-                saveAndUpdate();
-            } catch (err) {
-                showStatus("Błąd importu: " + err.message, 'error');
-            }
-            e.target.value = ""; // reset input
+                } else { trainsDB = importedData; }
+                saveAndUpdate(); showStatus("Wczytano pociągi.", 'success');
+            } catch (err) { showStatus("Błąd importu: " + err.message, 'error'); }
+            e.target.value = "";
         };
         reader.readAsText(file);
     });
 
-    // --- RESZTA LOGIKI (BEZ ZMIAN W DANYCH) ---
     async function loadSzlakiData() {
         try {
             const response = await fetch('./szlaki_master.json');
-            if (response.ok) {
-                const data = await response.json();
-                buildGraph(data);
-            } else { throw new Error(); }
+            if (response.ok) buildGraph(await response.json());
+            else throw new Error();
         } catch (e) {
             showStatus("Brak szlaki_master.json online.", 'error');
             document.getElementById('file-upload-section').querySelector('input').style.display = 'block';
@@ -588,6 +575,8 @@
         renderCalendar(); updateSelectedCount();
     });
 
+    document.getElementById('btnClearDates').addEventListener('click', () => { selectedDates.clear(); renderCalendar(); updateSelectedCount(); });
+
     // --- TRASA ---
     document.getElementById('btnStartRoute').addEventListener('click', () => {
         const s = document.getElementById('startStation').value; if(!s) return;
@@ -616,8 +605,8 @@
         currentStation = currentRoute.pop().from;
         routeLayerGroup.clearLayers();
         currentRoute.forEach(s => {
-            const c = graph[s.from].find(x => x.target===s.to && x.via===s.via);
-            if(c && c.geometry) L.geoJSON(c.geometry, {style:{color:'blue',weight:4}}).addTo(routeLayerGroup);
+            const c = graph[s.from]?.find(x => x.target===s.to && x.via===s.via);
+            if(c?.geometry) L.geoJSON(c.geometry, {style:{color:'blue',weight:4}}).addTo(routeLayerGroup);
         });
         updateNextOptions(); updateCurrentRouteUI();
     });
@@ -640,7 +629,7 @@
         renderCalendar(); updateSelectedCount();
     }
 
-    // --- BAZA ---
+    // --- BAZA POCIĄGÓW ---
     document.getElementById('btnSaveToDB').addEventListener('click', () => {
         const cat = document.getElementById('trainCategory').value, num = document.getElementById('trainNumber').value, name = document.getElementById('trainName').value;
         if(!num || !name || currentRoute.length===0 || selectedDates.size===0) return alert("Braki w danych!");
@@ -654,7 +643,12 @@
         trainsDB.forEach((t, i) => {
             const li = document.createElement('li'); li.className = 'list-item';
             li.innerHTML = `<div><strong>${t.category} ${t.number}</strong> "${t.name}"<br><small>${t.route.start} → ${t.route.end}</small></div>
-            <div class="train-actions"><button onclick="editTrain(${i})">✎</button><button onclick="deleteTrain(${i})" class="danger">✕</button></div>`;
+            <div class="train-actions">
+                <button onclick="editTrain(${i})" title="Edytuj">✎</button>
+                <button class="secondary" onclick="duplicateTrain(${i})" title="Kopiuj">📋</button>
+                <button class="warning" onclick="reverseTrain(${i})" title="Odwróć">⇄</button>
+                <button class="danger" onclick="deleteTrain(${i})" title="Usuń">✕</button>
+            </div>`;
             ul.appendChild(li);
         });
     }
@@ -671,18 +665,43 @@
             if(c?.geometry) L.geoJSON(c.geometry, {style:{color:'blue',weight:4}}).addTo(routeLayerGroup);
         });
         updateCurrentRouteUI(); updateNextOptions(); renderCalendar(); updateSelectedCount();
-    }
+    };
+
+    window.duplicateTrain = function(i) {
+        const copy = JSON.parse(JSON.stringify(trainsDB[i]));
+        copy.id = Date.now() + Math.random();
+        copy.name += " (KOPIA)";
+        trainsDB.push(copy);
+        saveAndUpdate(); showStatus("Pociąg powielony.", "success");
+    };
+
+    window.reverseTrain = function(i) {
+        const t = trainsDB[i];
+        const oldSegs = t.route.segments;
+        let newSegs = [];
+        for (let j = oldSegs.length - 1; j >= 0; j--) {
+            newSegs.push({ from: oldSegs[j].to, to: oldSegs[j].from, via: oldSegs[j].via });
+        }
+        const oldStart = t.route.start;
+        t.route.start = t.route.end;
+        t.route.end = oldStart;
+        t.route.segments = newSegs;
+        saveAndUpdate(); showStatus("Trasa odwrócona.", "success");
+    };
 
     window.deleteTrain = (i) => { if(confirm("Usunąć?")) { trainsDB.splice(i,1); saveAndUpdate(); } };
+    
     function saveAndUpdate() { localStorage.setItem('savedTrains', JSON.stringify(trainsDB)); renderTrainDBList(); updateJSONPreview(); }
     function loadLocalStorage() { const s = localStorage.getItem('savedTrains'); if(s) { trainsDB = JSON.parse(s); renderTrainDBList(); } }
     function updateJSONPreview() { document.getElementById('jsonOutput').value = JSON.stringify(trainsDB, null, 2); }
+    
     document.getElementById('btnCopyJSON').onclick = () => { navigator.clipboard.writeText(document.getElementById('jsonOutput').value); showStatus("Skopiowano!", "success"); };
     document.getElementById('btnDownloadJSON').onclick = () => {
         const b = new Blob([document.getElementById('jsonOutput').value], {type:'application/json'});
         const u = URL.createObjectURL(b); const a = document.createElement('a');
         a.href=u; a.download='trains.json'; a.click();
     };
+    document.getElementById('btnClearDB').onclick = () => { if(confirm("Wyczyścić wszystko?")) { trainsDB = []; saveAndUpdate(); } };
 
     function showStatus(m, t) {
         const e = document.getElementById('status'); e.textContent = m; e.className = `status-msg status-${t}`; e.style.display = 'block';
