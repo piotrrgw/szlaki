@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Generator Tras Pociągów v1.7</title>
+    <title>Generator Tras Pociągów v1.8</title>
     <link rel="icon" type="image/svg+xml" href="favicon_trainmgr.svg">
     <link rel="apple-touch-icon" href="apple-touch-icon_trainmgr.png">
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-W05T4L1HFD"></script>
@@ -277,7 +277,7 @@
 
 <header>
     <h1>Generator Tras Pociągów</h1>
-    <div class="version">v1.7</div>
+    <div class="version">v1.8</div>
 </header>
 
 <main>
@@ -428,15 +428,15 @@
 
 <footer>
     Współautorzy: Gemini, Piotr M 🚂 <br>
-    Wersja aplikacji: v1.7
+    Wersja aplikacji: v1.8
 </footer>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 
 <script>
     /**
-     * Wersja aplikacji: v1.7
-     * Changes: Restored Duplicate and Reverse functionality, maintained JSON import.
+     * Wersja aplikacji: v1.8
+     * Changes: Added train list sorting by number (ascending), maintained Duplicate/Reverse/Import functions.
      */
 
     let map, routeLayerGroup;
@@ -471,7 +471,7 @@
         routeLayerGroup = L.featureGroup().addTo(map);
     }
 
-    // --- IMPORT/EXPORT TRAINS.JSON ---
+    // --- IMPORT TRAINS.JSON ---
     document.getElementById('importTrainsFile').addEventListener('change', function(e) {
         const file = e.target.files[0];
         if (!file) return;
@@ -640,14 +640,23 @@
 
     function renderTrainDBList() {
         const ul = document.getElementById('dbTrainList'); ul.innerHTML = trainsDB.length ? '' : '<li class="list-item">Brak pociągów</li>';
-        trainsDB.forEach((t, i) => {
+        
+        // --- SORTOWANIE PO NUMERZE (ROSNACO) ---
+        const sortedDB = [...trainsDB].sort((a, b) => {
+            const numA = parseInt(a.number.replace(/\D/g,'')) || 0;
+            const numB = parseInt(b.number.replace(/\D/g,'')) || 0;
+            return numA - numB;
+        });
+
+        sortedDB.forEach((t) => {
+            const originalIndex = trainsDB.findIndex(x => x.id === t.id);
             const li = document.createElement('li'); li.className = 'list-item';
             li.innerHTML = `<div><strong>${t.category} ${t.number}</strong> "${t.name}"<br><small>${t.route.start} → ${t.route.end}</small></div>
             <div class="train-actions">
-                <button onclick="editTrain(${i})" title="Edytuj">✎</button>
-                <button class="secondary" onclick="duplicateTrain(${i})" title="Kopiuj">📋</button>
-                <button class="warning" onclick="reverseTrain(${i})" title="Odwróć">⇄</button>
-                <button class="danger" onclick="deleteTrain(${i})" title="Usuń">✕</button>
+                <button onclick="editTrain(${originalIndex})" title="Edytuj">✎</button>
+                <button class="secondary" onclick="duplicateTrain(${originalIndex})" title="Kopiuj">📋</button>
+                <button class="warning" onclick="reverseTrain(${originalIndex})" title="Odwróć">⇄</button>
+                <button class="danger" onclick="deleteTrain(${originalIndex})" title="Usuń">✕</button>
             </div>`;
             ul.appendChild(li);
         });
@@ -665,6 +674,7 @@
             if(c?.geometry) L.geoJSON(c.geometry, {style:{color:'blue',weight:4}}).addTo(routeLayerGroup);
         });
         updateCurrentRouteUI(); updateNextOptions(); renderCalendar(); updateSelectedCount();
+        document.querySelector('.panel').scrollIntoView({behavior: 'smooth'});
     };
 
     window.duplicateTrain = function(i) {
@@ -693,7 +703,14 @@
     
     function saveAndUpdate() { localStorage.setItem('savedTrains', JSON.stringify(trainsDB)); renderTrainDBList(); updateJSONPreview(); }
     function loadLocalStorage() { const s = localStorage.getItem('savedTrains'); if(s) { trainsDB = JSON.parse(s); renderTrainDBList(); } }
-    function updateJSONPreview() { document.getElementById('jsonOutput').value = JSON.stringify(trainsDB, null, 2); }
+    function updateJSONPreview() { 
+        const sortedForOutput = [...trainsDB].sort((a, b) => {
+            const numA = parseInt(a.number.replace(/\D/g,'')) || 0;
+            const numB = parseInt(b.number.replace(/\D/g,'')) || 0;
+            return numA - numB;
+        });
+        document.getElementById('jsonOutput').value = JSON.stringify(sortedForOutput, null, 2); 
+    }
     
     document.getElementById('btnCopyJSON').onclick = () => { navigator.clipboard.writeText(document.getElementById('jsonOutput').value); showStatus("Skopiowano!", "success"); };
     document.getElementById('btnDownloadJSON').onclick = () => {
